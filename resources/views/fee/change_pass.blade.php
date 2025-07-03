@@ -24,8 +24,7 @@
                     <div class="card">
                         <div class="card-header">
                             {{ 'Change Password' }}
-                            <a href="{{ route('fee.changePass') }}" class="btn btn-warning btn-sm"
-                                style="float: right;">Back</a>
+                            <a href="{{ route('fee.dashboard') }}" class="btn btn-warning btn-sm" style="float: right;">Back</a>
 
                         </div>
 

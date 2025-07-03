@@ -279,6 +279,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth', 'i
 
     Route::controller(StudentMasterController::class)->group(function () {
         Route::get('search/student/fee-details', 'searchStFeeDetails')->name('student-master.search-fee-details');
+        Route::get('search/student/transport/fee-details', 'searchStTransportFeeDetails')->name('student-master.search-transport-fee-details');
         Route::get('search/student', 'search')->name('student-master.search');
         Route::post('search/student', 'searchStore')->name('student-master.search.store');
         Route::get('std/relative',  'getStdWithRelativeStd')->where('srno', '.*')->name('getStdWithRelativeStd');
@@ -446,7 +447,8 @@ Route::group(['prefix' => 'fee', 'as' => 'fee.', 'middleware' => ['auth', 'is_va
         Route::get('back-session-fee-details', 'backSessionFeeDetails')->name('back-session-fee-detail');
         Route::get('back-session-fee-details/excel', 'exportBackSessionFeeReport')->name('back-session-fee-detail-excel');
 
-        Route::get('student-without-ssid', 'studentWithoutSsid')->name('studentWithoutSsid');
+        Route::post('student-without-ssid', 'studentWithoutSsid')->name('studentWithoutSsid');
+        // Route::get('student-without-ssid', 'studentWithoutSsid')->name('studentWithoutSsid');
         Route::get('back-session/individual-fee-details/{st}/{session}/{class}/{section}', 'backSessionIndividualFeeDetail')->where('st', '.*')->name('back-session-individual-fee-detail');
         Route::get('print-due-receipt', 'printDueReceipt')->name('print-due-receipt');
 

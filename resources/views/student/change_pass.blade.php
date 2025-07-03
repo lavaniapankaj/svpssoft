@@ -25,13 +25,12 @@
                     <div class="card">
                         <div class="card-header">
                             {{ 'Change Password' }}
-                                    <a href="{{ route('student.changePass') }}" class="btn btn-warning btn-sm"
-                                    style="float: right;">Back</a>
+                                    <a href="{{ route('student.dashboard') }}" class="btn btn-warning btn-sm" style="float: right;">Back</a>
 
                         </div>
 
                         <div class="card-body">
-                            
+
                             <form action="{{ route('student.changePass.store') }}" method="POST">
                                 @csrf
                                 <input type="hidden" name="id" id="id" value="{{ Auth::id() }}">

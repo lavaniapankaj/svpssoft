@@ -114,30 +114,17 @@ document.addEventListener('DOMContentLoaded', function () {
 var loader = $('.loader');
 //get class and section
 function getClassSection(initialClassId, initialSectionId = '', classSelect = '', sectionSelect = '') {
-
     var classSelected = classSelect;
-
     var sectionSelected = sectionSelect;
-
     var initialClassesId = $('#initialClassId').val();
-
     var initialSectionId = initialSectionId;
-
     var initialClassId = initialClassId;
-
-
-
     if (classSelect == '' || sectionSelect == '') {
-
         classSelected = $('#class_id');
-
         sectionSelected = $('#section_id');
-
     }
     var classId = initialClassesId;
-
     fetchSections(classId);
-
     function fetchSections(classId) {
         if (classId) {
             $.ajax({
@@ -182,96 +169,52 @@ function getClassSection(initialClassId, initialSectionId = '', classSelect = ''
             sectionSelected.append('<option value="">Select Section</option>');
         }
     }
-
-
     var selectedClassId = classSelected.val();
 
     if (selectedClassId) {
-
         fetchSections(selectedClassId);
-
     }
-
     classSelected.change(function () {
-
         var classId = $(this).val();
         loader.show();
         fetchSections(classId);
-
     });
-
-
-
-
-
-
-
 }
 
 // get session
 function getSession(initialSessionId) {
-
     var sessionSelect = $('#session_id');
-
     var initialSessionId = initialSessionId;
-
     function fetchSession() {
-
         loader.show();
-
         $.ajax({
-
             url: siteUrl + '/sessions',
-
             type: 'GET',
-
             dataType: 'JSON',
-
             success: function (data) {
-
                 sessionSelect.empty();
-
                 sessionSelect.append('<option value="">Select Session</option>');
-
                 $.each(data.data, function (id, name) {
-
                     sessionSelect.append('<option value="' + id + '">' + name + '</option>')
-
                 });
-
                 if (initialSessionId) {
-
                     sessionSelect.val(initialSessionId);
-
                 }
-
             },
-
             complete: function () {
                 loader.hide();
-
             },
-
             error: function (data) {
-
                 $.each(data.message, function (error) {
-
                     console.error('Error fetching sections:', error);
-
                 });
-
-
-
             }
-
         });
-
     }
     // sessionSelect.change(function () {
     //     loader.show();
     // });
     fetchSession();
-
 }
 
 // get subject on the basis of class
@@ -282,104 +225,60 @@ function getClassSubject(initialClassesId, initialSubjectId, subjectGroupSection
     var subjectId = initialSubjectId;
     var subjectGroupSection = $(subjectGroupSection);
     function fetchSubjects(classId, subjectsG = '') {
-
         if (classId) {
             loader.show();
             $.ajax({
-
                 url: siteUrl + '/subjects',
-
                 type: 'GET',
-
                 dataType: 'JSON',
-
                 data: {
-
                     class_id: classId,
-
                     subject: subjectsG,
-
                 },
-
                 success: function (data) {
-
                     subjectSelect.empty();
                     if (data.data && Object.keys(data.data).length > 0) {
-
                         subjectSelect.append('<option value="">Select Subject</option>');
-
                         $.each(data.data, function (id, name) {
-
-                            subjectSelect.append('<option value="' + id + '">' + name +
-
-                                '</option>');
-
+                            subjectSelect.append('<option value="' + id + '">' + name + '</option>');
                         });
                     } else {
                         subjectSelect.append('<option value="">No subjects available</option>');
                     }
-
-
-
-
                     if (initialSubjectId) {
-
                         subjectSelect.val(initialSubjectId);
-
                     }
 
                 },
                 complete: function () {
                     loader.hide();
-
                 },
-
                 error: function (data) {
-
                     $.each(data.message, function (error) {
-
                         console.error('Error fetching sections:', error);
 
                     });
-
                 }
 
             });
 
         } else {
-
             subjectSelect.empty();
-
             subjectSelect.append('<option value="">Select Subject</option>');
-
         }
 
     }
-
     var subjectsGValue = subjectGroupSection.val();
-
     fetchSubjects(classId, subjectsGValue);
-
-
-
-    var selectedSubjectId = classSelect.val();
-
+   /*  var selectedSubjectId = classSelect.val();
     if (selectedSubjectId) {
-
         fetchSubjects(selectedSubjectId);
-
-    }
-
+    } */
     classSelect.change(function () {
-
         var classId = $(this).val();
-
         var subjectsGValue = subjectGroupSection.val();
         loader.show();
         fetchSubjects(classId, subjectsGValue);
-
-
-
     });
 
 }

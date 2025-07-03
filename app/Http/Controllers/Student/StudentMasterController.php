@@ -153,11 +153,11 @@ class StudentMasterController extends Controller
             'rollno' => [
                 'nullable',
                 'numeric',
-                 Rule::unique('stu_main_srno')
+                Rule::unique('stu_main_srno')
                     ->where(function ($query) use ($request) {
                         return $query->where('class', $request->class)
                             ->where('section', $request->section)->where('session_id', $request->current_session);
-                }),
+                    }),
             ],
             'transport' => 'nullable',
             'age_proof' => 'nullable',
@@ -191,8 +191,51 @@ class StudentMasterController extends Controller
             'f_occupation' => 'nullable|string|max:255',
             'm_occupation' => 'nullable|string|max:255',
             'm_mobile' => 'nullable|string|regex:/^[0-9]{10}$/',
-        ]);
+        ], [
+            'srno.max' => 'Serial number must not exceed 255 characters.',
+            'srno.unique' => 'The serial number has already been taken.',
 
+            'rollno.numeric' => 'Roll number must be a number.',
+            'rollno.unique' => 'This roll number is already taken in the same class, section, and session.',
+
+            'admission_date.date_format' => 'Admission date must be in the format YYYY-MM-DD.',
+            'dob.date_format' => 'Date of birth must be in the format YYYY-MM-DD.',
+
+            'mobile.regex' => 'Student\'s mobile number must be exactly 10 digits.',
+            'f_mobile.regex' => 'Father\'s mobile number must be exactly 10 digits.',
+            'm_mobile.regex' => 'Mother\'s mobile number must be exactly 10 digits.',
+            'pin_code.regex' => 'Pin code must be exactly 6 digits.',
+            'pincode.regex' => 'Pincode must be exactly 6 digits.',
+
+            'std_email.email' => 'Please enter a valid email address for the student.',
+            'parent_email.email' => 'Please enter a valid email address for the parent.',
+
+            'prev_srno.max' => 'Previous school registration number must not exceed 255 characters.',
+            'TCRefNo.max' => 'Transfer Certificate reference number must not exceed 100 characters.',
+
+            'state_id.exists' => 'Selected state is invalid.',
+            'district_id.exists' => 'Selected district is invalid.',
+
+            'reason.max' => 'Reason must not exceed 255 characters.',
+            'address.max' => 'Address must not exceed 255 characters.',
+            'name.max' => 'Name must not exceed 255 characters.',
+            'f_name.max' => 'Father\'s name must not exceed 255 characters.',
+            'm_name.max' => 'Mother\'s name must not exceed 255 characters.',
+            'g_father.max' => 'Guardian\'s name must not exceed 255 characters.',
+            'f_occupation.max' => 'Father\'s occupation must not exceed 255 characters.',
+            'm_occupation.max' => 'Mother\'s occupation must not exceed 255 characters.',
+            'pre_school.max' => 'Previous school name must not exceed 255 characters.',
+            'pre_class.max' => 'Previous class name must not exceed 50 characters.',
+
+            'trans_1st_inst.numeric' => 'Transport first installment must be a number.',
+            'trans_1st_inst.min' => 'Transport first installment must be at least 0.',
+            'trans_2nd_inst.numeric' => 'Transport second installment must be a number.',
+            'trans_2nd_inst.min' => 'Transport second installment must be at least 0.',
+            'trans_total.numeric' => 'Total transport fee must be a number.',
+            'trans_total.min' => 'Total transport fee must be at least 0.',
+            'trans_discount.numeric' => 'Transport discount must be a number.',
+            'trans_discount.min' => 'Transport discount must be at least 0.',
+        ]);
         $allFieldsFilled = collect($requiredFields)->every(function ($field) use ($request) {
             return !empty($request->input($field));
         });
@@ -353,7 +396,7 @@ class StudentMasterController extends Controller
     {
         //
         $requiredFields = [
-            'current_session',
+            'session',
             'srno',
             'school',
             'class',
@@ -390,7 +433,7 @@ class StudentMasterController extends Controller
                     ->where(function ($query) use ($request) {
                         return $query->whereNotNull('admission_date')
                             ->whereNotNull('form_submit_date');
-                            // ->orWhere('id', $request->id); // Add ID to be ignored conditionally
+                        // ->orWhere('id', $request->id); // Add ID to be ignored conditionally
                     })->ignore($id),
             ],
             'school' => 'nullable',
@@ -399,11 +442,11 @@ class StudentMasterController extends Controller
             'rollno' => [
                 'nullable',
                 'numeric',
-                 Rule::unique('stu_main_srno')
+                Rule::unique('stu_main_srno')
                     ->where(function ($query) use ($request) {
                         return $query->where('class', $request->class)
                             ->where('section', $request->section)->where('session_id', $request->session);
-                            // ->orWhere('id', $request->id); // Add ID to be ignored conditionally
+                        // ->orWhere('id', $request->id); // Add ID to be ignored conditionally
                     })->ignore($id),
             ],
             'transport' => 'nullable',
@@ -438,8 +481,54 @@ class StudentMasterController extends Controller
             'f_occupation' => 'nullable|string|max:255',
             'm_occupation' => 'nullable|string|max:255',
             'm_mobile' => 'nullable|string|regex:/^[0-9]{10}$/',
-        ]);
+        ], [
+            // Custom messages for srno and rollno
+            'srno.max' => 'Serial number must not exceed 255 characters.',
+            'srno.unique' => 'The serial number has already been used for a record with valid admission and form submission dates.',
+            'rollno.numeric' => 'Roll number must be a number.',
+            'rollno.unique' => 'This roll number is already assigned in the selected class, section, and session.',
 
+            // Date formats
+            'admission_date.date_format' => 'Admission date must be in the format YYYY-MM-DD.',
+            'dob.date_format' => 'Date of birth must be in the format YYYY-MM-DD.',
+
+            // Mobile number & pin code
+            'mobile.regex' => 'Student\'s mobile number must be exactly 10 digits.',
+            'f_mobile.regex' => 'Father\'s mobile number must be exactly 10 digits.',
+            'm_mobile.regex' => 'Mother\'s mobile number must be exactly 10 digits.',
+            'pincode.regex' => 'Pincode must be exactly 6 digits.',
+            'pin_code.regex' => 'Pin code must be exactly 6 digits.',
+
+            // Email validation
+            'std_email.email' => 'Please enter a valid student email address.',
+            'parent_email.email' => 'Please enter a valid parent email address.',
+
+            // Numeric fields with min
+            'trans_1st_inst.numeric' => 'Transport first installment must be a number.',
+            'trans_1st_inst.min' => 'Transport first installment cannot be negative.',
+            'trans_2nd_inst.numeric' => 'Transport second installment must be a number.',
+            'trans_2nd_inst.min' => 'Transport second installment cannot be negative.',
+            'trans_total.numeric' => 'Transport total must be a number.',
+            'trans_total.min' => 'Transport total cannot be negative.',
+            'trans_discount.numeric' => 'Transport discount must be a number.',
+            'trans_discount.min' => 'Transport discount cannot be negative.',
+
+            // Max lengths
+            'prev_srno.max' => 'Previous SR number must not exceed 255 characters.',
+            'reason.max' => 'Reason must not exceed 255 characters.',
+            'TCRefNo.max' => 'Transfer Certificate Reference Number must not exceed 100 characters.',
+            'address.max' => 'Address must not exceed 255 characters.',
+            'name.max' => 'Name must not exceed 255 characters.',
+            'f_name.max' => 'Father\'s name must not exceed 255 characters.',
+            'm_name.max' => 'Mother\'s name must not exceed 255 characters.',
+            'g_father.max' => 'Guardian\'s name must not exceed 255 characters.',
+            'f_occupation.max' => 'Father\'s occupation must not exceed 255 characters.',
+            'm_occupation.max' => 'Mother\'s occupation must not exceed 255 characters.',
+            'pre_school.max' => 'Previous school name must not exceed 255 characters.',
+            'pre_class.max' => 'Previous class must not exceed 50 characters.',
+            'state_id.exists' => 'Please select a valid state.',
+            'district_id.exists' => 'Please select a valid district.',
+        ]);
         $allFieldsFilled = collect($requiredFields)->every(function ($field) use ($request) {
             return !empty($request->input($field));
         });
@@ -699,7 +788,7 @@ class StudentMasterController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get students " . $e->getMessage()
+                'message' => "Failed to get students"
             ], 500);
         }
     }
@@ -746,7 +835,7 @@ class StudentMasterController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get students " . $e->getMessage()
+                'message' => "Failed to get students"
             ], 500);
         }
     }
@@ -806,7 +895,7 @@ class StudentMasterController extends Controller
     //     } catch (\Exception $e) {
     //         return response()->json([
     //             'status' => 'error',
-    //             'message' => 'Failed to get students: ' . $e->getMessage()
+    //             'message' => 'Failed to get students'
     //         ], 500);
     //     }
     // }
@@ -879,7 +968,7 @@ class StudentMasterController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to get students: ' . $e->getMessage()
+                'message' => 'Failed to get students'
             ], 500);
         }
     }
@@ -917,7 +1006,7 @@ class StudentMasterController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get students: " . $e->getMessage()
+                'message' => "Failed to get students"
             ], 500);
         }
     }
@@ -993,7 +1082,9 @@ class StudentMasterController extends Controller
             return redirect()->back()->with('error', 'Something went wrong, please try again.');
         }
     }
-
+    /**
+     * Academic fee details
+     */
     public function searchStFeeDetails(Request $request)
     {
         try {
@@ -1025,19 +1116,6 @@ class StudentMasterController extends Controller
                 'where' => ['stu_main_srno.srno' => $srno],
             ];
             $academicDetails = self::getStd($fields, $where)->get();
-            // $academicDetails = DB::table('stu_main_srno')
-            //     ->join('session_masters', 'session_masters.id', '=', 'stu_main_srno.session_id')
-            //     ->join('class_masters', 'class_masters.id', '=', 'stu_main_srno.class')
-            //     ->where('stu_main_srno.srno', $srno)
-            //     ->select(
-            //         'stu_main_srno.session_id',
-            //         'stu_main_srno.class',
-            //         'stu_main_srno.admission_date',
-            //         'session_masters.session',
-            //         'class_masters.class as classname'
-            //     )
-            //     ->get();
-
             if ($academicDetails->count() > 0) {
                 $feeDetails = [];
 
@@ -1077,7 +1155,7 @@ class StudentMasterController extends Controller
                         'session' => $academicRow->session,
                         'classname' => $academicRow->classname,
                         'payable_amount' => $payableAmount,
-                        'paid_amount' => $paidAmount,
+                        'paid_amount' => $paidAmount ?? 0,
                         'due_amount' => $dueAmount,
                     ];
                 }
@@ -1099,7 +1177,102 @@ class StudentMasterController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get student previous fee details: " . $e->getMessage()
+                'message' => "Failed to get student previous fee details"
+            ], 500);
+        }
+    }
+
+    /**
+     * Transport Fee Details
+     */
+    public function searchStTransportFeeDetails(Request $request)
+    {
+        try {
+            // Validate input
+            $validator = Validator::make($request->all(), [
+                'srno' => 'required|string',
+            ]);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $validator->errors()
+                ], 400);
+            }
+            $srno = $request->srno;
+            // Array to store the tables
+            $tables = [
+                'title' => 'Transport Fee Details',
+                'headers' => ['Session', 'Class', 'Payable Amount (Rs.)', 'Paid Amount (Rs.)', 'Due Amount (Rs.)'],
+                'data' => '[]'
+            ];
+
+            // Fetch student transport details along with session and class
+            $fields = [
+                'stu_main_srno.session_id',
+                'stu_main_srno.class',
+                'stu_main_srno.admission_date',
+                'session_masters.session',
+                'class_masters.class as classname',
+                'stu_main_srno.transport',
+                'stu_main_srno.trans_1st_inst',
+                'stu_main_srno.trans_2nd_inst',
+                'stu_main_srno.trans_total',
+                'stu_main_srno.trans_discount',
+            ];
+            $where = [
+                'where' => ['stu_main_srno.srno' => $srno],
+            ];
+            $transportDetails = self::getStd($fields, $where)->get();
+            if ($transportDetails->count() > 0) {
+                $transportFeeDetails = [];
+                foreach ($transportDetails as $transportRow) {
+                    // Get payable transport fee details
+                    $dpayable = $transportRow->transport == 1 ? $transportRow->trans_total : 0;
+                    // Get paid transport fee details
+                    $dpaid = DB::table('fee_details')
+                        ->where('session_id', $transportRow->session_id)
+                        ->where('srno', $srno)
+                        ->where('active', 1)
+                        ->where('academic_trans', 2)
+                        ->selectRaw('SUM(amount) as total_paid')
+                        ->first();
+
+                    $payableAmount = 0;
+                    $paidAmount = 0;
+                    $dueAmount = 0;
+                    // Calculate payable, paid, and due amounts
+                    if ($dpayable) {
+                        $payableAmount = $dpayable;
+
+                        if ($dpaid) {
+                            $paidAmount = $dpaid->total_paid;
+                        }
+
+                        $dueAmount = $payableAmount - $paidAmount;
+                    }
+                    // Format the data for the table
+                    $transportFeeDetails[] = [
+                        'session' => $transportRow->session,
+                        'classname' => $transportRow->classname,
+                        'payable_amount' => $payableAmount,
+                        'paid_amount' => $paidAmount ?? 0,
+                        'due_amount' => $dueAmount,
+                    ];
+
+                    if (count($transportFeeDetails) > 0) {
+                        $tables['data'] = $transportFeeDetails;
+                    }
+                }
+                // Return the response
+                return response()->json([
+                    'status' => 'success',
+                    'tables' => $tables
+                ]);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => "Failed to get student session-wise transport fee details"
             ], 500);
         }
     }
@@ -1181,7 +1354,7 @@ class StudentMasterController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to export report: " . $e->getMessage()
+                'message' => "Failed to export report"
             ], 500);
         }
     }
@@ -1253,4 +1426,112 @@ class StudentMasterController extends Controller
         }
         return $query;
     }
+
+
+    /** Get Students For marksheet */
+    public static function getMarksheetStd($fields = [], $where = [], $orderBy = [], $isAllActive = false)
+    {
+        $query = DB::table('stu_main_srno')
+            ->leftJoin('session_masters', 'stu_main_srno.session_id', '=', 'session_masters.id')
+            ->leftJoin('stu_detail', 'stu_main_srno.srno', '=', 'stu_detail.srno')
+            ->leftJoin('parents_detail', 'stu_main_srno.srno', '=', 'parents_detail.srno')
+            ->leftJoin('class_masters', 'stu_main_srno.class', '=', 'class_masters.id')
+            ->leftJoin('section_masters', 'stu_main_srno.section', '=', 'section_masters.id');
+        if ($isAllActive == false) {
+            $query->where('session_masters.active', 1)
+                ->where('stu_detail.active', 1)
+                ->where('parents_detail.active', 1)
+                ->where('class_masters.active', 1)
+                ->where('section_masters.active', 1);
+        }
+
+        if (!empty($fields) && is_array($fields)) {
+            $query->select($fields);
+        } else {
+            $query->select('stu_main_srno.*', 'stu_detail.*', 'parents_detail.*', 'class_masters.*', 'section_masters.*', 'state_masters.*', 'district_masters.*');
+        }
+        if (!empty($where) && is_array($where)) {
+            foreach ($where as $whereAttr => $attr) {
+
+                foreach ($attr as $field => $value) {
+
+                    $query->$whereAttr($field, $value);
+                }
+                $query = $query;
+            }
+        }
+        if (!empty($orderBy) && is_array($orderBy)) {
+
+            foreach ($orderBy as $field => $value) {
+
+                $query->orderBy($field, $value);
+            }
+        }
+        return $query;
+    }
+
+
+
+
+     /**
+     * with ssid for marksheet
+     */
+    public static function getMarksheetStdWithNames($isSSID = false, $field = [])
+    {
+        $fields = !empty($field) ? $field : [
+            'stu_main_srno.id',
+            'stu_main_srno.srno',
+            'stu_main_srno.school',
+            'stu_main_srno.class',
+            'stu_main_srno.section',
+            'stu_main_srno.prev_srno',
+            'stu_main_srno.admission_date',
+            'stu_main_srno.form_submit_date',
+            'stu_main_srno.rollno',
+            'stu_main_srno.relation_code',
+            'stu_main_srno.transport',
+            'stu_main_srno.trans_1st_inst',
+            'stu_main_srno.trans_2nd_inst',
+            'stu_main_srno.trans_discount',
+            'stu_main_srno.trans_total',
+            'stu_main_srno.age_proof',
+            'stu_main_srno.session_id',
+            'stu_main_srno.gender',
+            'stu_main_srno.religion',
+            'stu_main_srno.active',
+            'class_masters.class as class_name',
+            'class_masters.sort',
+            'section_masters.section as section_name',
+            'stu_detail.name as student_name',
+            'stu_detail.mobile as student_mobile',
+            'stu_detail.email as student_email',
+            'stu_detail.dob',
+            'stu_detail.address',
+            'stu_detail.state_id',
+            'stu_detail.district_id',
+            'stu_detail.category_id as category',
+            'parents_detail.f_name',
+            'parents_detail.m_name',
+            'parents_detail.g_father as g_f_name',
+            'parents_detail.f_mobile',
+            'parents_detail.m_mobile',
+            'parents_detail.f_occupation',
+            'parents_detail.m_occupation',
+            'parents_detail.address as parent_address',
+            'stu_main_srno.created_at',
+            'stu_main_srno.ssid',
+        ];
+
+        $where = $isSSID == true ? [
+            'whereIn' => ['stu_main_srno.ssid' => [1, 2, 4, 5]],
+            'where' => ['stu_main_srno.active' => 1],
+        ] : [
+            'where' => ['stu_main_srno.active' => 1],
+
+        ];
+        $orderBy = ['class_masters.sort' => 'asc', 'stu_main_srno.rollno' => 'asc'];
+        $baseQuery = self::getMarksheetStd($fields, $where, $orderBy);
+        return $baseQuery;
+    }
+
 }

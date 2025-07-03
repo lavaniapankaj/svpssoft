@@ -95,6 +95,7 @@
 
                         </form>
                         <div class="row table mt-2" id="report-table">
+
                             <table id="report-excel" class="table table-striped table-bordered">
                                 <thead>
                                     <tr>
@@ -125,7 +126,7 @@
                                 </tbody>
 
                             </table>
-                            <button id="download-csv" type="button" class="btn btn-primary mt-2">Download Excel</button>
+                            <button id="download-csv" type="button" class="btn btn-sm btn-primary mt-2 col-2">Download Excel</button>
                         </div>
                     </div>
                 </div>
@@ -138,13 +139,13 @@
     <script>
 
         $(document).ready(function() {
-            var loader = $('#loader');
             var reportTable = $('#report-table');
+            reportTable.hide();
+            $('#no-data').hide();
+            var loader = $('#loader');
             let initialClassId = $('#class_id').val();
             let initialSectionId = $('#initialSectionId').val();
             getClassSection(initialClassId, initialSectionId);
-            reportTable.hide();
-            $('#no-data').hide();
             $('#class-section-form').validate({
                 rules: {
                     start_date: {

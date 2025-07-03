@@ -6,8 +6,8 @@
             @section('scripts')
                 <script>
                     swal("Successful", "{{ Session::get('success') }}", "success").then(() => {
-                                    location.reload();
-                                });
+                        location.reload();
+                    });
                 </script>
             @endsection
         @endif
@@ -16,8 +16,8 @@
             @section('scripts')
                 <script>
                     swal("Error", "{{ Session::get('error') }}", "error").then(() => {
-                                    location.reload();
-                                });
+                        location.reload();
+                    });
                 </script>
             @endsection
         @endif
@@ -29,7 +29,7 @@
                         <div class="col-lg-12 col-md-12">
                             <div class="right-item d-flex justify-content-end mt-4">
                                 <form action="{{ route('admin.subject-group-master.index') }}" method="get" class="d-flex">
-                                    <input type="hidden" id="initialClassId" value="{{ old('initialClassId',request()->get('class_id') !== null ? request()->get('class_id') : '') }}">
+                                    <input type="hidden" id="initialClassId" value="{{ old('initialClassId',request()->get('class_id') != null ? request()->get('class_id') : '') }}">
                                     <select name="class_id" id="class_id" class="form-control mx-1" required>
                                         <option value="">Select Class</option>
                                         @if (count($classes) > 0)
@@ -41,7 +41,7 @@
                                         @endif
                                     </select>
                                     <input type="hidden" name="subjectGroup_controller" id="subjectGroup-controller" value="SubjectGroupSection">
-                                    <input type="hidden" id="initialSubjectId" name="initialSubjectId" value="{{ old('initialSubjectId',request()->get('subject_id') !== null ? request()->get('subject_id') : '') }}">
+                                    <input type="hidden" id="initialSubjectId" name="initialSubjectId" value="{{ old('initialSubjectId',request()->get('subject_id') != null ? request()->get('subject_id') : '') }}">
                                     <select name="subject_id" id="subject_id" class="form-control mx-1" required>
                                         <option value="">Select Subject</option>
                                     </select>

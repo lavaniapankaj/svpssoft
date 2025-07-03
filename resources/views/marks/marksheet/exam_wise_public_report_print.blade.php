@@ -36,10 +36,7 @@
 @section('marks-scripts')
     <script>
        $(document).ready(function() {
-
             marksheetPrint();
-
-
-        });
+       });
     </script>
 @endsection

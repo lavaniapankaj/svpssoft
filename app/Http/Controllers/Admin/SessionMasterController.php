@@ -216,7 +216,7 @@ class SessionMasterController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get sessions " . $e->getMessage()
+                'message' => "Failed to get sessions "
             ], 500);
         }
     }

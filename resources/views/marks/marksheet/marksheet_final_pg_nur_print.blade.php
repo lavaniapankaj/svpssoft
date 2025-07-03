@@ -96,27 +96,27 @@
                                     </td></tr>
                                     <tr><td>
                                         <div class="row g-0 mb-3">
-                                            <div class="col-2 pe-2">
+                                            <div class="col-3 pe-2">
                                                 <p class="mb-1">Name of Student :</p>
                                                 <p class="mb-1">Father's Name :</p>
                                                 <p class="mb-1">Class :</p>
                                                 <p class="mb-1">Section :</p>
                                             </div>
-                                            <div class="col-4">
+                                            <div class="col-3">
                                                 <p class="mb-1">${studentInfo.name}</p>
-                                                <p class="mb-1">SH. ${studentInfo.father_name}</p>
+                                                <p class="mb-1">${studentInfo.father_name}</p>
                                                 <p class="mb-1">${studentInfo.class}</p>
                                                 <p class="mb-1">${studentInfo.section}</p>
                                             </div>
-                                            <div class="col-2 pe-2">
+                                            <div class="col-3 pe-2">
                                                 <p class="mb-1">S.R.No. :</p>
-                                                <p class="mb-1"></p>
+                                                <p class="mb-1">Mother's Name :</p>
                                                 <p class="mb-1">Date of Birth :</p>
                                                 <p class="mb-1">Roll No. :</p>
                                             </div>
-                                            <div class="col-4">
+                                            <div class="col-3">
                                                 <p class="mb-1">${studentInfo.sr_no}</p>
-                                                <p class="mb-1"></p>
+                                                <p class="mb-1">${studentInfo.mother_name}</p>
                                                 <p class="mb-1">${studentInfo.dob}</p>
                                                 <p class="mb-1">${studentInfo.roll_no}</p>
                                             </div>
@@ -124,112 +124,117 @@
                                     </td></tr>
                                     <tr><td>
                                         <div class="row g-0 d-flex align-items-stretch">
-                                            <div class="col-8 align-items-stretch">
+                                            <div class="col-9 align-items-stretch">
                                                 <table class="table table-bordered border-dark mb-0 h-100">
                                                     <thead>
                                                         <tr>
                                                             <th class="fw-normal" style="width: 25%">Subject</th>`;
 
-                            // Add exam headers
-                            uniqueExams.forEach((examName, examId) => {
-                                tableHtml += `<th class="fw-normal text-center">${examName}</th>`;
-                            });
-                            tableHtml += `<th class="fw-normal text-center">Grand Total</th></tr></thead><tbody>`;
+                                                                // Add exam headers
+                                                                uniqueExams.forEach((examName, examId) => {
+                                                                    tableHtml += `<th class="fw-normal text-center">${examName}</th>`;
+                                                                });
+                                                                tableHtml += `<th class="fw-normal text-center">Grand Total</th></tr></thead><tbody>`;
 
-                            // Process subjects and their marks
-                            const processedSubjects = new Set(); // To track unique subjects
-                            subjectMarks.forEach(subject => {
-                                // Skip if subject has already been processed
-                                if (processedSubjects.has(subject.subject_name)) {
-                                    return;
-                                }
-                                processedSubjects.add(subject.subject_name);
+                                                                // Process subjects and their marks
+                                                                const processedSubjects = new Set(); // To track unique subjects
+                                                                subjectMarks.forEach(subject => {
+                                                                    // Skip if subject has already been processed
+                                                                    if (processedSubjects.has(subject.subject_name)) {
+                                                                        return;
+                                                                    }
+                                                                    processedSubjects.add(subject.subject_name);
 
-                                tableHtml += `<tr><td>${subject.subject_name}</td>`;
+                                                                    tableHtml += `<tr><td class="fw-bold">${subject.subject_name}</td>`;
 
-                                // Add marks for each exam
-                                uniqueExams.forEach((examName, examId) => {
-                                    const examInfo = subject.exams?.find(e => e.exam_id === examId);
-                                    let displayValue;
+                                                                    // Add marks for each exam
+                                                                    uniqueExams.forEach((examName, examId) => {
+                                                                        const examInfo = subject.exams?.find(e => e.exam_id == examId);
+                                                                        let displayValue;
 
-                                    if (examInfo) {
-                                        if (examInfo.status === "Absent") {
-                                            displayValue = "Abs";
-                                        } else if (subject.by_m_g === 2) { // Grade-based subject
-                                            displayValue = examInfo.grade || "Abs";
-                                        } else { // Marks-based subject
-                                            displayValue = examInfo.obtained_marks;
-                                        }
-                                    } else {
-                                        displayValue = "Abs";
-                                    }
+                                                                        if (examInfo) {
+                                                                            if (examInfo.status == "Abst") {
+                                                                                displayValue = "Abs";
+                                                                            } else { // Marks-based subject
+                                                                                displayValue = examInfo.grade || "Abs";
+                                                                            }
+                                                                          /*   if (examInfo.status == "Abst") {
+                                                                                displayValue = "Abs";
+                                                                            } else if (subject.by_m_g == 2) { // Grade-based subject
+                                                                                displayValue = examInfo.grade || "Abs";
+                                                                            } else { // Marks-based subject
+                                                                                displayValue = examInfo.obtained_marks;
+                                                                            } */
+                                                                        } else {
+                                                                            displayValue = "Abs";
+                                                                        }
 
-                                    tableHtml += `<td class="text-center">${displayValue}</td>`;
-                                });
+                                                                        tableHtml += `<td class="text-center">${displayValue}</td>`;
+                                                                    });
 
-                                // Add total
-                                const totalDisplay = subject.by_m_g === 2 ? subject.total_obtained :
-                                    (subject.total_obtained === "Abst" ? "Abs" : subject.total_obtained);
-                                tableHtml += `<td class="text-center">${totalDisplay}</td></tr>`;
-                            });
+                                                                    // Add total
+                                                                    const totalDisplay = subject.by_m_g == 2 ? subject.total_obtained :
+                                                                        (subject.total_obtained == "Abst" ? "Abs" : subject.total_obtained);
+                                                                    tableHtml += `<td class="text-center">${totalDisplay}</td></tr>`;
+                                                                });
 
-                            // Close the marks table and add attendance/grade section
-                            tableHtml += `
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                            <div class="col-4 d-flex align-content-center align-items-stretch">
-                                                <div class="border-dark border-top-1 border border-bottom-1 col-4 text-center">
-                                                    <p class="fw-bold mb-1 text-decoration-underline">Attendance</p>
-                                                    <p class="mb-1">Attended</p>
-                                                    <p class="mb-1 text-decoration-underline">${attendance.days_present}</p>
-                                                    <p class="mb-1">${attendance.total_days}</p>
-                                                    <p class="mb-1 text-decoration-underline">Result</p>
-                                                    <p class="mb-1">${result.result}</p>
-                                                    <p class="mb-1 border-bottom border-top border-dark py-1">${result.result_date_message}</p>
-                                                    <p class="mb-1">${result.session_start_message}</p>
-                                                </div>
-                                                <table class="table table-bordered border-dark mb-0">
-                                                    <tr><td colspan="2" style="height: 12%"></td></tr>`;
+                                                                        // Close the marks table and add attendance/grade section
+                                                                        tableHtml += `
+                                                                                                </tbody>
+                                                                                            </table>
+                                                                                        </div>
+                                                                                        <div class="col-3 d-flex align-content-center align-items-stretch">
+                                                                                            <div class="border-dark border-top-1 border border-bottom-1 col-12 text-center">
+                                                                                                <p class="fw-bold mb-1 text-decoration-underline">Attendance</p>
+                                                                                                <p class="mb-1">Attended</p>
+                                                                                                <p class="mb-1 text-decoration-underline">${attendance.days_present}</p>
+                                                                                                <p class="mb-1">${attendance.total_days}</p>
+                                                                                                <p class="mb-1 text-decoration-underline">Result</p>
+                                                                                                <p class="mb-1">${result.result}</p>
+                                                                                                <p class="mb-1 border-bottom border-top border-dark py-1">${result.result_date_message}</p>
+                                                                                                <p class="mb-1">${result.session_start_message}</p>
+                                                                                            </div>`;
+                                                                                        /*  <table class="table table-bordered border-dark mb-0">
+                                                                                                <tr><td colspan="2" style="height: 12%"></td></tr>`; */
 
-                            // Add grade table entries
-                            processedSubjects.clear(); // Reset processed subjects for grade table
-                            subjectMarks.forEach(subject => {
-                                if (!processedSubjects.has(subject.subject_name)) {
-                                    processedSubjects.add(subject.subject_name);
-                                    const gradeDisplay = subject.by_m_g === 1 ? subject.total_obtained : (subject.by_m_g === 2 ? subject.total_obtained :
-                                        (subject.total_obtained === "Abst" ? "Abs" : ""));
-                                    tableHtml += `
-                                        <tr>
-                                            <td class="p-1 text-center">${gradeDisplay}</td>
-                                            <td class="p-1 text-center">${gradeDisplay}</td>
-                                        </tr>`;
-                                }
-                            });
+                                                                        // Add grade table entries
+                                                                        processedSubjects.clear(); // Reset processed subjects for grade table
+                                                                    /*  subjectMarks.forEach(subject => {
+                                                                            if (!processedSubjects.has(subject.subject_name)) {
+                                                                                processedSubjects.add(subject.subject_name);
+                                                                                const gradeDisplay = subject.by_m_g == 1 ? subject.total_obtained : (subject.by_m_g == 2 ? subject.total_obtained :
+                                                                                    (subject.total_obtained == "Abst" ? "Abs" : ""));
+                                                                                tableHtml += `
+                                                                                    <tr>
+                                                                                        <td class="p-1 text-center">${gradeDisplay}</td>
+                                                                                        <td class="p-1 text-center">${gradeDisplay}</td>
+                                                                                    </tr>`;
+                                                                            }
+                                                                        });
 
-                            // Add signature section
-                            tableHtml += `
-                                                </table>
-                                            </div>
-                                        </div>
-                                    </td></tr>
-                                    <tr><td>
-                                        <div class="row pt-2 mt-5">
-                                            <div class="col-4 text-center align-content-end">
-                                                <p class="mb-2"></p>
-                                                <div class="border-top border-dark pt-2">Sign of Class Teacher</div>
-                                            </div>
-                                            <div class="col-4 text-center align-content-end">
-                                                <p class="mb-2"></p>
-                                                <div class="border-top border-dark pt-2">Sign of Checker</div>
-                                            </div>
-                                            <div class="col-4 text-center align-content-end">
-                                                <img src="${response.logo.principal_sign}" alt="Principal Signature" class="mb-2" style="height:35px;">
-                                                <div class="border-top border-dark pt-2">Sign of Principal</div>
-                                            </div>
-                                        </div>
-                                    </td></tr>
-                                </table>`;
+                                                                        </table> */
+                                                                        // Add signature section
+                                                                        tableHtml += `
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </td></tr>
+                                                                                <tr><td>
+                                                                                    <div class="row pt-2 mt-5">
+                                                                                        <div class="col-4 text-center align-content-end">
+                                                                                            <p class="mb-2"></p>
+                                                                                            <div class="border-top border-dark pt-2">Sign of Class Teacher</div>
+                                                                                        </div>
+                                                                                        <div class="col-4 text-center align-content-end">
+                                                                                            <p class="mb-2"></p>
+                                                                                            <div class="border-top border-dark pt-2">Sign of Checker</div>
+                                                                                        </div>
+                                                                                        <div class="col-4 text-center align-content-end">
+                                                                                            <img src="${response.logo.principal_sign}" alt="Principal Signature" class="mb-2" style="height:35px;">
+                                                                                            <div class="border-top border-dark pt-2">Sign of Principal</div>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </td></tr>
+                                                                            </table>`;
                         });
 
                         // Render the marksheet

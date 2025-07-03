@@ -61,7 +61,7 @@ class SectionMasterController extends Controller
             ],
             'class_id' => 'required|exists:class_masters,id,active,1',
         ]);
-       
+
         $sectionData = [
             'section' => $request->section,
             'class_id' => $request->class_id,
@@ -210,7 +210,7 @@ class SectionMasterController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get sections: " . $e->getMessage()
+                'message' => "Failed to get sections"
             ], 500);
         }
     }

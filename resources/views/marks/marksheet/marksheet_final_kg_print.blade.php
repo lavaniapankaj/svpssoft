@@ -92,12 +92,16 @@
                                                             <div class="col-7">${student.student_details.father_name}</div>
                                                         </div>
                                                         <div class="row mb-2">
+                                                            <div class="col-5 fw-bold">Mother's Name:</div>
+                                                            <div class="col-7">${student.student_details.mother_name}</div>
+                                                        </div>
+                                                        <div class="row mb-2">
                                                             <div class="col-5 fw-bold">Class:</div>
-                                                            <div class="col-7">${student.student_details.class_name}</div>
+                                                            <div class="col-7">${student.student_details.class}</div>
                                                         </div>
                                                         <div class="row mb-2">
                                                             <div class="col-5 fw-bold">Section:</div>
-                                                            <div class="col-7">${student.student_details.section_name}</div>
+                                                            <div class="col-7">${student.student_details.section}</div>
                                                         </div>
                                                     </div>
                                                     <div class="col-md-6">

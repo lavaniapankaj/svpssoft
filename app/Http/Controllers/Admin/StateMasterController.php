@@ -183,7 +183,7 @@ class StateMasterController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get states " . $e->getMessage()
+                'message' => "Failed to get states"
             ], 500);
         }
     }

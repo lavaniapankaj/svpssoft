@@ -845,63 +845,35 @@ function getClassDropDownWithAll() {
 }
 // update pagination
 function updatePaginationControls(data) {
-
     var paginationHtml = '';
-
     let paginationContainer = $('#std-pagination');
-
     if (data.last_page > 1) {
-
         paginationHtml += '<ul class="pagination">';
-
-
-
         if (data.current_page > 1) {
-
-            paginationHtml +=
-
-                `<li class="page-item"><a class="page-link" href="#" data-page="${data.current_page - 1}">Previous</a></li>`;
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${data.current_page - 1}">Previous</a></li>`;
 
         }
+        for (let i = 1; i <= data.last_page; i++) {
+            if (i == 1 || i == data.last_page || Math.abs(i - data.current_page) <= 2) {
+                if (i == data.current_page) {
+                    paginationHtml += `<li class="page-item active"><span class="page-link">${i}</span></li>`;
 
+                } else {
+                    paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
 
-
-       for (let i = 1; i <= data.last_page; i++) {
-
-            if (i == data.current_page) {
-
-                paginationHtml +=
-
-                    `<li class="page-item active"><span class="page-link">${i}</span></li>`;
-
-            } else {
-
-                paginationHtml +=
-
-                    `<li class="page-item"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
-
+                }
+            } else if (i == 2 || i == data.last_page - 1 || i == data.current_page - 3 || i == data.current_page + 3) {
+                paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
             }
+        }
+        if (data.current_page < data.last_page) {
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${data.current_page + 1}">Next</a></li>`;
 
         }
-
-
-
-         if (data.current_page < data.last_page) {
-
-            paginationHtml +=
-
-                `<li class="page-item"><a class="page-link" href="#" data-page="${data.current_page + 1}">Next</a></li>`;
-
-        }
-
-
-
         paginationHtml += '</ul>';
 
     }
-
     paginationContainer.html(paginationHtml);
-
 }
 
 

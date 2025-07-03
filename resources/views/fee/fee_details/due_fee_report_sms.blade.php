@@ -144,8 +144,11 @@
                         $('#std-pagination').show();
                         $.ajax({
                             url: siteUrl + '/fee/student-without-ssid',
-                            type: 'GET',
+                            type: 'POST',
                             dataType: 'JSON',
+                            headers: {
+                                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                            },
                             data: {
                                 session: sessionId,
                                 class: classId.val(),

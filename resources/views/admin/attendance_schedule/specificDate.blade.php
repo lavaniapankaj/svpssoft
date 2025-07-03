@@ -8,6 +8,7 @@
                 <div class="card">
                     <div class="card-header">
                         {{ 'Edit Attendance Schedule' }}
+                        <a href="{{ route('admin.attendance_schedule.index') }}" class="btn btn-warning btn-sm" style="float: right;">Back</a>
                     </div>
 
                     <div class="card-body">

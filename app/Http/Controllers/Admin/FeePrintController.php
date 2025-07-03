@@ -75,7 +75,7 @@ class FeePrintController extends Controller
     //             return redirect()->back()->with('error', 'Details Not Found.');
     //         }
     //     } catch (\Exception $e) {
-    //         return redirect()->back()->with('error', 'An error occurred: ' . $e->getMessage());
+    //         return redirect()->back()->with('error', 'An error occurred: ');
     //     }
     // }
 
@@ -158,7 +158,7 @@ class FeePrintController extends Controller
                 return redirect()->back()->with('error', 'Details Not Found.');
             }
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'An error occurred: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'An error occurred');
         }
     }
 

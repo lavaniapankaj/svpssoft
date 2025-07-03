@@ -109,7 +109,6 @@
                                     <!-- Student Report Data will be loaded here -->
                                 </tbody>
                             </table>
-
                             <div id="std-pagination"></div>
                             <div class="table mt-4" id="prev_record">
 

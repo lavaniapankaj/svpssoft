@@ -187,7 +187,7 @@ class ClassMasterController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get classes " . $e->getMessage()
+                'message' => "Failed to get classes"
             ], 500);
         }
     }

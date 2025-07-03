@@ -25,16 +25,13 @@
                     <div class="card">
                         <div class="card-header">
                             {{ 'Change Password' }}
-                            <a href="{{ route('marks.changePass') }}" class="btn btn-warning btn-sm"
-                                    style="float: right;">Back</a>
-
+                            <a href="{{ route('marks.dashboard') }}" class="btn btn-warning btn-sm" style="float: right;">Back</a>
                         </div>
 
                         <div class="card-body">
                             <form action="{{ route('marks.changePass.store') }}" method="POST">
                                 @csrf
                                 <input type="hidden" name="id" id="id" value="{{ Auth::id() }}">
-
                                 <div class="row">
                                     <div class="form-group col-md-6">
                                         <label for="old_user_name" class="mt-2">Enter Old User Name<span

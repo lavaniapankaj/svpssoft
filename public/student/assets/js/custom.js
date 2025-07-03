@@ -113,8 +113,7 @@ function updatePaginationControls(data) {
     if (data.last_page > 1) {
         paginationHtml += '<ul class="pagination">';
         if (data.current_page > 1) {
-            paginationHtml +=
-                `<li class="page-item"><a class="page-link" href="#" data-page="${data.current_page - 1}">Previous</a></li>`;
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${data.current_page - 1}">Previous</a></li>`;
         }
         for (let i = 1; i <= data.last_page; i++) {
             paginationHtml += `<li class="page-item ${i == data.current_page ? 'active' : ''}">
@@ -122,8 +121,7 @@ function updatePaginationControls(data) {
             </li>`;
         }
         if (data.current_page < data.last_page) {
-            paginationHtml +=
-                `<li class="page-item"><a class="page-link" href="#" data-page="${data.current_page + 1}">Next</a></li>`;
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${data.current_page + 1}">Next</a></li>`;
         }
         paginationHtml += '</ul>';
     }

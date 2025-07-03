@@ -749,17 +749,15 @@ function adcademicAndTransportFeePopulateWithoutSSID(st, sessionID, classId) {
             // url: '{{ route('fee.fee - entry.academicFeeDueAmount') }}',
 
             url: siteUrl + '/fee/student-without-ssid',
-
-            type: 'GET',
-
+            type: 'POST',
+            // type: 'GET',
             dataType: 'JSON',
-
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
             data: {
-
                 srno: stdSelect,
-
                 session: sessionId,
-
             },
 
             success: function (response) {
@@ -1298,63 +1296,33 @@ function classSectionWithAll(fetchStudentsForSession, fetchStudents) {
 
 
 function updatePaginationControls(data) {
-
     var paginationHtml = '';
-
     var paginationContainer = $('#std-pagination');
-
     if (data.last_page > 1) {
-
         paginationHtml += '<ul class="pagination">';
-
-
-
         if (data.current_page > 1) {
-
-            paginationHtml +=
-
-                `<li class="page-item"><a class="page-link" href="#" data-page="${data.current_page - 1}">Previous</a></li>`;
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${data.current_page - 1}">Previous</a></li>`;
 
         }
-
-
-
         for (let i = 1; i <= data.last_page; i++) {
+            if (i == 1 || i == data.last_page || Math.abs(i - data.current_page) <= 2) {
+                if (i == data.current_page) {
+                    paginationHtml += `<li class="page-item active"><span class="page-link">${i}</span></li>`;
+                } else {
+                    paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
 
-            if (i == data.current_page) {
-
-                paginationHtml +=
-
-                    `<li class="page-item active"><span class="page-link">${i}</span></li>`;
-
-            } else {
-
-                paginationHtml +=
-
-                    `<li class="page-item"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
-
+                }
+            } else if (i == 2 || i == data.last_page - 1 || i == data.current_page - 3 || i == data.current_page + 3) {
+                paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
             }
-
         }
-
-
-
         if (data.current_page < data.last_page) {
-
-            paginationHtml +=
-
-                `<li class="page-item"><a class="page-link" href="#" data-page="${data.current_page + 1}">Next</a></li>`;
-
+            paginationHtml += `<li class="page-item"><a class="page-link" href="#" data-page="${data.current_page + 1}">Next</a></li>`;
         }
-
-
-
         paginationHtml += '</ul>';
 
     }
-
     paginationContainer.html(paginationHtml);
-
 }
 
 
@@ -1390,8 +1358,12 @@ function dueReportSection() {
 
             $.ajax({
                 url: siteUrl + '/fee/student-without-ssid',
-                type: 'GET',
+                type: 'POST',
+                // type: 'GET',
                 dataType: 'JSON',
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
                 data: {
                     session: sessionId,
                     class: classId.val(),
@@ -1531,9 +1503,7 @@ function dueReportSection() {
                         allStdIds.push(value.srno);
                         stdId.append('<option value="' + value.srno + '">'+ value.rollno + '. ' + value.student_name + '/SH. ' + value.f_name + '</option>');
                     });
-                    stdId.prepend('<option value="' + allStdIds.join(',') +
-
-                        '" selected>All Students</option>');
+                    stdId.prepend('<option value="' + allStdIds.join(',') + '" selected>All Students</option>');
 
                 }
                 // Fetch students for the initial selection
@@ -1575,7 +1545,6 @@ function dueReportSection() {
     $('#show-details').click(function () {
         let reportType = $('#report').val();
         if (!classId.val() || !sectionId.val() || !stdId.val() || !reportType) {
-            console.warn('Missing required field: class, section, student, or report.');
             $('#complete-fee-table').hide(); // Hide the table if any field is missing
             $('#no-records-message').show(); // Show "No Records Found" message
             return;

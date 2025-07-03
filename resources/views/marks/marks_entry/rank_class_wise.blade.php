@@ -7,9 +7,7 @@
                 <div class="card">
                     <div class="card-header">
                         {{ 'Rank Report' }}
-                        <a href="{{ route('marks.rank-class-wise') }}" class="btn btn-warning btn-sm"
-                            style="float: right;">Back</a>
-
+                        <a href="{{ route('marks.rank-class-wise') }}" class="btn btn-warning btn-sm" style="float: right;">Back</a>
                     </div>
                     <div class="card-body">
                         <form id="class-section-form">
@@ -33,14 +31,12 @@
                                         <span class="invalid-feedback form-invalid fw-bold"
                                             role="alert">{{ $message }}</span>
                                     @enderror
-                                    <img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader"
-                                        id="loader" style="display:none; width:10%;">
+                                    <img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader" id="loader" style="display:none; width:10%;">
                                 </div>
                             </div>
 
                             <div class="mt-3">
-                                <button type="button" id="show-std" class="btn btn-primary">
-                                    Show Student</button>
+                                <button type="button" id="show-std" class="btn btn-primary">Show Student</button>
                             </div>
 
                         </form>
@@ -92,23 +88,21 @@
                         session: sessionId,
                     },
                     success: function(response) {
-                        console.log(response.data);
-
                         let stdHtml = '';
                         if (response.data && response.data.length > 0) {
                             $('#export-button').show();
                             $.each(response.data, function(index, std) {
-                                stdHtml += `<tr>
-                            <td>${index + 1}</td>
-                            <td>${std.class}</td>
-                            <td>${std.section}</td>
-                            <td>${std.srno}</td>
-                            <td>${std.name}</td>
-                            <td>${std.total_marks}</td>
-                            <td>${std.rank}</td>
-                            <td>${std.total_meeting}</td>
-                            <td>${std.meeting_attended}</td>
-                        </tr>`;
+                            stdHtml += `<tr>
+                                <td>${index + 1}</td>
+                                <td>${std.class}</td>
+                                <td>${std.section}</td>
+                                <td>${std.srno}</td>
+                                <td>${std.name}</td>
+                                <td>${std.total_marks}</td>
+                                <td>${std.rank}</td>
+                                <td>${std.total_meeting}</td>
+                                <td>${std.meeting_attended}</td>
+                            </tr>`;
                             });
                         } else {
                             stdHtml = '<tr><td colspan="9">No Student found</td></tr>';

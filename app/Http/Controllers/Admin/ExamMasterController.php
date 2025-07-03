@@ -157,7 +157,8 @@ class ExamMasterController extends Controller
                 $query->orderBy($key, $value);
             }
         } else {
-            $query->orderBy('order', 'asc');
+            // $query->orderBy('order', 'asc');
+            $query->orderByRaw('CAST(`order` AS UNSIGNED) ASC');
         }
         if ($paginate) {
             $limit = (is_numeric($limit) && $limit > 0) ? $limit : 10;
@@ -189,7 +190,7 @@ class ExamMasterController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get exams " . $e->getMessage()
+                'message' => "Failed to get exams "
             ], 500);
         }
     }

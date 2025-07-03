@@ -231,7 +231,7 @@ class SubjectMasterController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get subjects " . $e->getMessage()
+                'message' => "Failed to get subjects "
             ], 500);
         }
     }

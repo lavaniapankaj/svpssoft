@@ -11,59 +11,29 @@ $('#current_session').val(currentSession);
 
 
 function getStd() {
-
     let stdSelect = $('#std_id');
-
     $('#section_id').change(function () {
-
         let classId = $('#class_id').val();
-
         let sectionId = $('#section_id').val();
-
         let sessionId = $('#current_session').val();
-
-
-
         if (classId && sectionId && sessionId) {
-
             loader.show();
-
-
-
             $.ajax({
-
                 url: siteUrl + '/std-name-father',
-
                 type: 'GET',
-
                 dataType: 'JSON',
-
                 data: {
-
                     class_id: classId,
-
                     section_id: sectionId,
-
                     session_id: sessionId,
-
                 },
-
                 success: function (students) {
-
                     stdSelect.empty();
-
                     let options = '<option value="" selected>All Students</option>';
-
                     const allStudentSrnos = [];
-
-
-
                     if (students.length > 0) {
-
                         $.each(students, function (index, student) {
-
                             allStudentSrnos.push(student.srno);
-
                             options += '<option value="' + student.srno + '">' +
 
                                 student.rollno + '. ' + student.student_name +
@@ -81,27 +51,18 @@ function getStd() {
                     stdSelect.html(options);
 
                     stdSelect.find('option[value=""]').val(allStudentSrnos);
-
-
-
                 },
 
                 complete: function () {
-
                     loader.hide();
-
                 },
-
                 error: function (xhr) {
-
                     console.error(xhr.responseText);
 
                 }
 
             });
-
         }
-
     });
 
 }
@@ -111,41 +72,23 @@ function getStd() {
 function marksheetPrint() {
 
     let marksheetDiv = $('.marksheet-div');
-
-
-
     let classId = $('#class_id').val();
-
     let sectionId = $('#section_id').val();
-
     let sessionId = $('#current_session').val();
-
     let examId = $('#exam_id').val();
-
     let stdId = $('#std_id').val();
-
 
     if (classId && sessionId && examId && stdId) {
         $.ajax({
-
             url: siteUrl + '/marks/marksheet-report',
-
             type: 'GET',
-
             dataType: 'JSON',
-
             data: {
-
                 class: classId,
-
                 section: sectionId,
-
                 session: sessionId,
-
                 exam: examId,
-
                 std_id: stdId,
-
             },
 
             success: function (response) {
@@ -154,13 +97,11 @@ function marksheetPrint() {
                     let tableHtml = '';
 
                     $.each(response.data.student, function (key, value) {
+
                         let upperHeader = false;
                         if (value.subjects) {
-
                             $.each(value.subjects, function (subjectKey,
-
                                 subject) {
-
                                 if (subject.by_m_g == 1) {
                                     upperHeader = true;
                                 }
@@ -168,13 +109,9 @@ function marksheetPrint() {
                         }
 
                         tableHtml += `
-
                         <table class="table ">
-
                             <thead>
-
                                 <tr class="">
-
                                     <th width="10%"  colspan="1" class="border-start-0 border-end-0 border-bottom-0 align-content-start px-4 pb-4"><img src="${value.logo}" alt=""></th>
                                     <th colspan="6" width="60%"  class=" fs-3 text-break px-0 pb-4 border-start-0 border-end-0 border-bottom-0">
                                         <p style="font-size:4rem; font-family:'Monotype Corsiva'; line-height:1.2;" class="text-center mb-3">${value.school} </p>
@@ -184,452 +121,266 @@ function marksheetPrint() {
                                     </th>
                                     <th width="20%"  colspan="1" class=" pb-4 border-start-0 border-end-0 border-bottom-0"></th>
                                 </tr>
-
-
-
-
-
                                 <tr class="">
-
                                     <th width="25%" colspan="2"  class="border-start-0 border-end-0 border-bottom-0">Name: </th>
                                     <th  width="25%" colspan="2"  class="border-start-0 border-end-0 border-bottom-0">${value.name || ''}</th>
-
                                     <th  width="25%" colspan="2"  class="border-start-0 border-end-0 border-bottom-0">SRNO: </th>
                                     <th  width="25%" colspan="2"  class="border-start-0 border-end-0 border-bottom-0">${value.srno || ''}</th>
-
                                 </tr>
                                 <tr class="">
                                     <th  width="25%" colspan="2" class="border-start-0 border-end-0 border-bottom-0">Father's Name: </th>
                                     <th  width="25%" colspan="2"  class="border-start-0 border-end-0 border-bottom-0">${value.father_name || ''}</th>
-
-                                    <th  width="25%" colspan="2" class="border-start-0 border-end-0 border-bottom-0"></th>
-                                    <th  width="25%" colspan="2" class="border-start-0 border-end-0 border-bottom-0"></th>
-
+                                    <th  width="25%" colspan="2" class="border-start-0 border-end-0 border-bottom-0">Mother's Name: </th>
+                                    <th  width="25%" colspan="2"  class="border-start-0 border-end-0 border-bottom-0">${value.mother_name || ''}</th>
                                 </tr>
-
                                 <tr class="">
-
                                     <th  width="25%" colspan="2" class="border-start-0 border-end-0 border-bottom-0">Class: </th>
                                     <th  width="25%" colspan="2" class="border-start-0 border-end-0 border-bottom-0">${value.class_name || ''}</th>
-
                                     <th  width="25%" colspan="2" class="border-start-0 border-end-0 border-bottom-0">DOB: </th>
                                     <th  width="25%" colspan="2" class="border-start-0 border-end-0 border-bottom-0">${value.dob || ''}</th>
-
                                 </tr>
                                 <tr class="">
                                     <th  width="25%" colspan="2" class="border-start-0 border-end-0 border-bottom-0">Section: </th>
                                     <th  width="25%" colspan="2"  class="border-start-0 border-end-0 border-bottom-0">${value.section_name || ''}</th>
-
                                     <th  width="25%" colspan="2" class="border-start-0 border-end-0 border-bottom-0"></th>
                                     <th  width="25%" colspan="2" class="border-start-0 border-end-0 border-bottom-0"></th>
-
                                 </tr>
                                 <tr class="">
-
                                     <th  width="25%" colspan="2"  class="border-start-0 border-end-0 border-bottom-0">Roll No.: </th>
                                     <th  width="25%"  colspan="2" class="border-start-0 border-end-0 border-bottom-0">${value.rollno || ''}</th>
-
                                     <th  width="25%" colspan="2" class="border-start-0 border-end-0 border-bottom-0">Exam: </th>
                                     <th  width="25%" colspan="2" class="border-start-0 border-end-0 border-bottom-0">${value.exam_name || ''}</th>
-
                                 </tr>
-
-
                                 <tr>
-
                                     <th colspan="8" class="text-center py-4 border-start-0 border-end-0 text-decoration-underline fs-5">Mark Sheet</th>
-
                                 </tr>
-
                             </thead>
+                        <tbody>`;
 
-                            <tbody>`;
                         if (upperHeader == true) {
-
-                            tableHtml += `    <tr class="">
-
-
-                                        <th  width="23%"  colspan="2" class="border-start-0 border-end-0 border-bottom-0 pt-2">Subject</th>
-
-                                        <th width="23%"  colspan="1" class="border-start-0 border-end-0 border-bottom-0 pt-2">Written</th>
-
-                                        <th width="23%"  colspan="2" class="border-start-0 border-end-0 border-bottom-0 pt-2">Oral</th>
-
-                                        <th width="23%"  colspan="2" class="border-start-0 border-end-0 border-bottom-0 pt-2">Practical</th>
-
-                                        <th  width="12%"  colspan="1" class="border-start-0 border-end-0 border-bottom-0 pt-2">Total</th>
-
-                                    </tr>
-
-                                `;
+                            tableHtml +=
+                                `<tr class="">
+                                    <th  width="23%"  colspan="2" class="border-start-0 border-end-0 border-bottom-0 pt-2">Subject</th>
+                                    <th width="23%"  colspan="1" class="border-start-0 border-end-0 border-bottom-0 pt-2">Written</th>
+                                    <th width="23%"  colspan="2" class="border-start-0 border-end-0 border-bottom-0 pt-2">Oral</th>
+                                    <th width="23%"  colspan="2" class="border-start-0 border-end-0 border-bottom-0 pt-2">Practical</th>
+                                    <th  width="12%"  colspan="1" class="border-start-0 border-end-0 border-bottom-0 pt-2">Total</th>
+                                </tr>`;
                         }
 
 
                         if (value.subjects) {
 
-                            $.each(value.subjects, function (subjectKey,
+                            if (response.data.max_marks && upperHeader == true) {
+                                let data_max_marks = response.data.max_marks;
+                                tableHtml +=
+                                    `<tr class="">
+                                        <td width="23%" colspan="2"  class="border-start-0 border-end-0 border-bottom-0">MM.</td>
+                                        <td width="23%" colspan="1" class="border-start-0 border-end-0 border-bottom-0"> ${data_max_marks['0'].written || '--'} </td>
+                                        <td width="23%" colspan="2" class="border-start-0 border-end-0 border-bottom-0"> ${data_max_marks['0'].oral || '--'} </td>
+                                        <td width="23%" colspan="2" class="border-start-0 border-end-0 border-bottom-0"> ${data_max_marks['0'].practicle || '--'} </td>
+                                        <td width="12%" colspan="1" class="border-start-0 border-end-0 border-bottom-0"> ${data_max_marks['0'].total_maximum_marks || '--'} </td>
+                                    </tr>`;
+                            }
 
-                                subject) {
-
+                            $.each(value.subjects, function (subjectKey,subject) {
                                 if (subject.by_m_g == 1) {
                                     // upperHeader = true;
                                     tableHtml += `
-
                                                 <tr class="">
-
-
                                                     <td width="23%" colspan="2"  class="border-start-0 border-end-0 border-bottom-0">${subject.name || '--'}</td>
-
                                                     <td width="23%" colspan="1" class="border-start-0 border-end-0 border-bottom-0">${subject.written || '--'}</td>
-
                                                     <td width="23%" colspan="2" class="border-start-0 border-end-0 border-bottom-0">${subject.oral || '--'}</td>
-
                                                     <td width="23%" colspan="2" class="border-start-0 border-end-0 border-bottom-0">${subject.practical || '--'}</td>
-
                                                     <td width="12%" colspan="1" class="border-start-0 border-end-0 border-bottom-0">${subject.total || '--'}</td>
-
-                                                </tr>
-
-                                            `;
-
+                                                </tr>`;
                                 }
-
                             });
 
                         }
                         if (upperHeader == true) {
                             tableHtml += `
-
                                         <tr class="">
-
-
                                             <th colspan="7"  class=" pt-2 pb-4 border-start-0 border-end-0 border-top ">Grand Total</th>
-
-
                                             <td  class=" pt-2 pb-4 result_number border-start-0 border-end-0 border-top  ">${value.grand_total_marks || ''}</td>
-
                                         </tr>`;
                         }
 
                         tableHtml += ` <tr class="">
-
-
                                         <th class="border-start-0 border-end-0 pt-2 pb-2" colspan="2">Subject</th>
-
                                         <th class="border-start-0 border-end-0 pt-2 pb-2" colspan="1">Grade</th>
-
                                         <th class="border-start-0 border-end-0 pt-2 pb-2" colspan="2">Grade</th>
-
                                         <th class="border-start-0 border-end-0 pt-2 pb-2" colspan="2">Grade</th>
-
                                         <th class="border-start-0 border-end-0 pt-2 pb-2" colspan="1">Grade</th>
-
-                                    </tr>
-
-                                    `;
+                                    </tr>`;
 
                         if (value.subjects) {
 
+                            // if (value.subjects.by_m_g == 2) {
+                            tableHtml += `
+                                        <tr class="">
+                                            <td width="23%" colspan="2"  class="border-start-0 border-end-0 border-bottom-0">MM.</td>
+                                            <td width="23%" colspan="1" class="border-start-0 border-end-0 border-bottom-0">A</td>
+                                            <td width="23%" colspan="2" class="border-start-0 border-end-0 border-bottom-0">A</td>
+                                            <td width="23%" colspan="2" class="border-start-0 border-end-0 border-bottom-0">A</td>
+                                            <td width="12%" colspan="1" class="border-start-0 border-end-0 border-bottom-0">A</td>
+                                        </tr>`;
+                            // }
+
                             $.each(value.subjects, function (subjectKey, subject) {
-
-
-
                                 if (subject.by_m_g == 2) {
-
-
-
                                     tableHtml += `
-
                                             <tr class="">
-
-
                                                 <td colspan="2"  class="border-start-0 border-end-0 border-bottom-0">${subject.name || '--'}</td>
-
                                                 <td colspan="1" class="border-start-0 border-end-0 border-bottom-0">${subject.written || '--'}</td>
-
                                                 <td colspan="2" class="border-start-0 border-end-0 border-bottom-0">${subject.oral || '--'}</td>
-
                                                 <td colspan="2" class="border-start-0 border-end-0 border-bottom-0">${subject.practical || '--'}</td>
-
                                                 <td colspan="1" class="border-start-0 border-end-0 border-bottom-0">${subject.total || '--'}</td>
-
-                                            </tr>
-
-                                        `;
-
+                                            </tr>`;
                                 }
-
                             });
-
                         }
 
                         tableHtml += `<tr class="">
-
                                         <th class=" border-start-0 border-end-0 border-bottom-0 pt-4" colspan="1"></th>
-
                                         <th class=" border-start-0 border-end-0 border-bottom-0 pt-4" colspan="5"></th>
-
                                         <th class="data_right border-start-0 border-end-0 border-bottom-0 pt-4" colspan="2"><img src="${value.principle_sign}" alt="" style="height:35px;"></th>
-
                                     </tr>
                                     <tr class="">
-
                                         <th class=" border-start-0 border-end-0 border-bottom-0" colspan="2">Class Teacher</th>
-
                                         <th class="text-center border-start-0 border-end-0 border-bottom-0" colspan="4">Checked By</th>
-
                                         <th class="data_right border-start-0 border-end-0 border-bottom-0" colspan="2">Principal</th>
-
                                     </tr>
-
                                 </tbody>
-
-                            </table>
-
-                        `;
-
+                            </table>`;
                     });
-
-
 
                     $('.marksheet').html(tableHtml);
 
                 } else {
-
                     $('.marksheet').html(
-
                         '<p>No data available for the selected criteria.</p>'
-
                     );
-
                 }
-
             },
 
             complete: function () {
-
                 $('#loader').hide();
-
             },
 
             error: function (xhr) {
-
-                console.log('Error:', xhr);
-
                 console.error(xhr.responseText);
-
-
-
             }
-
         });
     }
 
     $('.print-marksheet').click(function () {
 
         // Create an iframe for printing
-
         const iframe = $('<iframe></iframe>').css({
-
             display: 'none'
-
         });
 
         $('body').append(iframe);
 
-
-
         const iframeDoc = iframe[0].contentWindow.document;
-
         iframeDoc.open();
-
         iframeDoc.write('<html><head><title>Print Marksheet</title>');
 
-
-
         // Include existing CSS styles
-
         $('link[rel="stylesheet"]').each(function () {
-
             iframeDoc.write(
-
                 `<link rel="stylesheet" type="text/css" href="${$(this).attr('href')}">`
-
             );
-
         });
 
-
-
         // Add additional styles for printing
-
         iframeDoc.write(`
-
             <style>
-
-
-
-                    body {
-                            zoom: 0.70; // Adjust the zoom level as needed
-                            margin: auto !important;
-                            padding: auto !important;
-
-                        }
-                        table th, table td {
-                            line-height:1em;
-                            padding-block:3px;
-                            border-bottom-width:0;
-
-                        }
-                    .page-break {
-                        page-break-after: always; /* Insert a page break after each marksheet */
+                body {
+                        zoom: 0.70; // Adjust the zoom level as needed
+                        margin: auto !important;
+                        padding: auto !important;
                     }
-                    .marksheet .table{
-
-                            page-break-inside: avoid; /* Prevent table from breaking across pages */
-                            page-break-after: always; /* Insert a page break after each marksheet */
+                    table th, table td {
+                        line-height:1em;
+                        padding-block:3px;
+                        border-bottom-width:0;
                     }
-                    .data_right {
-                        text-align:right;
-                    }
-
-                    .title_class {
-                        font-size:3rem;
-                    }
-
-
-            </style>
-
-        `);
-
-
+                .page-break {
+                    page-break-after: always; /* Insert a page break after each marksheet */
+                }
+                .marksheet .table{
+                    page-break-inside: avoid; /* Prevent table from breaking across pages */
+                    page-break-after: always; /* Insert a page break after each marksheet */
+                }
+                .data_right {
+                    text-align:right;
+                }
+                .title_class {
+                    font-size:3rem;
+                }
+            </style>`);
 
         iframeDoc.write('</head><body>');
 
-
-
         // Append each table separately
-
         $('.marksheet .table').each(function (index) {
-
             // Add a page break before each table except the first
-
             if (index > 0) {
-
                 iframeDoc.write('<div class="page-break"></div>');
-
             }
-
             iframeDoc.write($(this)[0].outerHTML);
-
         });
 
-
-
         iframeDoc.write('</body></html>');
-
         iframeDoc.close();
 
-
-
         // Print the iframe content
-
         iframe[0].contentWindow.focus();
-
         iframe[0].contentWindow.print();
 
-
-
         // Remove the iframe after printing
-
         setTimeout(() => {
-
             iframe.remove();
-
         }, 1000);
-
     });
-
 }
-
-
-
-
 
 //date
-
-
-
 function formatDOB(inputDate) {
-
     // Create a date object from the input
-
     const date = new Date(inputDate);
-
-
-
     // Array of month names for conversion
-
     const months = [
-
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
 
-
-
     // Pad single digit dates with a leading zero
-
     const day = date.getDate().toString().padStart(2, '0');
 
-
-
     // Get month name in three-letter format
-
     const month = months[date.getMonth()];
 
-
-
     // Get full year
-
     const year = date.getFullYear();
 
-
-
     // Return formatted date
-
     return `${day}-${month}-${year}`;
-
 }
 
-
-
 // Marksheet For class 3 to 5 and 6 to 8
-
-
-
 function marksheetData() {
 
     let classId = $('#class').val();
-
     let sectionId = $('#section').val();
-
     let sessionMessage = $('#session-message').val();
-
     let dateMessage = $('#date-message').val();
-
     let stdId = $('#students').val();
-
     let examId = $('#exam').val();
-
     let withId = $('#with').val().split(',');
-
     let withoutId = $('#without').val().split(',');
-
     let SubjectgrandTotalValue = 0;
-
     let grandTotalValue = 0;
     let overallGrandTotal = 0;
     let xxx = 0;
@@ -654,11 +405,8 @@ function marksheetData() {
             success: function(response) {
 
                 let tableHtml = '';
-
                 let spanValue = 0;
-
                 let maxMarks = 0;
-
                 if (response.data) {
 
                     response.data.forEach(function(studentData, index) {
@@ -669,132 +417,85 @@ function marksheetData() {
                         tableHtml += `
                         <table class="w-100 marksheet-container">
                             <tr>
-
                              <td><!-- Header Section -->
-
                                 <div class="row mb-4 text-center">
-
                                     <div class="col-2">
-
                                         <img src="${response.logo.school_logo}" alt="School Logo" class="img-fluid rounded-circle">
-
                                     </div>
-
                                     <div class="col-8">
-
                                         <h2 class="font-italic mb-0">St. Vivekanand ${studentInfo.school == 1 ? 'Play House' : 'Public Secondary School'}</h2>
-
                                         <p class="text-muted mb-0">(English Medium)</p>
-
                                         <p class="small mb-0">Vivekanand Chowk, Chirawa, 01596 - 220877</p>
-
                                         <p class="small mb-0">Session : ${response.session.session}</p>
-
                                     </div>
                                     <div class="col-2"></div>
-
                                </div>
-
                             </td>
-
                           </tr>
-
                           <tr>
-
                               <td><!-- Student Details -->
                                 <div class="row mb-4">
                                     <div class="col-md-6">
                                         <div class="row mb-2">
                                             <div class="col-5">Name of Student:</div>
                                             <div class="col-7">${studentInfo.name}</div>
-
                                         </div>
-
                                         <div class="row mb-2">
                                             <div class="col-5">Father's Name:</div>
                                             <div class="col-7">${studentInfo.f_name}</div>
-
                                         </div>
-
+                                        <div class="row mb-2">
+                                            <div class="col-5">Mother's Name:</div>
+                                            <div class="col-7">${studentInfo.m_name}</div>
+                                        </div>
                                         <div class="row mb-2">
                                             <div class="col-5">Class:</div>
                                             <div class="col-7">${studentInfo.class_name} ${studentInfo.section_name}</div>
-
                                         </div>
-
                                     </div>
-
                                     <div class="col-md-6">
-
                                         <div class="row mb-2">
                                             <div class="col-5">S.R.No.:</div>
                                             <div class="col-7">${studentInfo.srno}</div>
-
                                         </div>
-
                                         <div class="row mb-2">
                                             <div class="col-5">Roll No.:</div>
                                             <div class="col-7">${studentInfo.rollno}</div>
                                         </div>
-
                                         <div class="row mb-2">
                                             <div class="col-5">Date of Birth:</div>
                                             <div class="col-7">${studentInfo.dob !== null ? formatDOB(studentInfo.dob) : 'N/A'}</div>
-
                                         </div>
-
                                     </div>
-
                                 </div>
-
                             </td>
-
                           </tr>
-
                           <tr>
-
                              <td>
-
                                 <!-- Academic Performance -->
-
                                 <div class="w-100 px-0 align-items-stretch">
-
                                     <div class="d-flex mb-1">`;
                                         if (withoutId != '') {
                                             colValue = 5;
-                                            console.log(colValue);
                                         } else {
                                             colValue = 1;
 
                                         }
-
                         tableHtml += `
-
                             <div class="col-${colValue} px-0">
-
                                 <table class="table table-bordered h-100 w-100 ac mb-0" cellspacing="0">
-
                                     <thead>
-
                                         <tr style="height:80px;">
-
                                             <th rowspan="2" class="align-middle">Subject</th>`;
 
                                 // Step 1: Group exams by `exam_id`
-
                                 let examGroupedById = {};
                                 let maxmMarksTotalSide = 0;
-
                                 examsData.forEach(exam => {
-
-                                    if (exam['exam-info'] && exam['exam-info']
-                                        .length > 0) {
+                                    if (exam['exam-info'] && exam['exam-info'].length > 0) {
 
                                         exam['exam-info'].forEach(info => {
-
-                                            if (!examGroupedById[info
-                                                    .exam_id]) {
-
+                                            if (!examGroupedById[info.exam_id]) {
                                                 examGroupedById[info
                                                     .exam_id] = {
 
@@ -840,7 +541,7 @@ function marksheetData() {
 
                         tableHtml += `</thead><tbody>`;
 
-                        tableHtml += `<tr><td>M.M.</td>`;
+                        tableHtml += `<tr><td class="fw-bold">M.M.</td>`;
                         let subjectMaxMarksTotal = 0;
                         if (examsData[0].by_m_g == 1 && examsData[0].priority == 1 && examsData[0]['exam-info'] && Array.isArray(examsData[0]['exam-info']) && examsData[0]['exam-info'].length > 0) {
                             // For each exam associated with the subject
@@ -852,7 +553,7 @@ function marksheetData() {
                                     let examInfo = examsData[0]['exam-info'].find(info => info.exam_id === parseInt(examId));
                                     // If examInfo is found, display the max_marks
                                     if (examInfo) {
-                                        tableHtml += `<td class="text-center">${examInfo.max_marks}</td> `;
+                                        tableHtml += `<td class="text-center fw-bold">${examInfo.max_marks}</td> `;
                                         subjectMaxMarksTotal += examInfo.max_marks;
                                     } else {
                                         // If no exam info is found, display "Abs"
@@ -868,7 +569,7 @@ function marksheetData() {
                         // maxMarks += subjectMaxMarksTotal;
                         maxmMarksTotalSide += subjectMaxMarksTotal;
                         if (withoutId != '') {
-                            tableHtml +=`<td class="text-center">${subjectMaxMarksTotal}</td></tr>`;
+                            tableHtml +=`<td class="text-center fw-bold">${subjectMaxMarksTotal}</td></tr>`;
                         }
 
                         // Step 3: Generate the table body
@@ -908,7 +609,7 @@ function marksheetData() {
                             }
 
                         });
-                        tableHtml += `<tr> <td class="text-end fw-bold">Total</td>`;
+                        tableHtml += `<tr> <td class="text-center fw-bold">Total</td>`;
 
                         let sssp = 0;
                         Object.keys(examGroupedById).forEach(examId => {
@@ -917,12 +618,12 @@ function marksheetData() {
                                     .toString())) {
                                 SubjectgrandTotalValue += exam.totalMarks;
                                 sssp += exam.totalMarks;
-                                tableHtml += `<td class="text-center">${exam.totalMarks}</td> `;
+                                tableHtml += `<td class="text-center fw-bold">${exam.totalMarks}</td> `;
                             }
                         });
                         sbMarks = sssp;
                         if (withoutId != '') {
-                            tableHtml += `<td class="text-center">${sssp}</td></tr>`;
+                            tableHtml += `<td class="text-center fw-bold">${sssp}</td></tr>`;
                         }
 
                         tableHtml += `</tbody>
@@ -1023,11 +724,11 @@ function marksheetData() {
                                         maxMarks += examInfo.max_marks;
                                         maxmMarksTotalSide += examInfo.max_marks;
                                         tableHtml += `
-                                                            <td class="text-center">${examInfo.written_max_marks}</td>
+                                                            <td class="text-center fw-bold">${examInfo.written_max_marks}</td>
 
-                                                            <td class="text-center">${examInfo.oral_max_marks}</td>
+                                                            <td class="text-center fw-bold">${examInfo.oral_max_marks}</td>
 
-                                                            <td class="text-center">${examInfo.max_marks}</td>
+                                                            <td class="text-center fw-bold">${examInfo.max_marks}</td>
 
 
                                                         `;
@@ -1050,7 +751,7 @@ function marksheetData() {
                             });
 
                         }
-                        tableHtml += `<td class="text-center">${maxmMarksTotalSide}</td></tr>`;
+                        tableHtml += `<td class="text-center fw-bold">${maxmMarksTotalSide}</td></tr>`;
                         let grandTotal = 0;
                         // Step 3: Generate the table body
                         examsData.forEach(exam => {
@@ -1116,7 +817,7 @@ function marksheetData() {
                                 // Add the super total column with subject total
 
                                 tableHtml +=
-                                    `<td class="text-center">${exam.allExamsTotal}</td></tr>`;
+                                    `<td class="text-center fw-bold">${exam.allExamsTotal}</td></tr>`;
 
                             }
 
@@ -1128,12 +829,12 @@ function marksheetData() {
                             let exam = examGroupedById2[examId];
                             if (withId && (withId.includes(exam.examID.toString()))) {
                                 tableHtml +=
-                                    `<td></td><td></td><td class="text-center">${exam.totalMarks}</td>`;
+                                    `<td></td><td></td><td class="text-center fw-bold">${exam.totalMarks}</td>`;
                                 overallGrandTotal += exam.totalMarks;
                             }
 
                         });
-                        tableHtml += `<td>${overallGrandTotal}</td></tr>`;
+                        tableHtml += `<td class="text-center fw-bold">${overallGrandTotal}</td></tr>`;
                         grandTotal = overallGrandTotal;
 
 
@@ -1176,6 +877,7 @@ function marksheetData() {
                         // Step 1: Group exams by `exam_id`
 
                         let examGroupedGradeById = {};
+                        let examIdOrder = [];
 
                         examsData.forEach(exam => {
 
@@ -1191,7 +893,8 @@ function marksheetData() {
                                                     examName: info.exam,
                                                     subjects: []
                                             };
-
+                                            // Track the order of exam IDs as they first appear
+                                            examIdOrder.push(info.exam_id);
                                         }
                                         examGroupedGradeById[info.exam_id].subjects.push(exam);
                                     });
@@ -1206,7 +909,7 @@ function marksheetData() {
                         // Generate headers
 
                         if (allSubjectsSameExam) {
-                            Object.keys(examGroupedGradeById).forEach(
+                            examIdOrder.forEach(
                                 examId => {
                                     let exam = examGroupedGradeById[examId];
                                     tableHtml += `<th>Subject</th><th class="text-center">${exam.examName}</th><th class="text-center">Grade</th>
@@ -1217,7 +920,7 @@ function marksheetData() {
 
                             // If multiple exams exist, create headers for each exam type and grade
                             tableHtml += `<th>Subject</th>`;
-                            Object.keys(examGroupedGradeById).forEach(examId => {
+                            examIdOrder.forEach(examId => {
                                     let exam = examGroupedGradeById[examId];
                                     tableHtml += `<th class="text-center">${exam.examName}</th><th class="text-center">Grade</th>`;
                             });
@@ -1283,7 +986,7 @@ function marksheetData() {
 
                                     tableHtml += `<tr><td style="white-space:nowrap;">${exam.subject}</td>`;
                                     // For each exam (e.g., Unit Test, Half Yearly) associated with the subject
-                                    Object.keys(examGroupedGradeById).forEach(examId => {
+                                    examIdOrder.forEach(examId => {
 
                                             let examInfo = exam['exam-info'].find(info => info.exam_id === parseInt(examId));
 

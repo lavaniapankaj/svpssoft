@@ -175,6 +175,11 @@
                                                         <div class="col-7">${studentInfo.f_name}</div>
 
                                                     </div>
+                                                    <div class="row mb-2">
+                                                        <div class="col-5">Mother's Name:</div>
+                                                        <div class="col-7">${studentInfo.m_name}</div>
+
+                                                    </div>
 
                                                     <div class="row mb-2">
                                                         <div class="col-5">Class:</div>
@@ -222,7 +227,6 @@
                                                 <div class="d-flex mb-1">`;
                                                     if (withoutId != '') {
                                                         colValue = 5;
-                                                        console.log(colValue);
                                                     } else {
                                                         colValue = 1;
 
@@ -247,38 +251,20 @@
 
                                     examsData.forEach(exam => {
 
-                                        if (exam['exam-info'] && exam['exam-info']
-                                            .length > 0) {
-
+                                        if (exam['exam-info'] && exam['exam-info'].length > 0) {
                                             exam['exam-info'].forEach(info => {
 
-                                                if (!examGroupedById[info
-                                                        .exam_id]) {
-
-                                                    examGroupedById[info
-                                                        .exam_id] = {
-
-                                                        examID: info
-                                                            .exam_id,
-
-                                                        examName: info
-                                                            .exam,
-
+                                                if (!examGroupedById[info.exam_id]) {
+                                                    examGroupedById[info.exam_id] = {
+                                                        examID: info.exam_id,
+                                                        examName: info.exam,
                                                         subjects: [],
-
                                                         totalMarks: 0,
                                                         maxMarks: 0,
-
-
-
                                                     };
 
                                                 }
-
-                                                examGroupedById[info
-                                                        .exam_id].subjects
-                                                    .push(exam);
-
+                                                examGroupedById[info.exam_id].subjects.push(exam);
                                             });
 
                                         }
@@ -300,7 +286,7 @@
 
                                     tableHtml += `</thead><tbody>`;
 
-                                    tableHtml += `<tr><td>M.M.</td>`;
+                                    tableHtml += `<tr><td class="fw-bold">M.M.</td>`;
                                     let subjectMaxMarksTotal = 0;
                                     if (examsData[0].by_m_g == 1 && examsData[0].priority == 1 && examsData[0]['exam-info'] && Array.isArray(examsData[0]['exam-info']) && examsData[0]['exam-info'].length > 0) {
                                         // For each exam associated with the subject
@@ -312,7 +298,7 @@
                                                 let examInfo = examsData[0]['exam-info'].find(info => info.exam_id === parseInt(examId));
                                                 // If examInfo is found, display the max_marks
                                                 if (examInfo) {
-                                                    tableHtml += `<td class="text-center">${examInfo.max_marks}</td> `;
+                                                    tableHtml += `<td class="text-center fw-bold">${examInfo.max_marks}</td> `;
                                                     subjectMaxMarksTotal += examInfo.max_marks;
                                                 } else {
                                                     // If no exam info is found, display "Abs"
@@ -328,7 +314,7 @@
                                     // maxMarks += subjectMaxMarksTotal;
                                     maxmMarksTotalSide += subjectMaxMarksTotal;
                                     if (withoutId != '') {
-                                        tableHtml +=`<td class="text-center">${subjectMaxMarksTotal}</td></tr>`;
+                                        tableHtml +=`<td class="text-center fw-bold">${subjectMaxMarksTotal}</td></tr>`;
                                     }
 
                                     // Step 3: Generate the table body
@@ -368,7 +354,7 @@
                                         }
 
                                     });
-                                    tableHtml += `<tr> <td class="text-end fw-bold">Total</td>`;
+                                    tableHtml += `<tr> <td class="text-center fw-bold">Total</td>`;
 
                                     let sssp = 0;
                                     Object.keys(examGroupedById).forEach(examId => {
@@ -377,12 +363,12 @@
                                                 .toString())) {
                                             SubjectgrandTotalValue += exam.totalMarks;
                                             sssp += exam.totalMarks;
-                                            tableHtml += `<td class="text-center">${exam.totalMarks}</td> `;
+                                            tableHtml += `<td class="text-center fw-bold">${exam.totalMarks}</td> `;
                                         }
                                     });
                                     sbMarks = sssp;
                                     if (withoutId != '') {
-                                        tableHtml += `<td class="text-center">${sssp}</td></tr>`;
+                                        tableHtml += `<td class="text-center fw-bold">${sssp}</td></tr>`;
                                     }
 
                                     tableHtml += `</tbody>
@@ -483,26 +469,15 @@
                                                     maxMarks += examInfo.max_marks;
                                                     maxmMarksTotalSide += examInfo.max_marks;
                                                     tableHtml += `
-                                                                        <td class="text-center">${examInfo.written_max_marks}</td>
-
-                                                                        <td class="text-center">${examInfo.oral_max_marks}</td>
-
-                                                                        <td class="text-center">${examInfo.max_marks}</td>
-
-
-                                                                    `;
-
+                                                                <td class="text-center fw-bold">${examInfo.written_max_marks}</td>
+                                                                <td class="text-center fw-bold">${examInfo.oral_max_marks}</td>
+                                                                <td class="text-center fw-bold">${examInfo.max_marks}</td>
+                                                                `;
                                                 } else {
-
                                                     // If no exam info is found, display "Abs"
-                                                    tableHtml +=
-                                                        `<td class="text-center">Abs</td>`;
-                                                    tableHtml +=
-                                                        `<td class="text-center">Abs</td>`;
-                                                    tableHtml +=
-                                                        `<td class="text-center">Abs</td>`;
-
-
+                                                    tableHtml += `<td class="text-center">Abs</td>`;
+                                                    tableHtml += `<td class="text-center">Abs</td>`;
+                                                    tableHtml += `<td class="text-center">Abs</td>`;
                                                 }
 
                                             }
@@ -510,7 +485,7 @@
                                         });
 
                                     }
-                                    tableHtml += `<td class="text-center">${maxmMarksTotalSide}</td></tr>`;
+                                    tableHtml += `<td class="text-center fw-bold">${maxmMarksTotalSide}</td></tr>`;
                                     let grandTotal = 0;
                                     // Step 3: Generate the table body
                                     examsData.forEach(exam => {
@@ -535,9 +510,7 @@
                                                             tableHtml += `
 
                                                                         <td class="text-center">${examInfo.written_marks}</td>
-
                                                                         <td class="text-center">${examInfo.oral_marks}</td>
-
                                                                         <td class="text-center">${examInfo.total_marks}</td>
 
                                                                     `;
@@ -554,29 +527,17 @@
                                                         if (withId && (withId.includes(examGroup.examID.toString()))) {
 
                                                             tableHtml += `
-
                                                                         <td class="text-center">Abs</td>
-
                                                                         <td class="text-center">Abs</td>
-
                                                                         <td class="text-center">Abs</td>
-
                                                                     `;
 
                                                         }
-
-
-
                                                     }
 
                                                 });
-
-
-
                                             // Add the super total column with subject total
-
-                                            tableHtml +=
-                                                `<td class="text-center">${exam.allExamsTotal}</td></tr>`;
+                                            tableHtml += `<td class="text-center fw-bold">${exam.allExamsTotal}</td></tr>`;
 
                                         }
 
@@ -588,12 +549,12 @@
                                         let exam = examGroupedById2[examId];
                                         if (withId && (withId.includes(exam.examID.toString()))) {
                                             tableHtml +=
-                                                `<td></td><td></td><td class="text-center">${exam.totalMarks}</td>`;
+                                                `<td></td><td></td><td class="text-center fw-bold">${exam.totalMarks}</td>`;
                                             overallGrandTotal += exam.totalMarks;
                                         }
 
                                     });
-                                    tableHtml += `<td>${overallGrandTotal}</td></tr>`;
+                                    tableHtml += `<td class="text-center fw-bold">${overallGrandTotal}</td></tr>`;
                                     grandTotal = overallGrandTotal;
 
 
@@ -603,19 +564,12 @@
 
                                         </div>
                                         <div class="col-md-2 align-items-stretch justify-content-center px-0">
-
                                             <table class="table table-bordered h-100 w-100">
-
                                                 <tr>
-
                                                     <td class="py-5">
-
                                                     <p class="fw-bold mb-1 text-center">${response.logo.result_date_message}</p>
-
-                                                   <p class="mb-1 border-top border-black text-center">${response.logo.session_start_message}</p></td>
-
+                                                    <p class="mb-1 border-top border-black text-center">${response.logo.session_start_message}</p></td>
                                                 </tr>
-
                                             </table>
                                         </div>
                                     </div>
@@ -636,6 +590,7 @@
                                     // Step 1: Group exams by `exam_id`
 
                                     let examGroupedGradeById = {};
+                                    let examIdOrder = [];
 
                                     examsData.forEach(exam => {
 
@@ -651,6 +606,8 @@
                                                                 examName: info.exam,
                                                                 subjects: []
                                                         };
+                                                        // Track the order of exam IDs as they first appear
+                                                        examIdOrder.push(info.exam_id);
 
                                                     }
                                                     examGroupedGradeById[info.exam_id].subjects.push(exam);
@@ -666,7 +623,7 @@
                                     // Generate headers
 
                                     if (allSubjectsSameExam) {
-                                        Object.keys(examGroupedGradeById).forEach(
+                                        examIdOrder.forEach(
                                             examId => {
                                                 let exam = examGroupedGradeById[examId];
                                                 tableHtml += `<th>Subject</th><th class="text-center">${exam.examName}</th><th class="text-center">Grade</th>
@@ -677,7 +634,7 @@
 
                                         // If multiple exams exist, create headers for each exam type and grade
                                         tableHtml += `<th>Subject</th>`;
-                                        Object.keys(examGroupedGradeById).forEach(examId => {
+                                        examIdOrder.forEach(examId => {
                                                 let exam = examGroupedGradeById[examId];
                                                 tableHtml += `<th class="text-center">${exam.examName}</th><th class="text-center">Grade</th>`;
                                         });
@@ -743,7 +700,7 @@
 
                                                 tableHtml += `<tr><td style="white-space:nowrap;">${exam.subject}</td>`;
                                                 // For each exam (e.g., Unit Test, Half Yearly) associated with the subject
-                                                Object.keys(examGroupedGradeById).forEach(examId => {
+                                                examIdOrder.forEach(examId => {
 
                                                         let examInfo = exam['exam-info'].find(info => info.exam_id === parseInt(examId));
 
@@ -768,21 +725,14 @@
 
                                     tableHtml +=`
                                                 </tbody>
-
                                             </table>
-
                                         </div>
 
                                         <div class="col-md-2 align-items-stretch px-0">
-
                                             <table class="table table-bordered h-100 w-100">
-
                                                 <tr>
-
                                                     <td>
-
-                                                    <p>Percentage: ${((overallGrandTotal / allSubjectsToMarks) * 100).toFixed(2)}%</p> <p>Result: Pass</p>`;
-
+                                                        <p>Percentage: ${((overallGrandTotal / allSubjectsToMarks) * 100).toFixed(2)}%</p> <p>Result: Pass</p>`;
                                                                 grandTotal = 0;
                                                                 maxMarks = 0;
                                                                 sbMarks = 0;
@@ -816,29 +766,17 @@
                                             <table class="table table-bordered text-center h-100 w-100">
 
                                                 <thead>
-
                                                     <tr>
-
                                                         <th>Months</th>`;
-
-                                                        attendanceData.monthly_attendance.map(month => {
-                                                            return tableHtml += `<th>${month.month}</th>`;
-                                                        });
-
-                                    tableHtml += `<th>Total</th>
-
+                                                        attendanceData.monthly_attendance.map(month => { return tableHtml += `<th>${month.month}</th>`;});
+                                        tableHtml += `<th>Total</th>
                                                     </tr>
-
                                                 </thead>
-
                                                 <tbody>
-
                                                     <tr>
                                                     <td>Total Meetings</td>`;
-
                                     attendanceData.monthly_attendance.map(month => {
                                         return tableHtml += `<td>${month.total_meetings}</td>`;
-
                                     });
 
                                     tableHtml += `<td>${attendanceData.summary.total_meetings}</td>
@@ -847,16 +785,11 @@
                                                     <td>Attended</td>`;
 
                                     attendanceData.monthly_attendance.map(month => {
-
                                         return tableHtml += `<td>${month.attended_meetings}</td>`;
-
                                     });
 
-                                    tableHtml += `<td>${attendanceData.summary.total_attended}</td>
-                                                    </tr>
-
-                                                </tbody>
-
+                                    tableHtml += `<td>${attendanceData.summary.total_attended}</td></tr>
+                                            </tbody>
                                             </table>
 
                                         </div>

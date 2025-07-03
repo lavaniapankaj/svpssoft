@@ -110,6 +110,10 @@
                                                     <div class="col-7">${studentInfo.f_name}</div>
                                                 </div>
                                                 <div class="row mb-2">
+                                                    <div class="col-5">Mother's Name:</div>
+                                                    <div class="col-7">${studentInfo.m_name}</div>
+                                                </div>
+                                                <div class="row mb-2">
                                                     <div class="col-5">Class:</div>
                                                     <div class="col-7">${studentInfo.class_name} ${studentInfo.section_name}</div>
                                                 </div>
@@ -186,7 +190,7 @@
                                 tableHtml += `
                                                     </thead>
                                                     <tbody>`;
-                                tableHtml += `<tr><td>M.M.</td>`;
+                                tableHtml += `<tr><td class="fw-bold">M.M.</td>`;
                                 let subjectMaxMarksTotal = 0;
                                 if (examsData[0].by_m_g == 1 && examsData[0].priority ==
                                     1 && examsData[0]['exam-info'] && Array.isArray(
@@ -204,10 +208,7 @@
 
                                         // Find the specific exam info for the current examId
 
-                                        let examInfo = examsData[0][
-                                            'exam-info'
-                                        ].find(info => info.exam_id ===
-                                            parseInt(examId));
+                                        let examInfo = examsData[0]['exam-info'].find(info => info.exam_id === parseInt(examId));
 
 
 
@@ -216,9 +217,9 @@
                                         if (examInfo) {
 
                                             tableHtml +=
-                                                `<td class="text-center">${examInfo.written_max_marks}</td>
-                                                <td class="text-center">${examInfo.oral_max_marks}</td>
-                                                <td class="text-center">${examInfo.max_marks}</td> `;
+                                                `<td class="text-center fw-bold">${examInfo.written_max_marks}</td>
+                                                <td class="text-center fw-bold">${examInfo.oral_max_marks}</td>
+                                                <td class="text-center fw-bold">${examInfo.max_marks}</td> `;
                                             subjectMaxMarksTotal += examInfo
                                                 .max_marks;
                                         } else {
@@ -232,7 +233,7 @@
                                         }
                                     });
                                     tableHtml +=
-                                            `<td class="text-center">${subjectMaxMarksTotal}</td></tr>`;
+                                            `<td class="text-center fw-bold">${subjectMaxMarksTotal}</td></tr>`;
                                             subjectMaxMarksTotal = 0;
 
                                 }
@@ -265,7 +266,7 @@
                                                 tableHtml += `
                                                                         <td class="text-center">${examInfo.written_marks}</td>
                                                                         <td class="text-center">${examInfo.oral_marks}</td>
-                                                                        <td class="text-center">${examInfo.total_marks}</td>
+                                                                        <td class="text-center fw-bold">${examInfo.total_marks}</td>
                                                                     `;
 
                                             } else {
@@ -279,26 +280,26 @@
                                         });
 
                                         tableHtml +=
-                                            `<td class="text-center">${sideGrandTotal}</td></tr>`;
+                                            `<td class="text-center fw-bold">${sideGrandTotal}</td></tr>`;
                                             sideGrandTotal = 0;
 
                                     }
                                 });
 
                                 tableHtml += `<tr>
-                                              <td class="text-end fw-bold">Total</td>`;
+                                              <td class="text-center fw-bold">Total</td>`;
 
                                 let grandTotalValue = 0;
                                 Object.keys(examGroupedById).forEach(examId => {
                                     let exam = examGroupedById[examId];
                                     tableHtml += `<td class="text-center"></td>
                                                    <td class="text-center"></td>
-                                                    <td class="text-center">${exam.totalMarks}</td>`;
+                                                    <td class="text-center fw-bold">${exam.totalMarks}</td>`;
                                     grandTotalValue += exam.totalMarks;
                                 });
 
                                 // <td class="text-center" colspan="${spanValue + 1}">${grandTotal}</td>
-                                tableHtml += `<td class="text-center">${grandTotalValue}</td></tr>
+                                tableHtml += `<td class="text-center fw-bold">${grandTotalValue}</td></tr>
                                                     </tbody>
                                                 </table>
                                             </div>
@@ -413,7 +414,7 @@
                                             if (examInfo) {
 
                                                 tableHtml +=
-                                                    `<td class="text-center">${examInfo.grade}</td><td class="text-center">${examInfo.grade}</td>`;
+                                                    `<td class="text-center fw-bold">${examInfo.grade}</td><td class="text-center fw-bold">${examInfo.grade}</td>`;
                                             }
 
                                             // Add the next subject (if any)
@@ -426,7 +427,7 @@
                                                         .keys(examGroupedGradeById)[0]));
                                                 if (examInfo2) {
                                                     tableHtml +=
-                                                        `<td class="text-center">${examInfo2.grade}</td><td class="text-center">${examInfo2.grade}</td>`;
+                                                        `<td class="text-center fw-bold">${examInfo2.grade}</td><td class="text-center fw-bold">${examInfo2.grade}</td>`;
                                                 }
 
                                             } else {
@@ -453,7 +454,7 @@
                                                                 examId));
                                                     if (examInfo) {
                                                         tableHtml +=
-                                                            `<td class="text-center">${examInfo.grade}</td><td class="text-center">${examInfo.grade}</td>`;
+                                                            `<td class="text-center fw-bold">${examInfo.grade}</td><td class="text-center fw-bold">${examInfo.grade}</td>`;
                                                     } else {
                                                         // If the subject does not have this exam's data, insert empty td
                                                         tableHtml +=

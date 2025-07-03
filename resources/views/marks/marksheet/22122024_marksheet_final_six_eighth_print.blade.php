@@ -165,90 +165,60 @@
 
                                   <tr>
 
-                                      <td><!-- Student Details -->
-
-
-
+                                    <td><!-- Student Details -->
                                         <div class="row mb-4">
-
                                             <div class="col-md-6">
-
                                                 <div class="row mb-2">
-
                                                     <div class="col-5">Name of Student:</div>
-
                                                     <div class="col-7">${studentInfo.name}</div>
-
                                                 </div>
-
                                                 <div class="row mb-2">
-
                                                     <div class="col-5">Father's Name:</div>
-
                                                     <div class="col-7">${studentInfo.f_name}</div>
-
                                                 </div>
-
                                                 <div class="row mb-2">
-
                                                     <div class="col-5">Class:</div>
-
                                                     <div class="col-7">${studentInfo.class} ${studentInfo.section}</div>
-
                                                 </div>
-
                                             </div>
-
                                             <div class="col-md-6">
-
                                                 <div class="row mb-2">
-
                                                     <div class="col-5">S.R.No.:</div>
-
                                                     <div class="col-7">${studentInfo.srno}</div>
 
                                                 </div>
 
                                                 <div class="row mb-2">
-
                                                     <div class="col-5">Roll No.:</div>
-
                                                     <div class="col-7">${studentInfo.rollno}</div>
 
                                                 </div>
 
                                                 <div class="row mb-2">
-
                                                     <div class="col-5">Date of Birth:</div>
-
                                                     <div class="col-7">${studentInfo.dob !== null ? formatDOB(studentInfo.dob) : 'N/A'}</div>
 
                                                 </div>
-
                                             </div>
-
                                         </div>
-
                                     </td>
 
                                   </tr>
 
                                   <tr>
+                                    <td>
 
-                                     <td>
+                                    <!-- Academic Performance -->
 
-                                <!-- Academic Performance -->
+                                    <div class="w-100 px-0 align-items-stretch">
 
-                                <div class="w-100 px-0 align-items-stretch">
+                                    <div class="d-flex mb-1">`;
+                                    if (withoutId != '') {
+                                        colValue = 5;
+                                    } else {
+                                        colValue = 1;
 
-                                <div class="d-flex mb-1">`;
-                                if (withoutId != '') {
-                                    colValue = 5;
-                                    console.log(colValue);
-                                } else {
-                                    colValue = 1;
-
-                                }
+                                    }
 
                                 tableHtml += `
 
@@ -268,76 +238,40 @@
 
                                 examsData.forEach(exam => {
 
-                                    if (exam['exam-info'] && exam['exam-info']
-                                        .length > 0) {
+                                    if (exam['exam-info'] && exam['exam-info'].length > 0) {
 
                                         exam['exam-info'].forEach(info => {
 
-                                            if (!examGroupedById[info
-                                                    .exam_id]) {
-
-                                                examGroupedById[info
-                                                    .exam_id] = {
-
-                                                    examID: info
-                                                        .exam_id,
-
-                                                    examName: info
-                                                        .exam,
-
+                                            if (!examGroupedById[info.exam_id]) {
+                                                examGroupedById[info.exam_id] = {
+                                                    examID: info.exam_id,
+                                                    examName: info.exam,
                                                     subjects: [],
-
                                                     totalMarks: 0,
                                                     maxMarks: 0,
-
-
-
                                                 };
 
                                             }
-
-                                            examGroupedById[info
-                                                    .exam_id].subjects
-                                                .push(exam);
+                                            examGroupedById[info.exam_id].subjects.push(exam);
 
                                         });
 
                                     }
 
                                 });
-
-
-
                                 rowSpan = 0;
-
                                 // Step 2: Create table headers dynamically based on `exam_id`
-
-
-
                                 Object.keys(examGroupedById).forEach(examId => {
 
                                     let exam = examGroupedById[examId];
 
-                                    if (withoutId.includes(exam.examID
-                                            .toString())) {
+                                    if (withoutId.includes(exam.examID.toString())) {
 
-                                        tableHtml +=
-                                            `<th class="text-center align-middle" rowspan="2" id="exam-name" data-id="${exam.examID}">${exam.examName}</th>`;
-
-
-
-
-
+                                        tableHtml += `<th class="text-center align-middle" rowspan="2" id="exam-name" data-id="${exam.examID}">${exam.examName}</th>`;
                                     }
-
-                                    spanValue += withId.includes(exam.examID
-                                        .toString()) ? 3 : 1;
+                                    spanValue += withId.includes(exam.examID.toString()) ? 3 : 1;
 
                                 });
-
-
-
-
                                 if (withoutId != '') {
                                     tableHtml +=
                                         `<th class="text-center align-middle" rowspan="2">Total</th>`;
@@ -349,35 +283,21 @@
                                 tableHtml += `<tr><td>M.M.</td>`;
 
                                 let subjectMaxMarksTotal = 0;
-
-
-
-                                if (examsData[0].by_m_g == 1 && examsData[0].priority ==
-                                    1 && examsData[0]['exam-info'] && Array.isArray(
-                                        examsData[0]['exam-info']) && examsData[0][
-                                        'exam-info'
-                                    ].length > 0) {
+                                if (examsData[0].by_m_g == 1 && examsData[0].priority == 1 && examsData[0]['exam-info'] && Array.isArray(examsData[0]['exam-info']) && examsData[0]['exam-info'].length > 0) {
 
                                     // For each exam associated with the subject
-
                                     Object.keys(examGroupedById).forEach(examId => {
 
-                                        let examGroup = examGroupedById[
-                                            examId
-                                        ];
-
-
-
+                                        let examGroup = examGroupedById[examId];
                                         // Check if the exam is in the 'withoutId' array
 
-                                        if (withoutId.includes(examGroup.examID
-                                                .toString())) {
+                                        if (withoutId.includes(examGroup.examID.toString())) {
 
                                             // Find the specific exam info for the current examId
 
                                             let examInfo = examsData[0][
                                                 'exam-info'
-                                            ].find(info => info.exam_id ===
+                                            ].find(info => info.exam_id ==
                                                 parseInt(examId));
 
 
@@ -432,15 +352,9 @@
                                         Object.keys(examGroupedById).forEach(
                                             examId => {
                                                 if (withoutId.includes(
-                                                        examGroupedById[
-                                                            examId].examID
-                                                        .toString())) {
+                                                        examGroupedById[examId].examID.toString())) {
 
-                                                    let examInfo = exam[
-                                                            'exam-info']
-                                                        .find(info => info
-                                                            .exam_id ===
-                                                            parseInt(examId)
+                                                    let examInfo = exam['exam-info'].find(info => info.exam_id == parseInt(examId)
                                                         );
                                                     // If the subject has data for this exam_id, display the actual data
 
@@ -598,8 +512,7 @@
 
                                     let exam = examGroupedById2[examId];
 
-                                    if (withId && (withId.includes(exam.examID
-                                            .toString()))) {
+                                    if (withId && (withId.includes(exam.examID.toString()))) {
 
                                         tableHtml +=
                                             `<th class="text-center" colspan="3" id="exam-name" data-id="${exam.examID}">${exam.examName}</th>`;
@@ -666,7 +579,7 @@
 
                                             let examInfo = examsData[0][
                                                 'exam-info'
-                                            ].find(info => info.exam_id ===
+                                            ].find(info => info.exam_id ==
                                                 parseInt(examId));
 
 
@@ -752,7 +665,7 @@
                                                 let examInfo = exam[
                                                     'exam-info'].find(
                                                     info => info
-                                                    .exam_id ===
+                                                    .exam_id ==
                                                     parseInt(examId));
                                                 let examGroup =
                                                     examGroupedById2[
@@ -951,7 +864,7 @@
                                 // Step 2: Check if all subjects have only one exam type (same `exam_id`)
 
                                 let allSubjectsSameExam = Object.keys(
-                                    examGroupedGradeById).length === 1;
+                                    examGroupedGradeById).length == 1;
 
 
 
@@ -1039,7 +952,7 @@
                                             // Check if the subject has data for the current exam
 
                                             let examInfo = rows[i]['exam-info'].find(
-                                                info => info.exam_id === parseInt(
+                                                info => info.exam_id == parseInt(
                                                     Object.keys(
                                                         examGroupedGradeById)[0]));
 
@@ -1066,7 +979,7 @@
                                                 // Check if the next subject has data for the current exam
 
                                                 let examInfo2 = rows[i + 1]['exam-info']
-                                                    .find(info => info.exam_id ===
+                                                    .find(info => info.exam_id ==
                                                         parseInt(Object.keys(
                                                             examGroupedGradeById)[
                                                             0]));
@@ -1118,7 +1031,7 @@
                                                     let examInfo = exam[
                                                             'exam-info']
                                                         .find(info => info
-                                                            .exam_id ===
+                                                            .exam_id ==
                                                             parseInt(examId)
                                                         );
 

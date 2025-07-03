@@ -161,7 +161,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get new admission report: " . $e->getMessage()
+                'message' => "Failed to get new admission report: "
             ], 500);
         }
     }
@@ -240,7 +240,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to export report: " . $e->getMessage()
+                'message' => "Failed to export report: "
             ], 500);
         }
     }
@@ -322,7 +322,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get new admission report: " . $e->getMessage()
+                'message' => "Failed to get new admission report: "
             ], 500);
         }
     }
@@ -422,8 +422,8 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to export report: " . $e->getMessage()
-            ], 500);
+                'message' => "Failed to export report: "
+            ]);
         }
     }
 
@@ -501,7 +501,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get new admission report: " . $e->getMessage()
+                'message' => "Failed to get new admission report: "
             ], 500);
         }
     }
@@ -597,7 +597,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to export report: " . $e->getMessage()
+                'message' => "Failed to export report: "
             ], 500);
         }
     }
@@ -676,7 +676,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get new admission report: " . $e->getMessage()
+                'message' => "Failed to get new admission report: "
             ], 500);
         }
     }
@@ -776,7 +776,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to export report: " . $e->getMessage()
+                'message' => "Failed to export report: "
             ], 500);
         }
     }
@@ -837,7 +837,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get new admission report: " . $e->getMessage()
+                'message' => "Failed to get new admission report: "
             ], 500);
         }
     }
@@ -904,7 +904,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to export report: " . $e->getMessage()
+                'message' => "Failed to export report: "
             ], 500);
         }
     }
@@ -1008,7 +1008,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get age-wise report: " . $e->getMessage()
+                'message' => "Failed to get age-wise report: "
             ], 500);
         }
     }
@@ -1105,7 +1105,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to export report: " . $e->getMessage()
+                'message' => "Failed to export report: "
             ], 500);
         }
     }
@@ -1168,7 +1168,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get age-wise report: " . $e->getMessage()
+                'message' => "Failed to get age-wise report: "
             ], 500);
         }
     }
@@ -1244,7 +1244,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to export report: " . $e->getMessage()
+                'message' => "Failed to export report: "
             ], 500);
         }
     }
@@ -1335,8 +1335,8 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get transport-wise report: " . $e->getMessage()
-            ], 500);
+                'message' => "Failed to get transport-wise report: "
+            ]);
         }
     }
 
@@ -1406,7 +1406,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to export report: " . $e->getMessage()
+                'message' => "Failed to export report: "
             ], 500);
         }
     }
@@ -1452,13 +1452,13 @@ class ReportController extends Controller
                 $data = $baseQuery->where('stu_main_srno.session_id', $request->session_id)->whereIn('stu_main_srno.ssid', $stdType);
                 return response()->json([
                     'status' => 'success',
-                    'data' => $request->page ? $data->paginate(5) : $data->get(),
+                    'data' => $request->page ? $data->paginate(10) : $data->get(),
                 ], 200);
             }
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get transport-wise report: " . $e->getMessage()
+                'message' => "Failed to get transport-wise report: "
             ], 500);
         }
     }
@@ -1498,7 +1498,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get student previous details: " . $e->getMessage()
+                'message' => "Failed to get student previous details: "
             ], 500);
         }
     }
@@ -1583,7 +1583,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get student report: " . $e->getMessage()
+                'message' => "Failed to get student report: "
             ], 500);
         }
     }
@@ -1782,7 +1782,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get student details: " . $e->getMessage()
+                'message' => "Failed to get student details: "
             ], 500);
         }
     }
@@ -1938,25 +1938,7 @@ class ReportController extends Controller
                 ]
             ];
             $academicDetails = StudentMasterController::getStd($academicStFields, $academicStWhere)
-            // dd($academicDetails);
 
-            // $academicDetails = DB::table('stu_main_srno')
-            //     ->join('session_masters', 'session_masters.id', '=', 'stu_main_srno.session_id')
-            //     ->join('class_masters', 'class_masters.id', '=', 'stu_main_srno.class')
-            //     ->join('section_masters', 'section_masters.id', '=', 'stu_main_srno.section')
-            //     // ->where('stu_main_srno.srno', $srno)
-            //     ->where('stu_main_srno.srno', $student->srno)
-            //     ->where('stu_main_srno.ssid', '!=', 1)
-            //     ->select(
-            //         'session_masters.session',
-            //         'class_masters.class',
-            //         'section_masters.section',
-            //         'stu_main_srno.rollno',
-            //         'stu_main_srno.gender',
-            //         'stu_main_srno.religion',
-            //         'stu_main_srno.admission_date',
-            //         'stu_main_srno.form_submit_date'
-            //     )
                 ->get()
                 ->map(function ($row) {
                     return [
@@ -2000,7 +1982,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get student previous details: " . $e->getMessage()
+                'message' => "Failed to get student previous details: "
             ], 500);
         }
     }
@@ -2080,7 +2062,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get student previous details: " . $e->getMessage()
+                'message' => "Failed to get student previous details: "
             ], 500);
         }
     }
@@ -2167,7 +2149,7 @@ class ReportController extends Controller
             }
         } catch (\Exception $e) {
             // Catch any unexpected errors
-            return response()->json(['error' => 'An error occurred. Please try again.' . $e->getMessage()], 500);
+            return response()->json(['error' => 'An error occurred. Please try again.'], 500);
         }
     }
 
@@ -2248,7 +2230,7 @@ class ReportController extends Controller
             }
         } catch (\Exception $e) {
             // Catch any unexpected errors
-            return response()->json(['error' => 'An error occurred. Please try again.' . $e->getMessage()], 500);
+            return response()->json(['error' => 'An error occurred. Please try again.'], 500);
         }
     }
     /**
@@ -2397,7 +2379,7 @@ class ReportController extends Controller
                 return response()->json(['errorMessage' => 'Enter Properly.......Try Again.'], 400);
             }
         } catch (\Exception $e) {
-            return response()->json(['error' => 'An error occurred. Please try again.' . $e->getMessage()], 500);
+            return response()->json(['error' => 'An error occurred. Please try again.'], 500);
         }
     }
 
@@ -2489,7 +2471,7 @@ class ReportController extends Controller
             ], 200);
         } catch (\Exception $e) {
             // Catch any unexpected errors
-            return response()->json(['error' => 'An error occurred. Please try again.' . $e->getMessage()], 500);
+            return response()->json(['error' => 'An error occurred. Please try again.'], 500);
         }
     }
 
@@ -2555,7 +2537,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to export report: " . $e->getMessage()
+                'message' => "Failed to export report"
             ], 500);
         }
     }
@@ -2652,7 +2634,7 @@ class ReportController extends Controller
             ], 200);
         } catch (\Exception $e) {
             // Catch any unexpected errors
-            return response()->json(['error' => 'An error occurred. Please try again.' . $e->getMessage()], 500);
+            return response()->json(['error' => 'An error occurred. Please try again.'], 500);
         }
     }
     /**
@@ -2732,7 +2714,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to export report: " . $e->getMessage()
+                'message' => "Failed to export report: "
             ], 500);
         }
     }
@@ -2994,7 +2976,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to export report: " . $e->getMessage()
+                'message' => "Failed to export report: "
             ], 500);
         }
     }
@@ -3257,7 +3239,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to export report: " . $e->getMessage() . $e->getLine()
+                'message' => "Failed to export report: "
             ], 500);
         }
     }
@@ -3370,7 +3352,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get transport-wise report: " . $e->getMessage()
+                'message' => "Failed to get transport-wise report: "
             ], 500);
         }
     }
@@ -3443,7 +3425,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to export report: " . $e->getMessage()
+                'message' => "Failed to export report"
             ], 500);
         }
     }

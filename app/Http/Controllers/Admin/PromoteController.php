@@ -29,7 +29,7 @@ class PromoteController extends Controller
             // $maxPublicSchool = DB::table('stu_main_srno')->where('stu_main_srno.school', 2)->max('srno');
             $maxPublicSchool =  DB::table(DB::raw('(select distinct srno, created_at from stu_main_srno where school = 2 order by created_at desc) as subquery'))
             ->select('srno')->limit(1)->first();
-     
+
             $publicSchoolSrno = DB::table('stu_main_srno')->select('stu_main_srno.srno')->where('stu_main_srno.srno', $maxPublicSchool->srno)->first();
             $publicSchoolSrnoLatest = isset($publicSchoolSrno) ? $publicSchoolSrno->srno : null;
 
@@ -290,7 +290,7 @@ class PromoteController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get std " . $e->getMessage()
+                'message' => "Failed to get std"
             ], 500);
         }
     }

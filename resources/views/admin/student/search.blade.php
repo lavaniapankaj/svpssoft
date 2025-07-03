@@ -99,7 +99,7 @@
 
                             </div>
 
-                            
+
 
                             <div class="table mt-4" id="prev_record">
                                 <h4 class="text-danger fw-bold">Previous Details</h4>
@@ -122,8 +122,12 @@
                                     <tbody id="fee-body"></tbody>
 
                                 </table>
-
-
+                                <h4 class="text-danger fw-bold">Transport Fee Details</h4>
+                                <table id="example" class="table table-striped table-bordered">
+                                    <thead id="transport-details-header">
+                                    </thead>
+                                    <tbody id="transport-details-body"></tbody>
+                                </table>
                             </div>
 
                             {{-- Current Details   --}}
@@ -150,9 +154,6 @@
                                     <tbody id="academic-details-body"></tbody>
 
                                 </table>
-
-
-
                             </div>
 
                             {{-- Form Updation  --}}
@@ -242,12 +243,11 @@
 
 @section('admin-scripts')
     <script>
-
-        var initialClassId = '{{ old('class_id', request()->get('class_id') !== null ? request()->get('class_id') : '') }}';
-        var initialSectionId = '{{ old('section_id', request()->get('section_id') !== null ? request()->get('section_id') : '') }}';
-        
+        var initialClassId =
+            '{{ old('class_id', request()->get('class_id') !== null ? request()->get('class_id') : '') }}';
+        var initialSectionId =
+            '{{ old('section_id', request()->get('section_id') !== null ? request()->get('section_id') : '') }}';
         getClassSection(initialClassId, initialSectionId);
-        
         $(document).ready(function() {
             var view = $('.show');
             var prevRecord = $('#prev_record');
@@ -259,8 +259,7 @@
             currentDetail.hide();
             stdFormConatiner.hide();
             let loader = $('#loader');
-
-            /* Current Details */
+            // Current Details
             function getStCurrentDetails(srno) {
                 $.ajax({
                     url: '{{ route('admin.reports.tcStCurrentDetails') }}',
@@ -364,8 +363,7 @@
                     }
                 });
             }
-
-            /* Previous Records */
+            // Previous Records
             function getPreviousRecords(srno, sessionID) {
                 $.ajax({
                     url: '{{ route('admin.reports.tcStPreviousDetails') }}', // The API endpoint
@@ -421,8 +419,7 @@
                     }
                 });
             }
-
-            /* Fees Records */
+            // academic fee records
             function getStFeeRecords(srno) {
                 $.ajax({
                     url: '{{ route('admin.student-master.search-fee-details') }}', // The API endpoint
@@ -463,24 +460,69 @@
                             $('#fee-header').html(tblheaders); // Append table headers
                             $('#fee-body').html(tblbody); // Append table body
                         } else {
-                            console.log('No data found for the given SRNO');
+                            console.error('No data found for the given SRNO');
                         }
                     },
                     error: function(xhr) {
-                        alert('Failed to retrieve data. Please try again.');
+                        console.error('Failed to retrieve data. Please try again.');
                     }
                 });
             }
+            // transport fee records
+            function getStTransportFeeRecords(srno) {
+                $.ajax({
+                    url: '{{ route('admin.student-master.search-transport-fee-details') }}', // The API endpoint
+                    method: 'GET',
+                    data: {
+                        srno: srno
+                    }, // Pass srno as part of the GET request
+                    dataType: 'JSON',
+                    success: function(response) {
+                        let tblheaders = '';
+                        let tblbody = '';
 
-            /** To view the student details */
+                        // Ensure the response is structured as expected
+                        if (response.status ==='success') {
+                            let headers = response.tables.headers;
+                            let data = response.tables.data;
+
+                            // Generate table headers
+                            tblheaders = '<tr>';
+                            $.each(headers, function(index, header) {
+                                tblheaders +=
+                                    `<th>${header}</th>`; // Wrap headers with <th>
+                            });
+                            tblheaders += '</tr>';
+
+                            // Generate table body rows
+                            $.each(data, function(index, item) {
+                                tblbody += `<tr>
+                                    <td>${item.session}</td>
+                                    <td>${item.classname}</td>
+                                    <td>${item.payable_amount}</td>
+                                    <td>${item.paid_amount}</td>
+                                    <td>${item.due_amount}</td>
+                                </tr>`;
+                            });
+
+                            // Populate the table in HTML
+                            $('#transport-details-header').html(tblheaders); // Append table headers
+                            $('#transport-details-body').html(tblbody); // Append table body
+                        } else {
+                            console.error('No data found for the given SRNO');
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Failed to retrieve data. Please try again.');
+                    }
+
+                });
+            }
             view.click(function() {
                 var prevsrno = $(this).data("id");
                 var srno = $(this).data("id-srno");
                 let stdSsid = $(this).data("ssid");
                 let sessionID = $(this).data("id-session");
-
-                console.log("test");
-
                $('#ssid').val(stdSsid);
                 stdFormConatiner.show();
                 $('#srno-form').val(srno);
@@ -491,12 +533,10 @@
 
                 getPreviousRecords(srno, sessionID);
                 getStFeeRecords(srno);
+                getStTransportFeeRecords(srno);
                 getStCurrentDetails(srno);
                 $('#std-form').validate();
             });
-
-
-
         });
     </script>
 @endsection

@@ -132,7 +132,7 @@
                                         ${selectedStudent.trans_discount ?? '-'}
                                     </td>
                                     <td>
-                                        ${selectedStudent.trans_total}
+                                        ${selectedStudent.trans_total ?? '-'}
                                     </td>
                                     </tr>`;
                                     $('#std-container table tbody').html(scheduleHtml);

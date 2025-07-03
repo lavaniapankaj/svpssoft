@@ -431,7 +431,7 @@ class FeeEntryController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to submit fee " . $e->getMessage() . " at line number: " . $e->getLine()
+                'message' => "Failed to submit fee"
             ], 500);
         }
     }
@@ -491,6 +491,8 @@ class FeeEntryController extends Controller
                 'stu_main_srno.section',
                 'stu_main_srno.session_id',
                 'stu_main_srno.school',
+                'class_masters.sort',
+                'stu_main_srno.rollno',
                 'stu_main_srno.relation_code',
                 'stu_main_srno.transport',
                 'stu_main_srno.trans_1st_inst',
@@ -537,6 +539,8 @@ class FeeEntryController extends Controller
                     'stu_main_srno.srno',
                     'stu_main_srno.prev_srno',
                     'stu_main_srno.admission_date',
+                    'class_masters.sort',
+                    'stu_main_srno.rollno',
                     'stu_main_srno.class as class_id',
                     'class_masters.class as class_name',
                     'stu_main_srno.section as section_id',
@@ -700,7 +704,7 @@ class FeeEntryController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get Due Payment list: " . $e->getMessage() . " at line number: " . $e->getLine()
+                'message' => "Failed to get Due Payment list"
             ], 500);
         }
     }
@@ -904,7 +908,7 @@ class FeeEntryController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get Students: " . $e->getMessage() . " at line number: " . $e->getLine()
+                'message' => "Failed to get Students"
             ], 500);
         }
     }
@@ -1032,7 +1036,7 @@ class FeeEntryController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to export report: " . $e->getMessage()
+                'message' => "Failed to export report"
             ], 500);
         }
     }
@@ -1106,7 +1110,7 @@ class FeeEntryController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to export report: " . $e->getMessage()
+                'message' => "Failed to export report"
             ], 500);
         }
     }
@@ -1195,7 +1199,7 @@ class FeeEntryController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to export report: " . $e->getMessage()
+                'message' => "Failed to export report"
             ], 500);
         }
     }

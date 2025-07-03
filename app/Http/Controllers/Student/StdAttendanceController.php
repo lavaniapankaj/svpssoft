@@ -78,7 +78,7 @@ class StdAttendanceController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to update student attendance" . $e->getMessage()
+                'message' => "Failed to update student attendance"
             ], 500);
         }
     }
@@ -170,7 +170,7 @@ class StdAttendanceController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get student attendance report " . $e->getMessage()
+                'message' => "Failed to get student attendance report "
             ], 500);
         }
     }
@@ -233,7 +233,7 @@ class StdAttendanceController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to download CSV: " . $e->getMessage()
+                'message' => "Failed to download CSV: "
             ], 500);
         }
     }
@@ -333,7 +333,7 @@ class StdAttendanceController extends Controller
 
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get cumulative attendance report: " . $e->getMessage()
+                'message' => "Failed to get cumulative attendance report: "
             ], 500);
         }
     }
@@ -410,7 +410,7 @@ class StdAttendanceController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to download cumulative attendance CSV: " . $e->getMessage()
+                'message' => "Failed to download cumulative attendance CSV: "
             ], 500);
         }
     }

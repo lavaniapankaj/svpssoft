@@ -216,7 +216,7 @@ class DistrictMasterController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get districts " . $e->getMessage()
+                'message' => "Failed to get districts"
             ], 500);
         }
     }

@@ -217,7 +217,7 @@ class EditSectionsController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get std " . $e->getMessage()
+                'message' => "Failed to get std"
             ], 500);
         }
     }
@@ -417,14 +417,7 @@ class EditSectionsController extends Controller
                 ];
                 if ($request->search) {
                     $data = StudentMasterController::getStdWithNames(false, $fields)->where('stu_detail.name', 'like', '%' . $request->search . '%')->where('stu_main_srno.session_id', $student->session_id)->get();
-                    // $data = DB::table('stu_main_srno')
-                    //     ->join('stu_detail', 'stu_main_srno.srno', '=', 'stu_detail.srno')
-                    //     ->join('parents_detail', 'stu_detail.srno', '=', 'parents_detail.srno')
-                    //     ->join('class_masters', 'stu_main_srno.class', '=', 'class_masters.id')
-                    //     ->where('stu_detail.name', 'like', '%' . $request->search . '%')
-                    //     ->whereIn('stu_main_srno.ssid', [1, 2, 4, 5])
-                    //     ->select('stu_main_srno.srno', 'stu_detail.name', 'parents_detail.f_name', 'class_masters.class')
-                    //     ->get();
+
                 }
                 if ($request->ajax()) {
                     // Return the data as a JSON response
@@ -439,15 +432,7 @@ class EditSectionsController extends Controller
                     ->where('stu_main_srno.session_id', $student->session_id)
                     ->where('stu_main_srno.relation_code', $student->relation_code)
                     ->get();
-                // $relatives = DB::table('stu_main_srno')
-                //     ->join('stu_detail', 'stu_main_srno.srno', '=', 'stu_detail.srno')
-                //     ->join('parents_detail', 'stu_detail.srno', '=', 'parents_detail.srno')
-                //     ->join('class_masters', 'stu_main_srno.class', '=', 'class_masters.id')
-                //     ->where('stu_main_srno.relation_code', $student->relation_code)
-                //     ->where('stu_detail.active', 1)
-                //     ->whereIn('stu_main_srno.ssid', [1, 2, 4, 5])
-                //     ->select('stu_main_srno.srno', 'stu_detail.name', 'parents_detail.f_name', 'class_masters.class')
-                //     ->get();
+
                 $parent_detail = DB::table('parents_detail')->where('srno', $student->srno)->where('active', 1)->first();
                 // dd($parent_detail);
                 $student_detail = DB::table('stu_detail')->where('srno', $student->srno)->where('active', 1)->first();
@@ -757,7 +742,7 @@ class EditSectionsController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get student fee detail: " . $e->getMessage()
+                'message' => "Failed to get student fee detail"
             ], 500);
         }
     }
@@ -801,7 +786,7 @@ class EditSectionsController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get student fee detail: " . $e->getMessage()
+                'message' => "Failed to get student fee detail"
             ], 500);
         }
     }
@@ -932,7 +917,7 @@ class EditSectionsController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to insert mercy amount: " . $e->getMessage()
+                'message' => "Failed to insert mercy amount"
             ], 500);
         }
     }
@@ -1017,7 +1002,7 @@ class EditSectionsController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get student fee detail: " . $e->getMessage()
+                'message' => "Failed to get student fee detail"
             ], 500);
         }
     }
@@ -1322,7 +1307,7 @@ class EditSectionsController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to submit fee " . $e->getMessage()
+                'message' => "Failed to submit fee"
             ], 500);
         }
     }
