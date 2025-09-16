@@ -1,32 +1,23 @@
 //set current session(std)
-
 var currentSession = $('#student_current_session').val();
 $('#current_session').val(currentSession);
-
 //get transport fee total
 function calculateTotal() {
     let firstInstall = parseFloat($('#trans_1st_inst').val()) || 0;
     let secondInstall = parseFloat($('#trans_2nd_inst').val()) || 0;
     let discount = parseFloat($('#trans_discount').val()) || 0;
-
     let total = firstInstall + secondInstall - discount;
-
     $('#trans_total').val(total.toFixed(2));
 }
-
 $('#trans_1st_inst ,#trans_2nd_inst, #trans_discount').on('input', calculateTotal);
 calculateTotal();
-
 //all student dropDown
-
 function getStudentDropdown() {
     $('#section_id').change(function() {
         var classId = $('#class_id').val();
         var sectionId = $(this).val();
         var sessionId = $('#current_session').val();
-
         var stdSelect = $('#std_id');
-
         if (classId && sectionId && sessionId) {
             loader.show();
             $.ajax({
@@ -41,10 +32,8 @@ function getStudentDropdown() {
                 },
                 success: function(students) {
                    stdSelect.empty();
-
                     let options = '<option value="" selected>All Students</option>';
                     const allStudentSrnos = [];
-
                     if (students.length > 0) {
                         $.each(students, function(index, student) {
                             allStudentSrnos.push(student.srno);
@@ -56,11 +45,8 @@ function getStudentDropdown() {
                     } else {
                         options += '<option value="">No students found</option>';
                     }
-
                     stdSelect.html(options);
-
                     stdSelect.find('option[value=""]').val(allStudentSrnos);
-
                 },
                 complete: function() {
                     loader.hide();
@@ -72,7 +58,6 @@ function getStudentDropdown() {
         }
     });
 }
-
 function admissionDateGet(srno) {
     return new Promise((resolve, reject) => {
         if (srno) {
@@ -104,9 +89,6 @@ function admissionDateGet(srno) {
         }
     });
 }
-
-
-
 function updatePaginationControls(data) {
     let paginationHtml = '';
     const paginationContainer = $('#std-pagination');

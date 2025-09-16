@@ -1,12 +1,12 @@
 @extends('admin.index')
 
 @section('sub-content')
-    <div class="container">
+    <div class="container-fluid">
 
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-header">{{ __('Reports Section') }}
+        <div class="row">
+            <div class="col-md-12">
+               <div class="card border-0 bg-white">
+           <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between"><h5 class="mb-0 mt-0">{{ __('Reports Section') }}</h5>
                     </div>
 
                     <div class="card-body">
@@ -38,6 +38,7 @@
                         <div class="row mt-2">
                             <div class="col-md-12">
                                 <a href="{{ route('admin.reports.feeReportMercyAdminView.view') }}" class="btn btn-primary">Fee Report Admin (Mercy Fee)</a>
+                                <a href="{{ route('admin.dayWiseCollectionIndex') }}" class="btn btn-primary">Daywise Fee Collections</a>
                                 <a href="#" class="btn btn-primary">Stock Cash Report</a>
 
                             </div>

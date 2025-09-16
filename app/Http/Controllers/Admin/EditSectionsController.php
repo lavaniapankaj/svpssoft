@@ -31,7 +31,6 @@ class EditSectionsController extends Controller
     {
         return view('admin.editSections.index');
     }
-
     public function editStd(Request $request)
     {
         $fields = [
@@ -50,7 +49,6 @@ class EditSectionsController extends Controller
             ->whereIn('stu_main_srno.ssid', session('current_session')->id ? [1] : [1, 2, 3, 4, 5])->paginate(15);
         return view('admin.editSections.std', compact('data', 'sessions'));
     }
-
     public function editStdAdmissionPromotion()
     {
         return view('admin.editSections.std_change_admission_promotion');
@@ -83,26 +81,22 @@ class EditSectionsController extends Controller
         $classes = ClassMasterController::getClasses();
         return view('admin.editSections.edit_student_info_class_wise', compact('classes'));
     }
-
     public function editStdMarks()
     {
         $classes = ClassMasterController::getClasses();
         $exams = ExamMasterController::getAllExam();
         return view('admin.editSections.edit_std_marks', compact('classes', 'exams'));
     }
-
     public function editStdAttendance()
     {
         $classes = ClassMasterController::getClasses();
         return view('admin.editSections.edit_std_attendance', compact('classes'));
     }
-
     public function editRemoveStdFee()
     {
         $classes = ClassMasterController::getClasses();
         return view('admin.editSections.edit_remove_std_fee_entry', compact('classes'));
     }
-
     public function editStdFeeDetailsView()
     {
         return view('admin.editSections.edit_fee_details_std');
@@ -113,51 +107,65 @@ class EditSectionsController extends Controller
             'session_id' => 'required|exists:session_masters,id,active,1',
             'resultDate' => 'required|date_format:Y-m-d',
         ]);
-
         $sessionMaster = SessionMasterController::getSessions([], ['id' => $request->session_id]);
         // $sessionMaster = SessionMaster::where('id', $request->session_id)->where('active', 1)->first();
-
         if (empty($sessionMaster)) {
             return redirect()->back()->with('error', 'Active session not found. Please try again.');
         }
-
         SessionMaster::where('id', $request->session_id)->update(['result_date' => $request->resultDate]);
-
         return redirect()->route('admin.editSection.editResult')->with('success', 'Result Date updated successfully.');
     }
-
 
     public function editStdMarksStore(Request $request)
     {
         try {
             $session = Session::get('current_session')->id;
+
             $validator = Validator::make($request->all(), [
                 'class_id' => 'required|exists:class_masters,id,active,1',
                 'section_id' => 'required|exists:section_masters,id,active,1',
                 'subject' => 'required|exists:subject_masters,id,active,1',
                 'exam' => 'required|exists:exam_masters,id,active,1',
                 'std_id' => 'required|exists:stu_main_srno,srno',
-                'attendance' => 'required|in:1',
-                'marks' => [
-                    'required',
-                    'numeric',
-                    function ($attribute, $value, $fail) use ($request, $session) {
-                        // Retrieve the maximum marks threshold
-                        $threshold = MarksMaster::where('session_id', $session)
-                            ->where('class_id', $request->class_id)
-                            ->where('subject_id', $request->subject)
-                            ->where('exam_id', $request->exam)
-                            ->where('active', 1)
-                            ->value('max_marks');
-                        // Handle case where no threshold is set
-                        if (is_null($threshold)) {
-                            $fail("The maximum marks configuration is missing for the selected session, class, subject, or exam.");
-                            return;
-                        }
 
-                        // Validate the value against the threshold
-                        if ($value > $threshold) {
-                            $fail("The $attribute must not be greater than $threshold.");
+                // ✅ allow 0 (Absent) or 1 (Present)
+                'attendance' => 'required|in:0,1',
+
+                // ✅ marks validation depends on attendance
+                'marks' => [
+                    function ($attribute, $value, $fail) use ($request, $session) {
+                        if ($request->attendance == 1) {
+                            // Present → marks required & numeric
+                            if ($value === null || $value === '') {
+                                $fail("Marks are required when student is present.");
+                                return;
+                            }
+                            if (!is_numeric($value)) {
+                                $fail("Marks must be numeric.");
+                                return;
+                            }
+
+                            // Validate against max threshold
+                            $threshold = MarksMaster::where('session_id', $session)
+                                ->where('class_id', $request->class_id)
+                                ->where('subject_id', $request->subject)
+                                ->where('exam_id', $request->exam)
+                                ->where('active', 1)
+                                ->value('max_marks');
+
+                            if (is_null($threshold)) {
+                                $fail("The maximum marks configuration is missing for the selected session, class, subject, or exam.");
+                                return;
+                            }
+
+                            if ($value > $threshold) {
+                                $fail("The $attribute must not be greater than $threshold.");
+                            }
+                        } else {
+                            // Absent → marks must be empty
+                            if ($value !== null && $value !== '') {
+                                $fail("Marks should not be entered when student is absent.");
+                            }
                         }
                     },
                 ],
@@ -173,10 +181,7 @@ class EditSectionsController extends Controller
                 'std_id.required' => 'Student is required.',
                 'std_id.exists' => 'Invalid Student.',
                 'attendance.required' => 'Attendance is required.',
-                'attendance.in' => 'Invalid Attendance.',
-                'marks.required' => 'Marks are required.',
-                'marks.numeric' => 'Marks must be numeric.',
-                // 'marks.max' => 'Marks must not be greater than maximum allowed marks.',
+                'attendance.in' => 'Invalid Attendance value.',
             ]);
 
             if ($validator->fails()) {
@@ -185,6 +190,7 @@ class EditSectionsController extends Controller
                     'message' => $validator->errors()
                 ], 400);
             }
+
             $marks = Marks::updateOrCreate(
                 [
                     'session_id' => $session,
@@ -194,21 +200,20 @@ class EditSectionsController extends Controller
                     'exam_id' => $request->exam,
                 ],
                 [
-
-                    'marks' => $request->marks,
+                    'marks' => $request->attendance == 1 ? $request->marks : null, // ✅ clear marks if absent
                     'attendance' => $request->attendance,
                     'add_user_id' => Session::get('login_user'),
                     'edit_user_id' => Session::get('login_user'),
                     'active' => 1,
                 ]
             );
+
             if ($marks) {
                 return response()->json([
                     'status' => 'success',
                     'message' => "Student Marks updated successfully.",
                 ], 200);
             } else {
-
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Something went wrong, please try again.',
@@ -217,11 +222,11 @@ class EditSectionsController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get std"
+                'message' => "Failed to update marks",
+                'error' => $e->getMessage()
             ], 500);
         }
     }
-
     public function editStdStore(Request $request)
     {
         $requiredFields = [
@@ -234,7 +239,8 @@ class EditSectionsController extends Controller
             'gender',
             'religion',
             'name',
-            'std_email',
+            // 'isrte',
+            // 'std_email',
             'mobile',
             'category_id',
             'state_id',
@@ -242,16 +248,16 @@ class EditSectionsController extends Controller
             'pincode',
             'address',
             'f_name',
-            'g_father',
+            // 'g_father',
             'm_name',
-            'parent_category_id',
             'f_occupation',
             'm_occupation',
+            /* 'parent_category_id',
             'parent_email',
             'parent_state_id',
             'parent_district_id',
             'pin_code',
-            'parent_address'
+            'parent_address' */
         ];
         $stds = StudentMaster::where('id', $request->id)->where('class', $request->class)->where('section', $request->section)->value('session_id');
         $request->validate([
@@ -260,24 +266,23 @@ class EditSectionsController extends Controller
                 'string',
                 'max:255',
                 Rule::unique('stu_main_srno')
-                ->where(function ($query) {
-                    return $query->whereNotNull('admission_date')
-                        ->whereNotNull('form_submit_date');
-                })
-                ->ignore($request->id), // Ignore current record while updating
+                    ->where(function ($query) {
+                        return $query->whereNotNull('admission_date')
+                            ->whereNotNull('form_submit_date');
+                    })
+                    ->ignore($request->id), // Ignore current record while updating
             ],
-
             'school' => 'nullable',
             'class' => 'nullable',
             'section' => 'nullable',
             'rollno' => [
                 'nullable',
                 'numeric',
-                 Rule::unique('stu_main_srno')
+                Rule::unique('stu_main_srno')
                     ->where(function ($query) use ($request, $stds) {
                         return $query->where('class', $request->class)
-                            ->where('section',$request->section)->where('session_id', $stds);
-                            // ->orWhere('id', $request->id); // Add ID to be ignored conditionally
+                            ->where('section', $request->section)->where('session_id', $stds);
+                        // ->orWhere('id', $request->id); // Add ID to be ignored conditionally
                     })->ignore($request->id),
             ],
             'transport' => 'nullable',
@@ -324,6 +329,7 @@ class EditSectionsController extends Controller
             'rollno' => $request->rollno,
             'session_id' => $stds,
             'transport' => $request->transport,
+            'is_rtest' => $request->isrte,
             'age_proof' => $request->age_proof,
             'gender' => $request->gender,
             'religion' => $request->religion,
@@ -343,7 +349,6 @@ class EditSectionsController extends Controller
             // $student = StudentMaster::updateOrCreate(
             StudentMaster::updateOrCreate(['id' => $request->id], $studentData);
         }
-
         $commonData = [
             'add_user_id' => Session::get('login_user'),
             'edit_user_id' => Session::get('login_user'),
@@ -353,7 +358,7 @@ class EditSectionsController extends Controller
             'name' => $request->name,
             'dob' => $request->dob,
             'mobile' => $request->mobile,
-            'email' => $request->std_email,
+            'email' => $request->std_email ?? null,
             'pincode' => $request->pincode,
             'pre_school' => $request->pre_school,
             'pre_class' => $request->pre_class,
@@ -363,43 +368,49 @@ class EditSectionsController extends Controller
             'address' => $request->address,
         ]);
         if ($stuDetailData) {
-
             DB::table('stu_detail')->updateOrInsert(
                 ['srno' => $request->srno],
                 $stuDetailData
             );
         }
-
+        // Then retrieve the inserted row:
+        $stDetailData = DB::table('stu_detail')->where('srno', $request->srno)->first();
+        $ParentDistrict = $stDetailData ? $stDetailData->district_id : null;
+        $ParentState = $stDetailData ? $stDetailData->state_id : null;
+        $ParentCategory = $stDetailData ? $stDetailData->category_id : null;
+        $ParentPinCode = $stDetailData ? $stDetailData->pincode : null;
+        $ParentAddress = $stDetailData ? $stDetailData->address : null;
         $parentsDetailData = array_merge($commonData, [
             'f_name' => $request->f_name,
             'm_name' => $request->m_name,
-            'g_father' => $request->g_father,
-            'email' => $request->parent_email,
-            'f_mobile' => $request->f_mobile,
-            'pin_code' => $request->pin_code,
+            'g_father' => $request->g_father ?? null,
+            'email' => $request->parent_email ?? null,
+            'f_mobile' => $request->f_mobile ?? $stDetailData->mobile,
             'f_occupation' => $request->f_occupation,
             'm_occupation' => $request->m_occupation,
             'm_mobile' => $request->m_mobile,
+            'pin_code' => $ParentPinCode,
+            'category_id' => $ParentCategory,
+            'state_id' => $ParentState,
+            'district_id' => $ParentDistrict,
+            'address' => $ParentAddress,
+            /* 'pin_code' => $request->pin_code,
             'category_id' => $request->parent_category_id,
             'state_id' => $request->parent_state_id,
             'district_id' => $request->parent_district_id,
-            'address' => $request->parent_address,
+            'address' => $request->parent_address, */
         ]);
         if ($parentsDetailData) {
-
             DB::table('parents_detail')->updateOrInsert(
                 ['srno' => $request->srno],
                 $parentsDetailData
             );
         }
-
         $message = $request->id ? 'Student updated successfully.' : 'Student saved successfully.';
         return redirect()->route('admin.editSection.std')->with('success', $message);
     }
-
     public function editStdEdit(string $id, Request $request)
     {
-
         if ($id) {
             # code...
             $student = StudentMaster::findOrFail($id);
@@ -417,11 +428,9 @@ class EditSectionsController extends Controller
                 ];
                 if ($request->search) {
                     $data = StudentMasterController::getStdWithNames(false, $fields)->where('stu_detail.name', 'like', '%' . $request->search . '%')->where('stu_main_srno.session_id', $student->session_id)->get();
-
                 }
                 if ($request->ajax()) {
                     // Return the data as a JSON response
-
                     return response()->json([
                         'success' => true,
                         'data' => $data
@@ -432,7 +441,6 @@ class EditSectionsController extends Controller
                     ->where('stu_main_srno.session_id', $student->session_id)
                     ->where('stu_main_srno.relation_code', $student->relation_code)
                     ->get();
-
                 $parent_detail = DB::table('parents_detail')->where('srno', $student->srno)->where('active', 1)->first();
                 // dd($parent_detail);
                 $student_detail = DB::table('stu_detail')->where('srno', $student->srno)->where('active', 1)->first();
@@ -444,7 +452,6 @@ class EditSectionsController extends Controller
             return redirect()->back()->with('error', 'Something went wrong, please try again.');
         }
     }
-
     // Edit section Edit Std Edit Relative
     public function editStdAddRelative(Request $request)
     {
@@ -454,11 +461,9 @@ class EditSectionsController extends Controller
         ]);
         $std = StudentMaster::where('srno', $request->std_id)->whereIn('ssid', [1, 2, 3, 4, 5])->first();
         $secondStd = StudentMaster::where('srno', $request->second_std_id)->whereIn('ssid', [1, 2, 3, 4, 5])->first();
-
         if ($std || $secondStd) {
             $stdRelationCode = $std->relation_code;
             $secondStdRelationCode = $secondStd ? $secondStd->relation_code : null;
-
             if ($stdRelationCode === null && $secondStdRelationCode === null) {
                 $maxRelationCode = StudentMaster::max('relation_code');
                 $newRelationCode = $maxRelationCode ? $maxRelationCode + 1 : 1;
@@ -480,7 +485,6 @@ class EditSectionsController extends Controller
             ], 500);
         }
     }
-
     public function editStdRollSectionStore(Request $request)
     {
         $data = $request->validate([
@@ -491,6 +495,7 @@ class EditSectionsController extends Controller
             'students.*.sectionCheck' => 'sometimes|required|boolean',
         ]);
         $currentSession = session('current_session')->id;
+        $anyUpdated = false;
         foreach ($data['students'] as $std) {
             $student = StudentMaster::where('srno', $std['srno'])->whereIn('ssid', [1, 2, 4, 5])->where('session_id', $currentSession)->first();
             // $student = StudentMaster::where('srno', $std['srno'])->where('ssid', 1)->first();
@@ -502,13 +507,17 @@ class EditSectionsController extends Controller
                 if (isset($std['sectionCheck']) && $std['sectionCheck']  && isset($std['sectionSecond'])) {
                     $updates['section'] = $std['sectionSecond'];
                 }
+                if (!empty($updates)) {
+                    $student->update($updates);
+                    $anyUpdated = true;
+                }
             }
-            if (!empty($updates)) {
-                $student->update($updates);
-                return redirect()->route('admin.editSection.editStdRollSection')->with('success', 'Students updated successfully.');
-            } else {
-                return redirect()->back()->with('error', 'Something went wrong, please try again.');
-            }
+        }
+        if (!empty($anyUpdated)) {
+            // $student->update($updates);
+            return redirect()->route('admin.editSection.editStdRollSection')->with('success', 'Students updated successfully.');
+        } else {
+            return redirect()->back()->with('error', 'Something went wrong, please try again.');
         }
     }
     public function editRemoveRelativeStdStore(Request $request)
@@ -521,11 +530,9 @@ class EditSectionsController extends Controller
         $std = StudentMaster::where('srno', $request->std_id)->where('session_id', $currentSession)->whereIn('ssid', [1, 2, 3, 4, 5])->first();
         // $secondStd = StudentMaster::where('srno', $request->second_std_id)->where('ssid', 1)->first();
         $secondStd = StudentMaster::where('srno', $request->second_std_id)->where('session_id', $currentSession)->whereIn('ssid', [1, 2, 3, 4, 5])->first();
-
         if ($std || $secondStd) {
             $stdRelationCode = $std->relation_code;
             $secondStdRelationCode = $secondStd ? $secondStd->relation_code : null;
-
             if ($stdRelationCode === null && $secondStdRelationCode === null) {
                 $maxRelationCode = StudentMaster::whereNotNUll('relation_code')->max('relation_code');
                 $newRelationCode = $maxRelationCode ? $maxRelationCode + 1 : 1;
@@ -536,7 +543,6 @@ class EditSectionsController extends Controller
                     $secondStd->update(['relation_code' => $stdRelationCode]);
                 }
             }
-
             return redirect()->route('admin.editSection.editRemoveRelativeStd')->with('success', 'Relative Added successfully.');
         } else {
             return redirect()->back()->with('error', 'Something went wrong, please try again.');
@@ -554,7 +560,6 @@ class EditSectionsController extends Controller
             return redirect()->back()->with('error', 'Something went wrong, please try again.');
         }
     }
-
     public function editStdInfoClassStore(Request $request)
     {
         try {
@@ -564,29 +569,36 @@ class EditSectionsController extends Controller
                 'students.*.student_name' => 'required|string',
                 'students.*.f_name' => 'required|string|max:255',
                 'students.*.m_name' => 'required|string|max:255',
-                'students.*.g_f_name' => 'required|string|max:255',
+                'students.*.g_f_name' => 'nullable|string|max:255',
                 'students.*.dob' => 'nullable|date_format:Y-m-d',
                 'students.*.f_mobile' => 'nullable|regex:/^[0-9]{10}$/',
                 'students.*.m_mobile' => 'nullable|regex:/^[0-9]{10}$/',
                 'students.*.age_proof' => 'nullable',
+            ], [
+                'students.*.srno.required' => 'Student SR No is required.',
+                'students.*.srno.exists' => 'Invalid Student SR No.',
+                'students.*.student_name.required' => 'Student Name is required.',
+                'students.*.f_name.required' => 'Father Name is required.',
+                'students.*.m_name.required' => 'Mother Name is required.',
+                'students.*.g_f_name.required' => 'Guardian Name is required.',
+                'students.*.dob.date_format' => 'Invalid Date Format for Date of Birth.',
+                'students.*.f_mobile.regex' => 'Invalid Mobile Number for Father.',
+                'students.*.m_mobile.regex' => 'Invalid Mobile Number for Mother.',
+                'students.*.age_proof' => 'Invalid Age Proof.',
             ]);
-
             if ($validator->fails()) {
                 return redirect()
                     ->back()
                     ->withErrors($validator)
                     ->withInput();
             }
-
             $data = $validator->validated();
             $currentSession = session('current_session')->id;
-
             foreach ($data['students'] as $std) {
                 $student = StudentMaster::where('srno', $std['srno'])
                     ->where('session_id', $currentSession)
                     ->whereIn('ssid', [1, 2, 3, 4, 5])
                     ->first();
-
                 if ($student) {
                     $stdDetail = DB::table('stu_detail')->where('srno', $student->srno);
                     if ($stdDetail) {
@@ -595,7 +607,6 @@ class EditSectionsController extends Controller
                             'dob' => $std['dob'],
                         ]);
                     }
-
                     $stdParentDetail = DB::table('parents_detail')->where('srno', $student->srno);
                     if ($stdParentDetail) {
                         $stdParentDetail->update([
@@ -606,13 +617,11 @@ class EditSectionsController extends Controller
                             'm_mobile' => $std['m_mobile'],
                         ]);
                     }
-
                     $student->update([
                         'age_proof' => $std['age_proof']
                     ]);
                 }
             }
-
             return redirect()
                 ->route('admin.editSection.editStdInfoClass')
                 ->with('success', 'Student updated successfully.');
@@ -623,7 +632,6 @@ class EditSectionsController extends Controller
                 ->with('error', 'Something went wrong, please try again.');
         }
     }
-
     public function editStdAdmissionDateStore(Request $request)
     {
         $request->validate(
@@ -639,7 +647,6 @@ class EditSectionsController extends Controller
             return redirect()->back()->with('error', 'Something went wrong, please try again.');
         }
     }
-
     public function editStdByPreSrnoStore(Request $request)
     {
         // dd($request->all());
@@ -673,7 +680,6 @@ class EditSectionsController extends Controller
                         'f_name' => $request->f_name,
                         'm_name' => $request->m_name,
                     ]
-
                 );
             }
             return redirect()->route('admin.editSection.editStdByPreSrno')->with('success', 'Student updated successfully.');
@@ -681,10 +687,8 @@ class EditSectionsController extends Controller
             return redirect()->back()->with('error', 'Something went wrong, please try again.');
         }
     }
-
     public function editStdAdmissionPromotionStore(Request $request)
     {
-
         $validates = $request->validate([
             'hidden_srno' => 'required',
             'hidden_a_date' => 'nullable|date_format:Y-m-d',
@@ -708,7 +712,6 @@ class EditSectionsController extends Controller
             return redirect()->back()->with('error', 'Something went wrong, please try again.');
         }
     }
-
     public function stdFeeDetailFetch(Request $request)
     {
         try {
@@ -721,10 +724,8 @@ class EditSectionsController extends Controller
                     'message' => $validator->errors()
                 ], 400);
             }
-
             $feeDetails = FeeDetail::where('srno', $request->srno)->where('session_id', $request->session)
                 ->get(['ref_slip_no', 'pay_date', 'academic_trans', 'fee_of', 'amount', 'paid_mercy', 'srno', 'id']);
-
             if ($feeDetails->isNotEmpty()) {
                 # code...
                 return response()->json([
@@ -746,7 +747,6 @@ class EditSectionsController extends Controller
             ], 500);
         }
     }
-
     public function stdFeeEdit(Request $request)
     {
         try {
@@ -765,7 +765,6 @@ class EditSectionsController extends Controller
                     'message' => $validator->errors()
                 ], 400);
             }
-
             FeeDetail::updateOrCreate([
                 'srno' => $request->srno,
                 'session_id' => $request->session,
@@ -777,7 +776,6 @@ class EditSectionsController extends Controller
                 'amount' => $request->amount,
                 'pay_date' => $request->pay_date,
                 'edit_user_id' => Session::get('login_user'),
-
             ]);
             return response()->json([
                 'status' => 'success',
@@ -790,7 +788,6 @@ class EditSectionsController extends Controller
             ], 500);
         }
     }
-
     public function stdFeeRemove($id)
     {
         try {
@@ -806,13 +803,11 @@ class EditSectionsController extends Controller
             return response()->json(['status' => 'error', 'message' => 'An error occurred while deleting.'], 500);
         }
     }
-
     public function mercyFeeBoth()
     {
         $classes = ClassMasterController::getClasses();
         return view('admin.editSections.edit_std_mercy_fee_both', compact('classes'));
     }
-
 
 
     public function mercyFeeBothStore(Request $request)
@@ -823,26 +818,22 @@ class EditSectionsController extends Controller
             $student = StudentMaster::where('srno', $request->std_id)->where('class', $request->class)->where('section', $request->section)->where('active', 1)->where('session_id', $session)->whereIn('ssid', [1, 2, 3, 4, 5])->first();
             // $student = StudentMaster::where('srno', $request->std_id)->where('class', $request->class)->where('section', $request->section)->where('active', 1)->where('session_id', $session)->whereIn('ssid', [1, 2, 3])->first();
             // $student = StudentMaster::where('srno', $request->std_id)->where('active', 1)->where('ssid', 1)->first();
-
             if (!$student) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Student not found for the given SRNO.'
                 ], 404);
             }
-
             $feeMaster = FeeMaster::where('class_id', $request->class)
                 ->where('session_id', $session)
                 ->where('active', 1)
                 ->first(['admission_fee', 'inst_1', 'inst_2', 'inst_total', 'ins_discount']);
-
             if ($academic_trans_value == 2 && $student->transport == 0) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'No Transport Fee Applicable For This Student.'
                 ], 404);
             }
-
             $fee_master_fees = $academic_trans_value == 2
                 ? (object) [
                     'inst_1' => $student->trans_1st_inst,
@@ -851,20 +842,16 @@ class EditSectionsController extends Controller
                     'ins_discount' => $student->trans_discount,
                 ]
                 : $feeMaster;
-
             $baseQuery = FeeDetail::where('srno', $request->std_id)
                 ->where('session_id', $session)
                 ->where('academic_trans', $academic_trans_value)->get();
-
             // dd($baseQuery->get());
             $first_inst_fee_total = $baseQuery->where('fee_of', $academic_trans_value == 2 ? 1 : 2)->where('paid_mercy', 1)->sum('amount');
             $second_inst_fee_total = $baseQuery->where('fee_of', $academic_trans_value == 2 ? 2 : 3)->where('paid_mercy', 1)->sum('amount');
             $complete_fee_total = $baseQuery->where('fee_of', $academic_trans_value == 2 ? 3 : 4)->where('paid_mercy', 1)->sum('amount');
             $mercy_fee_total = $baseQuery->where('fee_of', $academic_trans_value == 2 ? 3 : 4)->where('paid_mercy', 2)->sum('amount');
             $admission_fee_total = $baseQuery->where('fee_of', 1)->where('paid_mercy', 1)->where('academic_trans', 1)->sum('amount');
-
             $totalPaid = $first_inst_fee_total + $second_inst_fee_total + $complete_fee_total + $mercy_fee_total + $admission_fee_total;
-
             $validator = Validator::make($request->all(), [
                 'class' => 'required|exists:class_masters,id,active,1',
                 'section' => 'required|exists:section_masters,id,active,1',
@@ -885,16 +872,13 @@ class EditSectionsController extends Controller
                     },
                 ]
             ]);
-
             if ($validator->fails()) {
                 return response()->json([
                     'status' => 'error',
                     'message' => $validator->errors()
                 ], 400);
             }
-
             $recp_no = FeeDetail::where('academic_trans', $academic_trans_value)->max('recp_no') + 1;
-
             FeeDetail::create([
                 'srno' => $request->std_id,
                 'session_id' => $session,
@@ -909,7 +893,6 @@ class EditSectionsController extends Controller
                 'add_user_id' => Session::get('login_user'),
                 'edit_user_id' => Session::get('login_user'),
             ]);
-
             return response()->json([
                 'status' => 'success',
                 'message' => "Mercy Fee Submitted Successfully.",
@@ -922,17 +905,14 @@ class EditSectionsController extends Controller
         }
     }
 
-
     /**
      * Edit Student Fee Functions
      */
-
     public function editStdFee()
     {
         $classes = ClassMasterController::getClasses();
         return view('admin.editSections.edit_fee_details_std', compact('classes'));
     }
-
     public function getStdFeeInfo1(Request $request)
     {
         try {
@@ -940,7 +920,6 @@ class EditSectionsController extends Controller
                 'computer_slip' => 'required_if:computer_slip,true|exists:fee_details,recp_no',
                 'school_slip' => 'required_if:school_slip,true|exists:fee_details,ref_slip_no',
             ]);
-
             if ($validator->fails()) {
                 return response()->json([
                     'status' => 'error',
@@ -951,7 +930,6 @@ class EditSectionsController extends Controller
             $session = $request->session;
             $feeDetails = FeeDetail::query();
             // dd($request->all());
-
             if ($request->computer_slip) {
                 $feeDetails->where('academic_trans', $academic_trans_value)
                     ->where('active', 1)->where('paid_mercy', 1)
@@ -963,17 +941,14 @@ class EditSectionsController extends Controller
                     ->where('ref_slip_no', $request->school_slip)
                     ->where('session_id', $session);
             }
-
             $data = $feeDetails->get();
             // dd($data);
-
             if ($data->isEmpty()) {
                 return response()->json([
                     'status' => 'error',
                     'message' => "No fee details found."
                 ], 404);
             }
-
             // Assuming you want the first student's class and section.
             $student = StudentMaster::where('srno', $data[0]->srno)
                 // ->where('ssid', 1)
@@ -981,17 +956,14 @@ class EditSectionsController extends Controller
                 ->where('active', 1)
                 ->where('session_id', $session)
                 ->first();
-
             if (!$student) {
                 return response()->json([
                     'status' => 'error',
                     'message' => "Student not found."
                 ], 404);
             }
-
             $class = ClassMaster::where('id', $student->class)->where('active', 1)->value('id'); // Adjust 'name' if needed
             $section = SectionMaster::where('id', $student->section)->where('active', 1)->value('id'); // Adjust 'name' if needed
-
             return response()->json([
                 'status' => 'success',
                 'message' => "Get student fee detail",
@@ -1006,11 +978,9 @@ class EditSectionsController extends Controller
             ], 500);
         }
     }
-
     /**
      * edit student fee store
      */
-
     public function editStdFeeStore(Request $request)
     {
         try {
@@ -1024,14 +994,11 @@ class EditSectionsController extends Controller
                     'message' => 'Student not found for the given SRNO.'
                 ], 404);
             }
-
             $feeMaster = FeeMaster::where('class_id', $request->class)->where('session_id', $session)->where('active', 1)->first(
                 ['admission_fee', 'inst_1', 'inst_2', 'inst_total', 'ins_discount']
             );
-
             if (isset($request->transport) && $request->transport == 2) {
                 # code...
-
                 if ($student->transport == 0) {
                     # code...
                     return response()->json([
@@ -1040,7 +1007,6 @@ class EditSectionsController extends Controller
                     ], 404);
                 }
             }
-
             $tcsArray =  [
                 'inst_1' => $student->trans_1st_inst,
                 'inst_2' => $student->trans_2nd_inst,
@@ -1049,9 +1015,7 @@ class EditSectionsController extends Controller
             ];
             $tcs = (object) $tcsArray;
             $fee_master_fees = isset($request->transport) && $request->transport == 2 ? $tcs : $feeMaster;
-
             // dd($fee_master_fees);
-
             $admission_fee_paid = FeeDetail::where('srno', $request->std_id)->where('academic_trans', $academic_trans_value)->where('fee_of', 1)->exists();
             $baseQuery = FeeDetail::where('srno', $request->std_id)->where('session_id', $session)->where('academic_trans', $academic_trans_value)->get();
             // dd($baseQuery);
@@ -1060,7 +1024,6 @@ class EditSectionsController extends Controller
             $second_inst_fee_total = $baseQuery->where('fee_of', isset($request->transport) && $request->transport == 2 ? 2 : 3)->sum('amount');
             $complete_fee_total = $baseQuery->where('fee_of', isset($request->transport) && $request->transport == 2 ? 3 : 4)->where('paid_mercy', 1)->sum('amount');
             $mercy_fee_total = $baseQuery->where('fee_of', isset($request->transport) && $request->transport == 2 ? 3 : 4)->where('paid_mercy', 2)->sum('amount');
-
 
             $first_inst_fee_exists = FeeDetail::where('srno', $request->std_id)->where('session_id', $session)->where('academic_trans', $academic_trans_value)->where('fee_of', isset($request->transport) && $request->transport == 2 ? 1 : 2)->where('paid_mercy', 1)->exists();
             $second_inst_fee_exists = FeeDetail::where('srno', $request->std_id)->where('session_id', $session)->where('academic_trans', $academic_trans_value)->where('fee_of', isset($request->transport) && $request->transport == 2 ? 2 : 3)->where('paid_mercy', 1)->exists();
@@ -1101,7 +1064,7 @@ class EditSectionsController extends Controller
                     function ($attribute, $value, $fail) use ($student, $admission_fee_paid) {
                         if (is_null($student->admission_date) && $admission_fee_paid == true) {
                             $fail('The admission fee cannot be accepted because the admission fee is already paid.');
-                        }elseif ($admission_fee_paid == true){
+                        } elseif ($admission_fee_paid == true) {
                             $fail('The admission fee cannot be accepted because the admission fee is already paid.');
                         }
                     },
@@ -1153,7 +1116,6 @@ class EditSectionsController extends Controller
                             $fail("Fee previously enter as complete fee, now can't by insatllment. Please enter by complete fee");
                         }
                     },
-
                 ],
                 'second_inst_fee' => [
                     'required_if:second_inst__fee,true',
@@ -1164,7 +1126,6 @@ class EditSectionsController extends Controller
                             $fail('The second installment fee must be equal to ' . $fee_master_fees->inst_2 . '.');
                         }
                     },
-
                     function ($attribute, $value, $fail) use ($request, $fee_master_fees, $second_inst_fee_total, $mercy_fee_exists, $mercy_fee_total, $second_inst_fee_exists, $complete_fee_total) {
                         $totalDue = $fee_master_fees->inst_2 - $second_inst_fee_total;
                         if ($second_inst_fee_exists == true && $mercy_fee_exists == true) {
@@ -1189,7 +1150,6 @@ class EditSectionsController extends Controller
                             }
                         }
                     },
-
                     function ($attribute, $value, $fail) use ($baseQuery, $academic_trans_value) {
                         $completeFee = $baseQuery->where('fee_of', $academic_trans_value == 2 ? 3 : 4)->where('paid_mercy', 1)->first();
                         if ($completeFee) {
@@ -1228,14 +1188,12 @@ class EditSectionsController extends Controller
                             ->where('session_id', $session)
                             ->where('academic_trans', $academic_trans_value)
                             ->first();
-
                         // $installFee = $baseQuery->where('fee_of', 2)->whereOr('fee_of', 3)->where('paid_mercy', 1)->first();
                         if ($installFee) {
                             $fail("If any installment is paid, then you can't enter complete fee. Please enter by installment.");
                         }
                     },
                 ],
-
             ];
             $validator = Validator::make($request->all(), $rules);
             if ($validator->fails()) {
@@ -1274,7 +1232,6 @@ class EditSectionsController extends Controller
                     'amount' => $request->first_inst_fee,
                     'paid_mercy' => 1,
                 ]);
-
                 FeeDetail::create($firstInstData);
             }
             if (!empty($request->second_inst_fee)) {
@@ -1285,7 +1242,6 @@ class EditSectionsController extends Controller
                     'paid_mercy' => 1,
                 ]);
 
-
                 FeeDetail::create($secondInstData);
             }
             if (!empty($request->complete_fee)) {
@@ -1295,10 +1251,8 @@ class EditSectionsController extends Controller
                     'amount' => $request->complete_fee,
                     'paid_mercy' => 1,
                 ]);
-
                 FeeDetail::create($completeData);
             }
-
 
             return response()->json([
                 'status' => 'success',

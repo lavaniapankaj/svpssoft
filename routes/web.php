@@ -26,6 +26,7 @@ use App\Http\Controllers\Fee\FeeController;
 use App\Http\Controllers\Fee\FeeCurrentSessionController;
 use App\Http\Controllers\Fee\FeeEntryController;
 use App\Http\Controllers\Fee\FeeSectionFeePrintController;
+use App\Http\Controllers\Fee\FeeSearchStudentController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Inventory\InventoryController;
 use App\Http\Controllers\Marks\MarksController;
@@ -205,6 +206,12 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth', 'i
         Route::get('export-report/sr-register-full-report', 'srRegisterFullDetailsExcel')->name('reports.srRegisterFullReport.excel');
         Route::get('export-report/fee-report-admin', 'feeReportAdminExcel')->name('reports.adminFullFee.excel');
         Route::get('export-report/fee-report-mercy-admin', 'feeReportMercyAdminExcel')->name('reports.adminMercyFee.excel');
+
+
+        /** All Class sections */
+        Route::get('/all-sections','getAllClassSections')->name('allSections');
+        Route::get('/day-wise-collection','dayWiseCollectionIndex')->name('dayWiseCollectionIndex');
+        Route::get('/day-wise-collection/excel','exportdDayWiseCollectionReprt')->name('exportdDayWiseCollectionReprt');
     });
 
     // Route::get('full-detail-student/{prevSrno?}/{srno?}', function(?string $prevSrno=null, ?string $srno=null){
@@ -370,6 +377,7 @@ Route::group(['prefix' => 'marks', 'as' => 'marks.', 'middleware' => ['auth', 'i
     Route::controller(StdMarksController::class)->group(function () {
         Route::get('marks-entry', 'marksEntry')->name('marks-entry.index');
         Route::post('marks-entry', 'marksEntryStore')->name('marks-entry.store');
+        Route::post('marks-entry/check-existing', 'checkExistingMarks')->name('check-existing');
 
         Route::get('marks-report', 'marksReport')->name('marks-report');
         Route::get('std-marks-report', 'getMarksReport')->name('marks-report.get');
@@ -437,10 +445,14 @@ Route::group(['prefix' => 'fee', 'as' => 'fee.', 'middleware' => ['auth', 'is_va
         Route::get('transport-fee-entry', 'transportFee')->name('fee-entry.transport');
         Route::get('back-session-fee-entry/{session_id}/{srno}/{class}/{section}', 'academicBackSessionFeeEntry')->where('srno', '.*')->name('fee-entry.academicBackFee');
         Route::get('back-session-transport-fee-entry/{session_id}/{srno}/{class}/{section}', 'transBackSessionFeeEntry')->where('srno', '.*')->name('fee-entry.academicBackTransFee');
-        Route::get('fee-entry-due', 'academicFeeDueAmount')->where('srno', '.*')->name('fee-entry.academicFeeDueAmount');
+        Route::post('fee-entry-due', 'academicFeeDueAmount')->where('srno', '.*')->name('fee-entry.academicFeeDueAmount');
         Route::get('fee-details', 'feeDetail')->name('fee-detail');
         Route::get('relative-wise-fee-details', 'relativewiseFeeDetails')->name('fee-detail-relaive-wise');
         Route::get('relative-wise-fee-details/excel', 'exportRelativeWiseFeeReport')->name('fee-detail-relaive-wise-excel');
+
+        Route::post('single-st/feeDue', 'singleStAcademiceFee')->name('single.st.feeDue');
+        Route::post('single-st/transport/feeDue', 'singleStTransportFee')->name('single.st.transport.feeDue');
+
 
         Route::get('individual-fee-details/{st}/{session}/{class}/{section}', 'individualFeeDetail')->where('st', '.*')->name('individual-fee-detail');
 
@@ -457,6 +469,10 @@ Route::group(['prefix' => 'fee', 'as' => 'fee.', 'middleware' => ['auth', 'is_va
 
         Route::get('due-fee-report-sms', 'dueFeeReportSMS')->name('due-fee-report-sms');
         Route::post('due-fee-report-send-sms', 'sendSMSSt')->name('due-fee-report-send-sms');
+
+
+
+
     });
 
     Route::controller(FeeSectionFeePrintController::class)->group(function () {
@@ -464,6 +480,11 @@ Route::group(['prefix' => 'fee', 'as' => 'fee.', 'middleware' => ['auth', 'is_va
         Route::get('print-fee-slip', 'fillDetails')->name('fillDetails');
         // Route::get('tc-details', 'fillDetails')->name('fillDetails');
     });
+    Route::controller(FeeSearchStudentController::class)->group(function () {
+        Route::get('student', 'index')->name('student.index');
+    });
+
+
 
 });
 // Route::middleware(['auth', 'is_inventory_admin'])->group(function () {

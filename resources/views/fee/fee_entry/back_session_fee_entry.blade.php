@@ -1,6 +1,6 @@
 @extends('fee.index')
 @section('sub-content')
-    <div class="container">
+    <div class="container-fluid">
         @if (Session::has('success'))
             @section('scripts')
                 <script>
@@ -18,13 +18,12 @@
                 </script>
             @endsection
         @endif
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-header">
-                        {{ 'Back Session Academic Fee Entry' }}
-                        <a href="{{ route('fee.fee-entry.academic') }}" class="btn btn-warning btn-sm"
-                            style="float: right;">Back</a>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card border-0 bg-white">
+                    <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between">
+                        <h5 class="mb-0 mt-0">{{ 'Back Session Academic Fee Entry' }}</h5>
+                        <a href="{{ route('fee.fee-entry.academic') }}" class="btn bg-light btn-sm" ><span class="mdi mdi-chevron-left me-2"></span>Back</a>
 
                     </div>
                     <div class="card-body">
@@ -60,25 +59,36 @@
                                         value="{{ old('total_amount') }}" required>
                                 </div>
                             </div>
+
                             <div class="row">
                                 <div class="form-group col-md-6">
-                                    <label for="fee_date" class="mt-2">Enter Date <span
-                                            class="text-danger">*</span></label>
-                                    <input type="date" name="fee_date" id="fee_date" class="form-control "
-                                        value="{{ old('fee_date)') }}" required>
-                                    <span class="invalid-feedback form-invalid fw-bold" id="fee-date-error"
-                                        role="alert"></span>
+                                    <label for="fee_mode" class="mt-2">Payment Mode <span class="text-danger">*</span></label>
+                                    <select name="fee_mode" id="fee_mode" class="form-control" required>
+                                        <option value="">Select Payment Mode</option>
+                                        <option value="1" {{ old('fee_mode') == 1 ? 'selected' : '' }}>Cash</option>
+                                        <option value="2" {{ old('fee_mode') == 2 ? 'selected' : '' }}>UPI</option>
+                                        <option value="3" {{ old('fee_mode') == 3 ? 'selected' : '' }}>Bank Transfer</option>
+                                        <option value="4" {{ old('fee_mode') == 4 ? 'selected' : '' }}>Other</option>
+                                    </select>
+                                    <span class="invalid-feedback form-invalid fw-bold" id="fee-mode-error" role="alert"></span>
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <label for="payment_note" class="mt-2">Payment Note <span class="text-danger">*</span></label>
+                                    <textarea name="payment_note" id="payment_note" class="form-control" rows="3" required>{{ old('payment_note') }}</textarea>
+                                    <span class="invalid-feedback form-invalid fw-bold" id="payment-note-error" role="alert"></span>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="form-group col-md-6">
+                                    <label for="fee_date" class="mt-2">Enter Date <span class="text-danger">*</span></label>
+                                    <input type="date" name="fee_date" id="fee_date" class="form-control" value="{{ old('fee_date') }}" required>
+                                    <span class="invalid-feedback form-invalid fw-bold" id="fee-date-error" role="alert"></span>
                                 </div>
 
-
-
                                 <div class="form-group col-md-6">
-                                    <label for="ref_slip" class="mt-2">Enter Ref. Slip No. <span
-                                            class="text-danger">*</span></label>
-                                    <input type="text" name="ref_slip" id="ref_slip" class="form-control "
-                                        value="{{ old('ref_slip') }}" required>
-                                    <span class="invalid-feedback form-invalid fw-bold" id="ref-slip-error"
-                                        role="alert"></span>
+                                    <label for="ref_slip" class="mt-2">Enter Ref. Slip No. <span class="text-danger">*</span></label>
+                                    <input type="text" name="ref_slip" id="ref_slip" class="form-control" value="{{ old('ref_slip') }}" required>
+                                    <span class="invalid-feedback form-invalid fw-bold" id="ref-slip-error" role="alert"></span>
                                 </div>
                             </div>
 
@@ -127,10 +137,8 @@
                             </div>
 
                             <div class="mt-3">
-                                <button type="button" id="submit-fee" class="btn btn-primary">
-                                    Submit</button>
-                                <span class="invalid-feedback form-invalid fw-bold" id="total-amount-error"
-                                    role="alert"></span>
+                                <button type="button" id="submit-fee" class="btn btn-primary"> Submit</button>
+                                <span class="invalid-feedback form-invalid fw-bold" id="total-amount-error" role="alert"></span>
                             </div>
 
                         </form>
@@ -150,8 +158,11 @@
             let session = $('#session').val();
             $.ajax({
                 url: '{{ route('fee.fee-entry.academicFeeDueAmount') }}',
-                type: 'GET',
+                type: 'POST',
                 dataType: 'JSON',
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
                 data: {
                     srno: stdSelect,
                     current_session: session,

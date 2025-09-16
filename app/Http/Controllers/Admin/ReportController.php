@@ -34,33 +34,33 @@ class ReportController extends Controller
 
     public function newAdmissionReportByDateView()
     {
-        $sessions = SessionMasterController::getSessions(['id','session']);
+        $sessions = SessionMasterController::getSessions(['id', 'session']);
         return view('admin.reports.new_admission.new_admission_report_by_date', compact('sessions'));
     }
     public function newAdmissionReportByCategoryView()
     {
-        $sessions = SessionMasterController::getSessions(['id','session']);
+        $sessions = SessionMasterController::getSessions(['id', 'session']);
         return view('admin.reports.new_admission.new_admission_report_by_category', compact('sessions'));
     }
     public function newAdmissionReportByReligionView()
     {
-        $sessions = SessionMasterController::getSessions(['id','session']);
+        $sessions = SessionMasterController::getSessions(['id', 'session']);
         return view('admin.reports.new_admission.new_admission_report_by_religion', compact('sessions'));
     }
     public function newAdmissionReportByAgeProofView()
     {
-        $sessions = SessionMasterController::getSessions(['id','session']);
+        $sessions = SessionMasterController::getSessions(['id', 'session']);
         return view('admin.reports.new_admission.new_admission_report_by_age_proof', compact('sessions'));
     }
     public function newAdmissionReportBetwwenDatesView()
     {
-        $sessions = SessionMasterController::getSessions(['id','session']);
+        $sessions = SessionMasterController::getSessions(['id', 'session']);
         return view('admin.reports.new_admission.new_admission_report_between_dates', compact('sessions'));
     }
 
     public function stdregisterView()
     {
-        $sessions = SessionMasterController::getSessions(['id','session']);
+        $sessions = SessionMasterController::getSessions(['id', 'session']);
         return view('admin.reports.sr_register_report', compact('sessions'));
     }
 
@@ -109,7 +109,7 @@ class ReportController extends Controller
             // Retrieve all active classes
             $classID = explode(',', $request->class);
             // $allClasses = ClassMaster::whereIn('id', $classID)->orderBy('sort', 'ASC')->where('active', 1)->get();
-            $allClasses = ClassMasterController::getClasses(['id','class'], null, false, ['id' => $classID], 'whereIn', true);
+            $allClasses = ClassMasterController::getClasses(['id', 'class'], null, false, ['id' => $classID], 'whereIn', true);
 
             $report = $allClasses->map(function ($class) use ($studentsGrouped, $admissionDate) {
                 $classId = $class->id;
@@ -223,20 +223,18 @@ class ReportController extends Controller
                 }
             }
 
-                rewind($output);
+            rewind($output);
 
 
-                $csvContent = stream_get_contents($output);
+            $csvContent = stream_get_contents($output);
 
 
-                fclose($output);
+            fclose($output);
 
 
-                return response($csvContent, 200)
-                    ->header('Content-Type', 'text/csv')
-                    ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
-
-
+            return response($csvContent, 200)
+                ->header('Content-Type', 'text/csv')
+                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -275,7 +273,7 @@ class ReportController extends Controller
             // Retrieve all active classes
             $classID = explode(',', $request->class);
             // $allClasses = ClassMaster::whereIn('id', $classID)->where('active', 1)->orderBy('sort', 'ASC')->get();
-            $allClasses = ClassMasterController::getClasses(['id','class'], null, false, ['id' => $classID], 'whereIn', true);
+            $allClasses = ClassMasterController::getClasses(['id', 'class'], null, false, ['id' => $classID], 'whereIn', true);
 
             $report = $allClasses->map(function ($class) use ($studentsGrouped, $allCategories) {
                 $classId = $class->id;
@@ -415,10 +413,8 @@ class ReportController extends Controller
 
             // Return the CSV content as a response
             return response($csvContent, 200)
-                    ->header('Content-Type', 'text/csv')
-                    ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
-
-
+                ->header('Content-Type', 'text/csv')
+                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -456,7 +452,7 @@ class ReportController extends Controller
             // Retrieve all active classes
             $classID = explode(',', $request->class);
             // $allClasses = ClassMaster::whereIn('id', $classID)->where('active', 1)->orderBy('sort', 'ASC')->get();
-            $allClasses = ClassMasterController::getClasses(['id','class'], null, false, ['id' => $classID], 'whereIn', true);
+            $allClasses = ClassMasterController::getClasses(['id', 'class'], null, false, ['id' => $classID], 'whereIn', true);
 
             $report = $allClasses->map(function ($class) use ($studentsGrouped, $allReligion) {
                 $classId = $class->id;
@@ -590,10 +586,8 @@ class ReportController extends Controller
 
             // Return the CSV content as a response
             return response($csvContent, 200)
-                    ->header('Content-Type', 'text/csv')
-                    ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
-
-
+                ->header('Content-Type', 'text/csv')
+                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -631,7 +625,7 @@ class ReportController extends Controller
             // Retrieve all active classes
             $classID = explode(',', $request->class);
             // $allClasses = ClassMaster::whereIn('id', $classID)->where('active', 1)->orderBy('sort', 'ASC')->get();
-            $allClasses = ClassMasterController::getClasses(['id','class'], null, false, ['id' => $classID], 'whereIn', true);
+            $allClasses = ClassMasterController::getClasses(['id', 'class'], null, false, ['id' => $classID], 'whereIn', true);
 
             $report = $allClasses->map(function ($class) use ($studentsGrouped, $allAgeProof) {
                 $classId = $class->id;
@@ -769,10 +763,8 @@ class ReportController extends Controller
 
             // Return the CSV content as a response
             return response($csvContent, 200)
-                    ->header('Content-Type', 'text/csv')
-                    ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
-
-
+                ->header('Content-Type', 'text/csv')
+                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -808,7 +800,7 @@ class ReportController extends Controller
             // Retrieve all active classes
             $classID = explode(',', $request->class);
             // $allClasses = ClassMaster::whereIn('id', $classID)->where('active', 1)->orderBy('sort', 'ASC')->get();
-            $allClasses = ClassMasterController::getClasses(['id','class'], null, false, ['id' => $classID], 'whereIn', true);
+            $allClasses = ClassMasterController::getClasses(['id', 'class'], null, false, ['id' => $classID], 'whereIn', true);
 
             $report = $allClasses->map(function ($class) use ($studentsGrouped) {
                 $classId = $class->id;
@@ -899,8 +891,8 @@ class ReportController extends Controller
 
             // Return the CSV content as a response
             return response($csvContent, 200)
-                    ->header('Content-Type', 'text/csv')
-                    ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
+                ->header('Content-Type', 'text/csv')
+                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -929,13 +921,13 @@ class ReportController extends Controller
             $classID = explode(',', $request->class);
 
             // Retrieve all active classes
-            $allClasses = ClassMasterController::getClasses(['id','class'], null, false, ['id' => $classID], 'whereIn', true);
+            $allClasses = ClassMasterController::getClasses(['id', 'class'], null, false, ['id' => $classID], 'whereIn', true);
 
             $report = $allClasses->map(function ($class) use ($request) {
                 // Get students for THIS CLASS ONLY
                 $students = StudentMaster::where('session_id', $request->session_id)
                     ->where('class', $class->id) // Filter by specific class
-                    ->whereIn('ssid', [1,2,4,5])
+                    ->whereIn('ssid', [1, 2, 4, 5])
                     // ->where('ssid', 1)
                     ->where('active', 1)
                     ->get();
@@ -1098,10 +1090,8 @@ class ReportController extends Controller
 
             // Return the CSV content as a response
             return response($csvContent, 200)
-                    ->header('Content-Type', 'text/csv')
-                    ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
-
-
+                ->header('Content-Type', 'text/csv')
+                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -1134,8 +1124,8 @@ class ReportController extends Controller
                 'section_masters.section as section_name',
             ];
             $studentsQuery = StudentMasterController::getStdWithNames(false, $fields)
-                            ->where('stu_main_srno.session_id', $request->session_id)
-                            ->whereIn('stu_main_srno.class', $classID)->get();
+                ->where('stu_main_srno.session_id', $request->session_id)
+                ->whereIn('stu_main_srno.class', $classID)->get();
             // dd($studentsQuery);
             // $studentsQuery = StudentMaster::query()
             //     ->where('session_id', $request->session_id)
@@ -1238,9 +1228,8 @@ class ReportController extends Controller
 
             // Return the CSV content as a response
             return response($csvContent, 200)
-                    ->header('Content-Type', 'text/csv')
-                    ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
-
+                ->header('Content-Type', 'text/csv')
+                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -1251,7 +1240,7 @@ class ReportController extends Controller
     private function getStudentDetails()
     {
         $baseQuery = DB::table('stu_main_srno')
-        // $baseQuery = DB::table('stu_main_srno')
+            // $baseQuery = DB::table('stu_main_srno')
             ->select(
                 'stu_main_srno.id',
                 'stu_main_srno.srno',
@@ -1315,7 +1304,7 @@ class ReportController extends Controller
                 ], 400);
             }
             // $baseQuery = $this->getStudentDetails();
-            $baseQuery = StudentMasterController::getStdWithNames(false, []);
+            // $baseQuery = StudentMasterController::getStdWithNames(false, []);
             $classId = explode(',', $request->class);
             $sectionId = explode(',', $request->section);
             $transport = explode(',', $request->transport);
@@ -1324,8 +1313,8 @@ class ReportController extends Controller
                 # code...
                 $data = StudentMasterController::getStdWithNames(false, [])->whereIn('stu_main_srno.class', $classId)
                     ->whereIn('stu_main_srno.section', $sectionId)
-                    ->whereIn('stu_main_srno.transport', $transport)->where('stu_main_srno.session_id', $request->session_id);
-                    // ->whereIn('stu_main_srno.transport', $transport)->where('session_id', $request->session_id)->where('stu_main_srno.ssid', 1);
+                    ->whereIn('stu_main_srno.transport', $transport)->whereIn('stu_main_srno.ssid', [1, 2])->where('stu_main_srno.session_id', $request->session_id);
+                // ->whereIn('stu_main_srno.transport', $transport)->where('session_id', $request->session_id)->where('stu_main_srno.ssid', 1);
 
                 return response()->json([
                     'status' => 'success',
@@ -1399,10 +1388,8 @@ class ReportController extends Controller
 
             // Return the CSV content as a response
             return response($csvContent, 200)
-                    ->header('Content-Type', 'text/csv')
-                    ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
-
-
+                ->header('Content-Type', 'text/csv')
+                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -1452,7 +1439,7 @@ class ReportController extends Controller
                 $data = $baseQuery->where('stu_main_srno.session_id', $request->session_id)->whereIn('stu_main_srno.ssid', $stdType);
                 return response()->json([
                     'status' => 'success',
-                    'data' => $request->page ? $data->paginate(10) : $data->get(),
+                    'data' => $request->page ? $data->paginate(25) : $data->get(),
                 ], 200);
             }
         } catch (\Exception $e) {
@@ -2424,8 +2411,8 @@ class ReportController extends Controller
                 'parents_detail.f_name',
             ];
             $studentQuery =  StudentMasterController::getStdWithNames(false, $fields)->where('stu_main_srno.session_id', $request->session)
-                             ->where('stu_main_srno.srno', 'like', '%RTE%')
-                             ->whereIn('stu_main_srno.class', $class)->orderBy('class_masters.sort', 'asc');
+                ->where('stu_main_srno.srno', 'like', '%RTE%')->orWhere('stu_main_srno.is_rtest', 1)
+                ->whereIn('stu_main_srno.class', $class)->orderBy('class_masters.sort', 'asc');
             // $studentQuery = StudentMaster::whereIn('class', $class)
             //     ->where('session_id', $request->session)
             //     ->where('srno', 'like', '%RTE%')
@@ -2437,16 +2424,6 @@ class ReportController extends Controller
 
             $report = [];
             foreach ($students as $student) {
-                // $parents = DB::table('parents_detail')
-                //     ->where('srno', $student->srno)
-                //     ->where('active', 1)
-                //     ->value('f_name');
-
-                // $studentDetails = DB::table('stu_detail')
-                //     ->where('srno', $student->srno)
-                //     ->where('active', 1)
-                //     ->value('name');
-
                 $report[] = [
                     'srno' => $student->srno,
                     'name' => $student->name,
@@ -2531,9 +2508,8 @@ class ReportController extends Controller
 
             // Return the CSV content as a response
             return response($csvContent, 200)
-                    ->header('Content-Type', 'text/csv')
-                    ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
-
+                ->header('Content-Type', 'text/csv')
+                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -2600,11 +2576,11 @@ class ReportController extends Controller
             $section = explode(',', $request->section);
 
             // Build the query
-            $baseQuery = StudentMasterController::getStdWithNames(false,[]);
+            $baseQuery = StudentMasterController::getStdWithNames(false, []);
             // $baseQuery = $this->getStudentDetails();
             $studentQuery = $baseQuery->whereIn('stu_main_srno.class', $class)
                 ->whereIn('stu_main_srno.section', $section)
-                ->where('stu_main_srno.session_id', $request->session)->orderBy('class_masters.sort','asc');
+                ->where('stu_main_srno.session_id', $request->session)->orderBy('class_masters.sort', 'asc');
 
             if ($request->srnoType == 1) {
                 # code...
@@ -2623,7 +2599,7 @@ class ReportController extends Controller
             }
 
             // Paginate or get all students based on the request
-            $students = isset($request->page) ? $studentQuery->paginate(10) : $studentQuery->get();
+            $students = isset($request->page) ? $studentQuery->paginate(25) : $studentQuery->get();
 
 
             // Return the full report
@@ -2707,10 +2683,8 @@ class ReportController extends Controller
 
             // Return the CSV content as a response
             return response($csvContent, 200)
-                    ->header('Content-Type', 'text/csv')
-                    ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
-
-
+                ->header('Content-Type', 'text/csv')
+                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -2725,7 +2699,7 @@ class ReportController extends Controller
 
     public function feeReportAdminView()
     {
-        $sessions = SessionMasterController::getSessions(['id','session']);
+        $sessions = SessionMasterController::getSessions(['id', 'session']);
         return view('admin.reports.fee_report_admin', compact('sessions'));
     }
 
@@ -2906,11 +2880,12 @@ class ReportController extends Controller
                     $seniorTotal += floatval($studentData['feeDetails']['amount'] ?? 0);
                 }
             }
+            $counter = 1;
 
             // Write Junior Section
             if (count($juniorStudents) > 0) {
+                fputcsv($output, []);
                 fputcsv($output, ['Junior Section']);
-                $counter = 1;
 
                 foreach ($juniorStudents as $studentData) {
                     fputcsv($output, [
@@ -2969,10 +2944,8 @@ class ReportController extends Controller
 
             // Return the CSV content as a response
             return response($csvContent, 200)
-                    ->header('Content-Type', 'text/csv')
-                    ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
-
-
+                ->header('Content-Type', 'text/csv')
+                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -2986,7 +2959,7 @@ class ReportController extends Controller
 
     public function feeReportMercyAdminView()
     {
-        $sessions = SessionMasterController::getSessions(['id','session']);
+        $sessions = SessionMasterController::getSessions(['id', 'session']);
         return view('admin.reports.mercy_fee_report_admin', compact('sessions'));
     }
 
@@ -3233,9 +3206,8 @@ class ReportController extends Controller
 
             // Return the CSV content as a response
             return response($csvContent, 200)
-                    ->header('Content-Type', 'text/csv')
-                    ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
-
+                ->header('Content-Type', 'text/csv')
+                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -3280,40 +3252,40 @@ class ReportController extends Controller
 
             if (filled($classId) && filled($sectionId) && filled($field)) {
                 $fields = [
-                        'stu_main_srno.id',
-                        'stu_main_srno.srno',
-                        'stu_main_srno.school',
-                        'stu_main_srno.class',
-                        'stu_main_srno.section',
-                        'stu_main_srno.prev_srno',
-                        'stu_main_srno.admission_date',
-                        'stu_main_srno.rollno',
-                        'stu_main_srno.age_proof',
-                        'stu_main_srno.session_id',
-                        'stu_main_srno.ssid',
-                        'stu_main_srno.active',
-                        'class_masters.class as class_name',
-                        'section_masters.section as section_name',
-                        'stu_detail.name as student_name',
-                        'stu_detail.dob',
-                        'stu_detail.address',
-                        'parents_detail.f_name',
-                        'parents_detail.f_mobile',
-                        'parents_detail.m_mobile',
+                    'stu_main_srno.id',
+                    'stu_main_srno.srno',
+                    'stu_main_srno.school',
+                    'stu_main_srno.class',
+                    'stu_main_srno.section',
+                    'stu_main_srno.prev_srno',
+                    'stu_main_srno.admission_date',
+                    'stu_main_srno.rollno',
+                    'stu_main_srno.age_proof',
+                    'stu_main_srno.session_id',
+                    'stu_main_srno.ssid',
+                    'stu_main_srno.active',
+                    'class_masters.class as class_name',
+                    'section_masters.section as section_name',
+                    'stu_detail.name as student_name',
+                    'stu_detail.dob',
+                    'stu_detail.address',
+                    'parents_detail.f_name',
+                    'parents_detail.f_mobile',
+                    'parents_detail.m_mobile',
                 ];
                 $baseQuery = StudentMasterController::getStdWithNames(false, $fields)
-                            ->whereIn('stu_main_srno.class', $classId)
-                            ->whereIn('stu_main_srno.section', $sectionId)
-                            ->where('stu_main_srno.session_id', $session)
-                            ->orderBy('stu_main_srno.class', 'asc')->orderBy('stu_main_srno.section', 'asc');
+                    ->whereIn('stu_main_srno.class', $classId)
+                    ->whereIn('stu_main_srno.section', $sectionId)
+                    ->where('stu_main_srno.session_id', $session)
+                    ->orderBy('stu_main_srno.class', 'asc')->orderBy('stu_main_srno.section', 'asc');
 
                 if ($field == 1) {
                     # code...
                     $students = $baseQuery
-                            ->where(function ($query) {
+                        ->where(function ($query) {
                             $query->whereNull('stu_detail.dob')
                                 ->orWhere('stu_detail.dob', '')->orWhere('stu_detail.dob', '1981-01-01');
-                            });
+                        });
                     $heading = 'Date of Birth not available.';
                 } elseif ($field == 2) {
                     # code...
@@ -3321,14 +3293,14 @@ class ReportController extends Controller
                         $query->whereNull('stu_main_srno.admission_date')
                             ->orWhere('stu_main_srno.admission_date', '');
                     })->whereNotIn('stu_main_srno.srno', function ($query) {
-                            $query->select('stu_main_srno.srno')
-                                ->from('stu_main_srno')
-                                ->whereNotNull('admission_date');
-                        });
+                        $query->select('stu_main_srno.srno')
+                            ->from('stu_main_srno')
+                            ->whereNotNull('admission_date');
+                    });
                     $heading = 'Admission Date not available.';
                 } elseif ($field == 3) {
                     # code...
-                   $students = $baseQuery
+                    $students = $baseQuery
                         ->where(function ($query) {
                             $query->where('parents_detail.f_mobile', '')
                                 ->orWhereNull('parents_detail.f_mobile');
@@ -3336,7 +3308,7 @@ class ReportController extends Controller
                     $heading = 'Mobile No. not available.';
                 } elseif ($field == 4) {
                     # code...
-                   $students = $baseQuery
+                    $students = $baseQuery
                         ->where(function ($query) {
                             $query->whereNull('stu_main_srno.age_proof')
                                 ->orWhere('stu_main_srno.age_proof', '0');
@@ -3418,10 +3390,8 @@ class ReportController extends Controller
 
             // Return the CSV content as a response
             return response($csvContent, 200)
-                    ->header('Content-Type', 'text/csv')
-                    ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
-
-
+                ->header('Content-Type', 'text/csv')
+                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -3474,5 +3444,215 @@ class ReportController extends Controller
             'message' => 'Fee Reprint Successfully',
             'print_url' =>  url("admin/print-fee-slip-no?recpNo={$slipNo}&feeId={$academic_trans_value}&session={$session}")
         ], 200);
+    }
+
+
+
+
+    /** ClassWise Sections */
+    public function getAllClassSections(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'class_id' => 'required',
+            ]);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $validator->errors()
+                ], 400);
+            }
+
+            $classId = $request->class_id;
+            if (!empty($classId)) {
+                // Get sections for multiple class IDs
+                $sections = [];
+                if ($classId == 'all') {
+                    $sections = SectionMaster::where('active', 1)->pluck('section', 'id')->toArray();
+                } else {
+                    if (is_numeric($classId)) {
+                        $sections = SectionMaster::where('active', 1)->where('class_id', (int) $classId)->pluck('section', 'id')->toArray();
+                    } else {
+                        $sections = [];
+                    }
+                }
+                if (!empty($sections)) {
+                    return response()->json([
+                        'status' => 'success',
+                        'message' => "All class sections",
+                        'data' => $sections,
+                    ], 200);
+                } else {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => "No sections found for the provided classes.",
+                        'data' => [],
+                    ], 404);
+                }
+            } else {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Please Select the class",
+                    'data' => [],
+                ], 400);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => "Failed to get sections"
+            ], 500);
+        }
+    }
+
+
+    /** Day wise collections report Index*/
+    public function dayWiseCollectionIndex()
+    {
+        $classes = ClassMasterController::getClasses();
+        return view('admin.reports.day_wise_collection_fee_detail', compact('classes'));
+    }
+    /** Day wise collection report as excel */
+
+    public function exportdDayWiseCollectionReprt(Request $request)
+    {
+        try {
+            $fromDate = $request->from_date;
+            $toDate   = $request->to_date;
+            $class    = $request->class_id;
+            $section  = $request->section_id;
+            $fee_mode = $request->fee_mode;
+            $academic_trans = $request->academic_trans;
+
+            // ✅ Get detailed report (student-wise)
+            $reportData = DB::table('fee_details as fc')
+                ->join('stu_main_srno as s', 'fc.srno', '=', 's.srno')
+                ->join('parents_detail as p', 'fc.srno', '=', 'p.srno')
+                ->join('stu_detail as sd', 'fc.srno', '=', 'sd.srno')
+                ->join('class_masters as c', 's.class', '=', 'c.id')
+                ->join('section_masters as sec', 's.section', '=', 'sec.id')
+                ->select(
+                    DB::raw('DATE(fc.pay_date) as payment_date'),
+                    'fc.srno',
+                    'sd.name as student_name',
+                    'p.f_name as parent_name',
+                    'c.class as class_name',
+                    'sec.section as section_name',
+                    'fc.fee_mode',
+                    'fc.academic_trans',
+                    'fc.fee_of',
+                    'fc.amount'
+                )
+                ->where('fc.paid_mercy', 1)
+                ->whereBetween('fc.pay_date', [$fromDate, $toDate])
+                ->when($class && $class !== 'all', fn($q) => $q->where('s.class', $class))
+                ->when($section && $section !== 'all', fn($q) => $q->where('s.section', $section))
+                ->when($academic_trans, fn($q) => $q->where('fc.academic_trans', $academic_trans))
+                ->when($fee_mode && $fee_mode !== 'all', fn($q) => $q->where('fc.fee_mode', $fee_mode))
+                ->orderBy('payment_date', 'ASC')
+                ->get();
+
+            if ($reportData->isEmpty()) {
+                return redirect()->back()->with('error', 'No data found.');
+            }
+            session()->forget('error');
+
+            // ✅ CSV Export
+            $fileName = 'day_wise_collection_report.csv';
+            $output = fopen('php://memory', 'w');
+
+            // CSV headers
+            $headers = [
+                'Payment Date',
+                'SR No',
+                'Student Name',
+                'Parent Name',
+                'Class',
+                'Section',
+                'Payment Mode',
+                'Type (Academic/Transport)',
+                'Fee Of',
+                'Amount'
+            ];
+            fputcsv($output, $headers);
+
+            $grandTotal = 0;
+            $totalTransactions = 0;
+
+            foreach ($reportData as $row) {
+                $grandTotal += $row->amount;
+                $totalTransactions++;
+
+                fputcsv($output, [
+                    $row->payment_date,
+                    $row->srno,
+                    $row->student_name,
+                    $row->parent_name,
+                    $row->class_name,
+                    $row->section_name,
+                    $this->getFeeModeName($row->fee_mode),
+                    $row->academic_trans == 1 ? 'Academic' : ($row->academic_trans == 2 ? 'Transport' : 'Other'),
+                    $this->getFeeOf($row->fee_of, $row->academic_trans),
+                    $row->amount,
+                ]);
+            }
+
+            // ✅ Add Grand Total row
+            fputcsv($output, []);
+            fputcsv($output, [
+                'Grand Total',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                '',
+                $totalTransactions . ' Transactions',
+                $grandTotal
+            ]);
+
+            rewind($output);
+            $csvContent = stream_get_contents($output);
+            fclose($output);
+
+            return response($csvContent, 200)
+                ->header('Content-Type', 'text/csv')
+                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
+        } catch (\Exception $e) {
+            // return redirect()->back()->with('error', 'Something went wrong, please try again.', $e->getMessage());
+            return redirect()->back()->with('error', 'Something went wrong, please try again.');
+        }
+    }
+
+
+    private function getFeeModeName($id)
+    {
+        return match ($id) {
+            1 => 'Cash',
+            2 => 'UPI',
+            3 => 'Bank Transfer',
+            default => 'Other',
+        };
+    }
+
+    private function getFeeOf($id, $academic_trans)
+    {
+        if ($academic_trans == 1) {
+            return match ($id) {
+                1 => 'Admission Fee',
+                2 => 'Ist Installment',
+                3 => 'IInd Installment',
+                4 => 'Complete Fee',
+                default => 'Other',
+            };
+        }
+        if ($academic_trans == 2) {
+            return match ($id) {
+                1 => 'Ist Installment',
+                2 => 'IInd Installment',
+                3 => 'Complete Fee',
+                default => 'Other',
+            };
+        }
     }
 }

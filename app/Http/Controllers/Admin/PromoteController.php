@@ -231,41 +231,41 @@ class PromoteController extends Controller
                 }
 
                 if (!empty($request->tc)) {
-                    $tcStdData = array_merge($commanData, [
+                    /* $tcStdData = array_merge($commanData, [
                         'srno' => $std->srno,
                         'school' => $std->school,
                         'ssid' => 4,
-                    ]);
+                    ]); */
                     if ($stdSsIdUpdate) {
-                        $stdSsIdUpdate->update(['ssid' => 2]);
+                        $stdSsIdUpdate->update(['ssid' => 4]);
                     }
-                    StudentMaster::updateOrCreate([
+                    /* StudentMaster::updateOrCreate([
                         'admission_date' => null,
                         'class' => $request->second_class_id,
                         'section' => $request->second_section_id,
                         'session_id' => $request->session_id,
                         'prev_srno' => $std->srno,
-                    ], $tcStdData);
+                    ], $tcStdData); */
                     $successMessages = 'Student TC to Out Successfully.';
                     continue;
                 }
 
                 if (!empty($request->leftOut)) {
-                    $leftStdData = array_merge($commanData, [
+                    /* $leftStdData = array_merge($commanData, [
                         'srno' => $std->srno,
                         'school' => $std->school,
                         'ssid' => 5,
-                    ]);
+                    ]); */
                     if ($stdSsIdUpdate) {
-                        $stdSsIdUpdate->update(['ssid' => 2]);
+                        $stdSsIdUpdate->update(['ssid' => 5]);
                     }
-                    StudentMaster::updateOrCreate([
+                    /* StudentMaster::updateOrCreate([
                         'admission_date' => null,
                         'class' => $request->second_class_id,
                         'section' => $request->second_section_id,
                         'session_id' => $request->session_id,
                         'prev_srno' => $std->srno,
-                    ], $leftStdData);
+                    ], $leftStdData); */
                     $successMessages = 'Student has Been left out Successfully.';
                     continue;
                 }

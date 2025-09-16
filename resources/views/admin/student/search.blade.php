@@ -1,7 +1,6 @@
 @extends('admin.index')
-
 @section('sub-content')
-    <div class="container">
+    <div class="container-fluid">
         @if (Session::has('success'))
             @section('scripts')
                 <script>
@@ -11,7 +10,6 @@
                 </script>
             @endsection
         @endif
-
         @if (Session::has('error'))
             @section('scripts')
                 <script>
@@ -21,30 +19,28 @@
                 </script>
             @endsection
         @endif
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-header">{{ __('Search & Update Student (Promote Details)') }}
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card border-0 bg-white">
+           <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between"><h5 class="mb-0 mt-0">{{ __('Search & Update Student (Promote Details)') }}</h5>
 
-                        <div class="col-lg-14 col-md-14">
-                            <div class="right-item d-flex justify-content-end mt-5">
-
+                            <div class="right-item d-flex justify-content-end ">
                                 <form action="{{ route('admin.student-master.search') }}" method="get" class="d-flex">
-                                    <input type="text" name="search" id="search" class="form-control mx-2"
-                                        placeholder="Search by Name"
-                                        value="{{ old('search', request()->get('search') !== null ? request()->get('search') : '') }}">
-                                    <button type="submit" class="btn btn-sm btn-info">Search</button>
+                                    <input type="text" name="search" id="search" class="form-control mx-2" placeholder="Search by..." value="{{ old('search', request()->get('search') !== null ? request()->get('search') : '') }}" required>
+                                    <select name="searchBy" id="searchBy" class="form-select mx-2" required>
+                                        <option value="">Select Search By</option>
+                                        <option value="parent_name" {{ request('searchBy') == 'parent_name' ? 'selected' : '' }}>Parents Name</option>
+                                        <option value="st_name" {{ request('searchBy') == 'st_name' ? 'selected' : '' }}>Student Name</option>
+                                        <option value="srno" {{ request('searchBy') == 'srno' ? 'selected' : '' }}>Srno.</option>
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-dark mx-2 d-flex align-items-center gap-1"><span class="mdi mdi-magnify "></span> Search</button>
                                 </form>
-                                <a href="{{ route('admin.student-master.search') }}" class="btn btn-warning mx-2">Reset</a>
-
-
+                                <a href="{{ route('admin.student-master.search') }}" class="btn btn-dark mx-2">Reset</a>
                             </div>
-                        </div>
-                    </div>
 
+                    </div>
                     <div class="card-body">
                         @if (request('search'))
-
                             <div class="table">
                                 <table id="example" class="table table-striped table-bordered">
                                     <thead>
@@ -59,7 +55,6 @@
                                             <th class="text-center">Action</th>
                                         </tr>
                                     </thead>
-
                                     @if (count($data) > 0)
                                         @foreach ($data as $key => $value)
                                             <tr data-entry-id="{{ $value->id }}">
@@ -70,8 +65,6 @@
                                                 <td>{{ $value->section_name ?? '-' }}</td>
                                                 <td>{{ $value->f_name ?? '-' }}</td>
                                                 <td>{{ $value->m_name ?? '-' }}</td>
-
-
                                                 <td class="text-center">
                                                     <a href="#" class="btn btn-sm btn-icon p-1 show"
                                                         data-id="{{ $value->prev_srno }}"
@@ -90,37 +83,26 @@
                                         </tr>
                                     @endif
                                 </table>
-
                                 @if (request()->get('search'))
                                     {{ $data->appends(['search' => request()->get('search')])->links() }}
                                 @else
                                     {{ $data->links() }}
                                 @endif
-
                             </div>
-
-
-
                             <div class="table mt-4" id="prev_record">
                                 <h4 class="text-danger fw-bold">Previous Details</h4>
                                 <table id="example" class="table table-striped table-bordered">
                                     <thead id="previous-header">
-
                                     </thead>
                                     <tbody id="previous-body"></tbody>
-
                                 </table>
-
-
                             </div>
                             <div class="table mt-4" id="fee_record">
                                 <h4 class="text-danger fw-bold">Fee Details</h4>
                                 <table id="example" class="table table-striped table-bordered">
                                     <thead id="fee-header">
-
                                     </thead>
                                     <tbody id="fee-body"></tbody>
-
                                 </table>
                                 <h4 class="text-danger fw-bold">Transport Fee Details</h4>
                                 <table id="example" class="table table-striped table-bordered">
@@ -129,40 +111,30 @@
                                     <tbody id="transport-details-body"></tbody>
                                 </table>
                             </div>
-
                             {{-- Current Details   --}}
-
                             <div class="table table-responsive" id="current_details">
                                 <h4 class="text-danger fw-bold">Current Details</h4>
                                 <table id="example" class="table table-striped table-bordered">
                                     <thead id="st-details-body">
-
                                     </thead>
                                     <tbody id="st-details-body"></tbody>
-
                                 </table>
                                 <table id="example" class="table table-striped table-bordered">
                                     <thead id="parent-details-body">
-
                                     </thead>
                                     <tbody id="parent-details-body"></tbody>
-
                                 </table>
                                 <table id="example" class="table table-striped table-bordered">
                                     <thead id="academic-details-body">
                                     </thead>
                                     <tbody id="academic-details-body"></tbody>
-
                                 </table>
                             </div>
-
                             {{-- Form Updation  --}}
-
                             <div id="std-form-container" class="mt-4">
                                 <form action="{{ route('admin.student-master.search.store') }}" method="POST"
                                     enctype="multipart/form-data" id="std-form">
                                     @csrf
-
                                     <div class="row">
                                         <div class="form-group col-md-6">
                                             <input type="hidden" name="srno" value="" id="srno-form">
@@ -233,14 +205,12 @@
                                 </form>
                             </div>
                         @endif
-
                     </div>
                 </div>
             </div>
         </div>
     </div>
 @endsection
-
 @section('admin-scripts')
     <script>
         var initialClassId =
@@ -274,14 +244,12 @@
                             response.tables.forEach(table => {
                                 let tableHtml = '';
                                 let headerHtml = '';
-
                                 // Create table headers
                                 headerHtml = '<tr>';
                                 table.headers.forEach(header => {
                                     headerHtml += `<th>${header}</th>`;
                                 });
                                 headerHtml += '</tr>';
-
                                 // Create table rows with data
                                 if (table.title === 'Attendance') {
                                     // Handle attendance date separately
@@ -303,16 +271,15 @@
                                                 <td>${rowData.name}</td>
                                                 <td>${rowData.dob  ?? 'N/A'}</td>
                                                 <td>${rowData.address  ?? 'N/A'}</td>
-                                                <td>${rowData.category}</td>
-                                                <td>${rowData.email}</td>
+                                                <td>${rowData.category ?? 'N/A'}</td>
+                                                <td>${rowData.email ?? 'N/A'}</td>
                                                 <td>${rowData.mobile  ?? 'N/A'}</td>
                                             `;
                                             break;
-
                                         case 'Parent Details':
                                             tableHtml += `
-                                                    <td>${rowData.father_name}</td>
-                                                    <td>${rowData.mother_name}</td>
+                                                    <td>${rowData.father_name ?? 'N/A'}</td>
+                                                    <td>${rowData.mother_name ?? 'N/A'}</td>
                                                     <td>${rowData.address  ?? 'N/A'}</td>
                                                     <td>${rowData.father_mobile  ?? 'N/A'}</td>
                                                     <td>${rowData.mother_mobile  ?? 'N/A'}</td>
@@ -320,7 +287,6 @@
                                                     <td>${rowData.mother_occupation  ?? 'N/A'}</td>
                                                 `;
                                             break;
-
                                         case 'Academic Details':
                                             tableHtml += `
                                                 <td>${rowData.session}</td>
@@ -332,11 +298,9 @@
                                                 <td>${rowData.admission_date}</td>
                                             `;
                                             break;
-
                                     }
                                     tableHtml += '</tr>';
                                 }
-
                                 // Insert the headers and data into appropriate tables
                                 switch (table.title) {
                                     case 'Student Details':
@@ -376,7 +340,6 @@
                     success: function(response) {
                         let tblheaders = '';
                         let tblbody = '';
-
                         // Ensure the response is structured as expected
                         if (response.status === 'success') {
                             if (response.tables[2]) {
@@ -389,10 +352,8 @@
                                         `<th>${header}</th>`; // Wrap headers with <th>
                                 });
                                 tblheaders += '</tr>';
-
                                 // Generate table body rows
                                 $.each(data, function(index, item) {
-
                                     tblbody += `<tr>
                                         <td>${item.session}</td>
                                         <td>${item.class}</td>
@@ -403,7 +364,6 @@
                                         <td>${item.admission_date}</td>
                                     </tr>`;
                                 });
-
                                 // Populate the table in HTML
                                 $('#previous-header').html(tblheaders); // Append table headers
                                 $('#previous-body').html(tblbody); // Append table body
@@ -431,12 +391,10 @@
                     success: function(response) {
                         let tblheaders = '';
                         let tblbody = '';
-
                         // Ensure the response is structured as expected
                         if (response.status === 'success') {
                             let headers = response.tables[0].headers;
                             let data = response.tables[0].data;
-
                             // Generate table headers
                             tblheaders = '<tr>';
                             $.each(headers, function(index, header) {
@@ -444,7 +402,6 @@
                                     `<th>${header}</th>`; // Wrap headers with <th>
                             });
                             tblheaders += '</tr>';
-
                             // Generate table body rows
                             $.each(data, function(index, item) {
                                 tblbody += `<tr>
@@ -455,7 +412,6 @@
                                     <td>${item.due_amount}</td>
                                 </tr>`;
                             });
-
                             // Populate the table in HTML
                             $('#fee-header').html(tblheaders); // Append table headers
                             $('#fee-body').html(tblbody); // Append table body
@@ -480,12 +436,10 @@
                     success: function(response) {
                         let tblheaders = '';
                         let tblbody = '';
-
                         // Ensure the response is structured as expected
                         if (response.status ==='success') {
                             let headers = response.tables.headers;
                             let data = response.tables.data;
-
                             // Generate table headers
                             tblheaders = '<tr>';
                             $.each(headers, function(index, header) {
@@ -493,7 +447,6 @@
                                     `<th>${header}</th>`; // Wrap headers with <th>
                             });
                             tblheaders += '</tr>';
-
                             // Generate table body rows
                             $.each(data, function(index, item) {
                                 tblbody += `<tr>
@@ -504,7 +457,6 @@
                                     <td>${item.due_amount}</td>
                                 </tr>`;
                             });
-
                             // Populate the table in HTML
                             $('#transport-details-header').html(tblheaders); // Append table headers
                             $('#transport-details-body').html(tblbody); // Append table body
@@ -515,7 +467,6 @@
                     error: function(xhr) {
                         console.error('Failed to retrieve data. Please try again.');
                     }
-
                 });
             }
             view.click(function() {
@@ -530,7 +481,6 @@
                 prevRecord.show();
                 feeRecord.show();
                 currentDetail.show();
-
                 getPreviousRecords(srno, sessionID);
                 getStFeeRecords(srno);
                 getStTransportFeeRecords(srno);

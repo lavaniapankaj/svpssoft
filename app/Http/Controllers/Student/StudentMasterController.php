@@ -31,6 +31,7 @@ class StudentMasterController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $current_session = Session::get('std_current_session')->id;
         if ($search !== '') {
             $baseQuery = DB::table('stu_main_srno')
                 ->select(
@@ -49,7 +50,9 @@ class StudentMasterController extends Controller
                 ->leftJoin('parents_detail', 'stu_main_srno.srno', '=', 'parents_detail.srno')
                 ->leftJoin('class_masters', 'stu_main_srno.class', '=', 'class_masters.id')
                 ->leftJoin('section_masters', 'stu_main_srno.section', '=', 'section_masters.id')
-                ->whereIn('ssid', [1, 2, 3, 4, 5]);
+                ->where('stu_main_srno.session_id', $current_session)
+                // ->whereIn('ssid', [1, 2, 3, 4, 5]);
+                ->whereIn('ssid', [1, 2]);
 
             $baseQuery->where(function ($q) use ($search) {
                 $q->where('stu_main_srno.srno', 'LIKE', "%{$search}%")
@@ -119,7 +122,7 @@ class StudentMasterController extends Controller
             'gender',
             'religion',
             'name',
-            'std_email',
+            // 'std_email',
             'mobile',
             'category_id',
             'state_id',
@@ -127,16 +130,16 @@ class StudentMasterController extends Controller
             'pincode',
             'address',
             'f_name',
-            'g_father',
             'm_name',
-            'parent_category_id',
             'f_occupation',
             'm_occupation',
-            'parent_email',
+            /* 'parent_email',
+            'g_father',
+            'parent_category_id',
             'parent_state_id',
             'parent_district_id',
             'pin_code',
-            'parent_address'
+            'parent_address' */
         ];
         $request->validate([
             'srno' => [
@@ -161,6 +164,7 @@ class StudentMasterController extends Controller
             ],
             'transport' => 'nullable',
             'age_proof' => 'nullable',
+            'isrte' => 'nullable',
             'gender' => 'nullable',
             'religion' => 'nullable',
             'admission_date' => 'nullable|date_format:Y-m-d',
@@ -187,7 +191,7 @@ class StudentMasterController extends Controller
             'parent_email' => 'nullable|email|max:255',
             'std_email' => 'nullable|email|max:255',
             'f_mobile' => 'nullable|string|regex:/^[0-9]{10}$/',
-            'pin_code' => 'nullable|string|regex:/^[0-9]{6}$/',
+            // 'pin_code' => 'nullable|string|regex:/^[0-9]{6}$/',
             'f_occupation' => 'nullable|string|max:255',
             'm_occupation' => 'nullable|string|max:255',
             'm_mobile' => 'nullable|string|regex:/^[0-9]{10}$/',
@@ -248,6 +252,7 @@ class StudentMasterController extends Controller
             'rollno' => $request->rollno,
             'session_id' => $request->current_session,
             'transport' => $request->transport,
+            'is_rtest' => $request->isrte,
             'age_proof' => $request->age_proof,
             'gender' => $request->gender,
             'religion' => $request->religion,
@@ -276,7 +281,7 @@ class StudentMasterController extends Controller
             'name' => $request->name,
             'dob' => $request->dob,
             'mobile' => $request->mobile,
-            'email' => $request->std_email,
+            'email' => $request->std_email ?? null,
             'pincode' => $request->pincode,
             'pre_school' => $request->pre_school,
             'pre_class' => $request->pre_class,
@@ -286,26 +291,43 @@ class StudentMasterController extends Controller
             'address' => $request->address,
         ]);
 
+        $student = StudentMaster::Create($studentData);
+        $studentId = DB::table('stu_detail')->insertGetId($stuDetailData);
 
+        // Then retrieve the inserted row:
+        $stDetail = DB::table('stu_detail')->where('id', $studentId)->first();
+
+
+
+        // $stDetail = DB::table('stu_detail')->insert($stuDetailData);
+        $ParentDistrict = $stDetail ? $stDetail->district_id : null;
+        $ParentState = $stDetail ? $stDetail->state_id : null;
+        $ParentCategory = $stDetail ? $stDetail->category_id : null;
+        $ParentPinCode = $stDetail ? $stDetail->pincode : null;
+        $ParentAddress = $stDetail ? $stDetail->address : null;
         $parentsDetailData = array_merge($commonData, [
             'f_name' => $request->f_name,
             'm_name' => $request->m_name,
-            'g_father' => $request->g_father,
-            'email' => $request->parent_email,
-            'f_mobile' => $request->f_mobile,
-            'pin_code' => $request->pin_code,
+            'g_father' => $request->g_father ?? null,
+            'email' => $request->parent_email ?? null,
+            'f_mobile' => $request->f_mobile ?? $stDetail->mobile,
             'f_occupation' => $request->f_occupation,
             'm_occupation' => $request->m_occupation,
             'm_mobile' => $request->m_mobile,
-            'category_id' => $request->parent_category_id,
+            'pin_code' => $ParentPinCode,
+            'category_id' => $ParentCategory,
+            'state_id' => $ParentState,
+            'district_id' => $ParentDistrict,
+            'address' => $ParentAddress,
+            /*  'category_id' => $request->parent_category_id,
+            'pin_code' => $request->pin_code,
             'state_id' => $request->parent_state_id,
             'district_id' => $request->parent_district_id,
-            'address' => $request->parent_address,
+            'address' => $request->parent_address, */
         ]);
-        $student = StudentMaster::Create($studentData);
-        $stDetail = DB::table('stu_detail')->insert($stuDetailData);
+
         $parentDetail = DB::table('parents_detail')->insert($parentsDetailData);
-        if ($student && $stDetail && $parentDetail) {
+        if ($student && $studentId && $parentDetail) {
             return redirect()->route('student.student-master.index')->with('success', 'Student saved successfully.');
         } else {
             return redirect()->route('student.student-master.index')->with('error', 'Something went wrong.');
@@ -405,7 +427,7 @@ class StudentMasterController extends Controller
             'gender',
             'religion',
             'name',
-            'std_email',
+            // 'std_email',
             'mobile',
             'category_id',
             'state_id',
@@ -413,16 +435,16 @@ class StudentMasterController extends Controller
             'pincode',
             'address',
             'f_name',
-            'g_father',
+            // 'g_father',
             'm_name',
-            'parent_category_id',
             'f_occupation',
             'm_occupation',
-            'parent_email',
+            /* 'parent_email',
+            'parent_category_id',
             'parent_state_id',
             'parent_district_id',
             'pin_code',
-            'parent_address'
+            'parent_address' */
         ];
         $request->validate([
             'srno' => [
@@ -450,6 +472,7 @@ class StudentMasterController extends Controller
                     })->ignore($id),
             ],
             'transport' => 'nullable',
+            'isrte' => 'nullable',
             'age_proof' => 'nullable',
             'gender' => 'nullable',
             'religion' => 'nullable',
@@ -541,6 +564,7 @@ class StudentMasterController extends Controller
             'rollno' => $request->rollno,
             'session_id' => $request->session,
             'transport' => $request->transport,
+            'is_rtest' => $request->isrte,
             'age_proof' => $request->age_proof,
             'gender' => $request->gender,
             'religion' => $request->religion,
@@ -568,7 +592,7 @@ class StudentMasterController extends Controller
             'name' => $request->name,
             'dob' => $request->dob,
             'mobile' => $request->mobile,
-            'email' => $request->std_email,
+            'email' => $request->std_email ?? null,
             'pincode' => $request->pincode,
             'pre_school' => $request->pre_school,
             'pre_class' => $request->pre_class,
@@ -577,30 +601,37 @@ class StudentMasterController extends Controller
             'district_id' => $request->district_id,
             'address' => $request->address,
         ]);
+        $student = StudentMaster::where('id', $id)->update($studentData);
+        $stDetail = DB::table('stu_detail')->updateOrInsert(['srno' => $request->srno], $stuDetailData);
 
-
+        // Then retrieve the inserted row:
+        $stDetailData = DB::table('stu_detail')->where('srno', $request->srno)->first();
+        $ParentDistrict = $stDetailData ? $stDetailData->district_id : null;
+        $ParentState = $stDetailData ? $stDetailData->state_id : null;
+        $ParentCategory = $stDetailData ? $stDetailData->category_id : null;
+        $ParentPinCode = $stDetailData ? $stDetailData->pincode : null;
+        $ParentAddress = $stDetailData ? $stDetailData->address : null;
         $parentsDetailData = array_merge($commonData, [
             'f_name' => $request->f_name,
             'm_name' => $request->m_name,
-            'g_father' => $request->g_father,
-            'email' => $request->parent_email,
-            'f_mobile' => $request->f_mobile,
-            'pin_code' => $request->pin_code,
+            'g_father' => $request->g_father ?? null,
+            'email' => $request->parent_email ?? null,
+            'f_mobile' => $request->f_mobile ?? $stDetailData->mobile,
             'f_occupation' => $request->f_occupation,
             'm_occupation' => $request->m_occupation,
             'm_mobile' => $request->m_mobile,
-            'category_id' => $request->parent_category_id,
-            'state_id' => $request->parent_state_id,
-            'district_id' => $request->parent_district_id,
-            'address' => $request->parent_address,
+            'pin_code' => $ParentPinCode,
+            'category_id' => $ParentCategory,
+            'state_id' => $ParentState,
+            'district_id' => $ParentDistrict,
+            'address' => $ParentAddress,
+            // 'category_id' => $request->parent_category_id,
+            // 'state_id' => $request->parent_state_id,
+            // 'district_id' => $request->parent_district_id,
+            // 'address' => $request->parent_address,
         ]);
-
-        $student = StudentMaster::where('id', $id)->update($studentData);
-        $stDetail = DB::table('stu_detail')->updateOrInsert(['srno' => $request->srno], $stuDetailData);
         $parentDetail = DB::table('parents_detail')->updateOrInsert(['srno' => $request->srno], $parentsDetailData);
-
         if ($student || $stDetail || $parentDetail) {
-            # code...
             return redirect()->route('student.student-master.index')->with('success', 'Student updated successfully.');
         } else {
             return redirect()->route('student.student-master.index')->with('error', 'Failed to update student.');
@@ -764,11 +795,13 @@ class StudentMasterController extends Controller
                     // Use whereIn if there are valid values
                     $baseQuery->whereIn('stu_main_srno.class', $classExplode)
                         ->whereIn('stu_main_srno.section', $sectionExplode)
+                        ->whereIn('stu_main_srno.ssid', [1,2])
                         ->where('stu_main_srno.session_id', $request->session_id);
                 } else {
                     // Use simple where if no valid values after filtering
                     $baseQuery->where('stu_main_srno.class', $request->class_id)
                         ->where('stu_main_srno.section', $request->section_id)
+                        ->whereIn('stu_main_srno.ssid', [1,2])
                         ->where('stu_main_srno.session_id', $request->session_id);
                 }
             }
@@ -1023,10 +1056,24 @@ class StudentMasterController extends Controller
         $classes = ClassMasterController::getClasses(['id', 'class']);
         if (!empty($request->search)) {
             $search = $request->search;
-            $baseQuery->where(function ($q) use ($search, $currentSession) {
-                $q->where('stu_detail.name', 'LIKE', "%{$search}%")->whereIn('stu_main_srno.ssid', [1, 4, 5]);
+            /* $baseQuery->where(function ($q) use ($search, $currentSession) {
+                $q->where('stu_detail.name', 'LIKE', "%{$search}%")->orWhere('stu_main_srno.srno', 'LIKE', "%{$search}%")->orWhere('parents_detail.f_name', 'LIKE', "%{$search}%")->orWhere('parents_detail.m_name', 'LIKE', "%{$search}%")->whereIn('stu_main_srno.ssid', [1, 4, 5]);
                 // $q->where('stu_detail.name', 'LIKE', "%{$search}%")->where('stu_main_srno.session_id', $currentSession);
-            });
+            }); */
+            $searchBy = $request->searchBy; // dropdown field
+            $baseQuery->where(function ($q) use ($search, $searchBy) {
+                if ($searchBy == 'st_name') {
+                    $q->where('stu_detail.name', 'LIKE', "%{$search}%");
+                } elseif ($searchBy == 'srno') {
+                    $q->where('stu_main_srno.srno', 'LIKE', "%{$search}%");
+                } elseif ($searchBy == 'parent_name') {
+                    // If you want to check both father & mother
+                    $q->where(function ($p) use ($search) {
+                        $p->where('parents_detail.f_name', 'LIKE', "%{$search}%")
+                        ->orWhere('parents_detail.m_name', 'LIKE', "%{$search}%");
+                    });
+                }
+            })->whereIn('stu_main_srno.ssid', [1, 4, 5]);
         }
         $data = $baseQuery->where('session_id', $currentSession)->whereIn('stu_main_srno.ssid', [1, 4, 5])->orderBy('class_masters.sort', 'asc')->paginate(10);
         $sessions = SessionMaster::where('id', '>=', $currentSession)->where('active', 1)->pluck('session', 'id');
@@ -1109,6 +1156,7 @@ class StudentMasterController extends Controller
                 'stu_main_srno.session_id',
                 'stu_main_srno.class',
                 'stu_main_srno.admission_date',
+                'stu_main_srno.prev_srno',
                 'session_masters.session',
                 'class_masters.class as classname',
             ];
@@ -1121,27 +1169,22 @@ class StudentMasterController extends Controller
 
                 foreach ($academicDetails as $academicRow) {
                     // Get payable fee details
-                    $dpayable = DB::table('fee_masters')
-                        ->where('session_id', $academicRow->session_id)
-                        ->where('class_id', $academicRow->class)
-                        ->first();
+                    $dpayable = DB::table('fee_masters')->where('session_id', $academicRow->session_id)->where('class_id', $academicRow->class)->first();
 
                     // Get paid fee details
-                    $dpaid = DB::table('fee_details')
-                        ->where('session_id', $academicRow->session_id)
-                        ->where('srno', $srno)
-                        ->where('active', 1)
-                        ->where('academic_trans', 1)
-                        ->selectRaw('SUM(amount) as total_paid')
-                        ->first();
-
+                    $dpaid = DB::table('fee_details')->where('session_id', $academicRow->session_id)->where('srno', $srno)->where('active', 1)->where('academic_trans', 1)->selectRaw('SUM(amount) as total_paid')->first();
                     $payableAmount = 0;
                     $paidAmount = 0;
                     $dueAmount = 0;
 
                     // Calculate payable, paid, and due amounts
                     if ($dpayable) {
-                        $payableAmount = $dpayable->admission_fee + $dpayable->inst_total;
+                        /** First Time Student (New Student) */
+                        if ($academicRow->admission_date != null && $academicRow->prev_srno == null) {
+                            $payableAmount = $dpayable->admission_fee + $dpayable->inst_total;
+                        }else {
+                            $payableAmount = $dpayable->inst_total;
+                        }
 
                         if ($dpaid) {
                             $paidAmount = $dpaid->total_paid;

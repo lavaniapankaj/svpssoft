@@ -1,0 +1,512 @@
+/* font family apply */
+
+
+
+@font-face {
+
+    font-family: 'Verdana';
+
+    src: url('{{ asset('/public/assets/font/Verdana.eot') }}');
+
+    src: url('{{ asset('/public/assets/font/Verdana.eot?#iefix') }}'),
+
+    url('{{ asset('/public/assets/font/Verdana.woff2') }}'),
+
+    url('{{ asset('/public/assets/font/Verdana.woff') }}'),
+
+    url('{{ asset('/public/assets/font/Verdana.ttf') }}'),
+
+    url('{{ asset('/public/assets/font/Verdana.svg#Verdana') }}');
+
+    font-weight: normal;
+
+    font-style: normal;
+
+    font-display: swap;
+
+}
+
+
+
+@font-face {
+
+    font-family: 'Verdana';
+
+    src: url('{{ asset('/public/assets/font/Verdana-Bold.eot') }}');
+
+    src: url('{{ asset('/public/assets/font/Verdana-Bold.eot?#iefix') }}'),
+
+    url('{{ asset('/public/assets/font/Verdana-Bold.woff2') }}'),
+
+    url('{{ asset('/public/assets/font/Verdana-Bold.woff') }}'),
+
+    url('{{ asset('/public/assets/font/Verdana-Bold.ttf') }}'),
+
+    url('{{ asset('/public/assets/font/Verdana-Bold.svg#Verdana') }}');
+
+    font-weight: normal;
+
+    font-style: normal;
+
+    font-display: swap;
+
+}
+
+
+
+@font-face {
+
+    font-family: 'Monotype Corsiva';
+
+    src: url('{{ asset('/public/assets/font/MonotypeCorsivaBold.eot') }}');
+
+    src: url('{{ asset('/public/assets/font/MonotypeCorsivaBold.eot?#iefix') }}'),
+
+    url('{{ asset('/public/assets/font/MonotypeCorsivaBold.woff2') }}'),
+
+    url('{{ asset('/public/assets/font/MonotypeCorsivaBold.woff') }}'),
+
+    url('{{ asset('/public/assets/font/MonotypeCorsivaBold.ttf') }}'),
+
+    url('{{ asset('/public/assets/font/MonotypeCorsivaBold.svg#Verdana') }}');
+
+    font-weight: normal;
+
+    font-style: normal;
+
+    font-display: swap;
+
+}
+
+:root {
+  --white-color: #fff;
+  --blue-color: #4070f4;
+  --grey-color: #707070;
+  --grey-color-light: #aaa;
+}
+
+
+
+/* Header & Navbar design CSS */
+
+
+
+.navbar_svps_wrap {
+
+    background-color: #fe7c3e !important;
+
+    color: white;
+
+    min-height: calc(100vh - 90px);
+
+}
+
+
+
+.navmenu_svps_wrap {
+
+    position: fixed;
+
+    top: 120px;
+
+}
+
+
+
+
+
+/* Marksheet design CSS */
+
+
+
+tr.grade_t_row_sv>td {
+
+    width: 20%;
+
+}
+
+
+
+.marksheet_row td.border-end-0,
+
+.marksheet_row th.border-end-0 {
+
+    border-right: 0 !important;
+
+}
+
+
+
+.marksheet_row td.border-start-0,
+
+.marksheet_row th.border-start-0 {
+
+    border-left: 0 !important;
+
+}
+
+
+
+tr.main_ms_th>th {
+
+    width: 20%;
+
+}
+
+
+
+.mm_mx_col th {
+
+    width: 10%;
+
+}
+
+
+
+table.table.exam_wise_marksheet_sv:not(:first-child) {
+
+    margin-top: 60px;
+
+}
+
+
+
+.exam_wise_marksheet_sv th,
+
+.exam_wise_marksheet_sv td {
+
+    border: 1px solid #000 !important;
+
+    padding: 4px 4px !important;
+
+    line-height: 1.2em;
+
+    font-size: 13px;
+
+    font-family: 'Verdana';
+
+}
+
+
+
+body table .border-right-0 {
+
+    border-right-width: 0px !important;
+
+}
+
+
+
+.table.exam_wise_marksheet_sv .pb_5 {
+
+    padding-bottom: 50px !important;
+
+}
+
+
+
+.table.exam_wise_marksheet_sv .pb_4 {
+
+    padding-bottom: 30px !important;
+
+}
+
+
+
+.table.exam_wise_marksheet_sv .pb_3 {
+
+    padding-bottom: 20px !important;
+
+}
+
+
+
+.name_st_ms_sv {
+
+    font-family: 'Monotype Corsiva';
+
+    font-size: 32px;
+
+    color: #000000;
+
+    letter-spacing: 4px;
+
+    font-weight: bold;
+
+}
+
+
+
+.med_text_sv {
+
+    font-family: 'Verdana';
+
+    color: #000000;
+
+    font-size: 18px;
+
+    font-weight: 700;
+
+    letter-spacing: 1px;
+
+    line-height: 1.4em;
+
+}
+
+
+
+.add_text_sv {
+
+    font-family: 'Verdana';
+
+    color: #000000;
+
+    font-size: 16px;
+
+    letter-spacing: 1px;
+
+    font-weight: 700;
+
+    line-height: 1.4em;
+
+}
+
+
+
+.sec_text_sv {
+
+    font-family: 'Verdana';
+
+    color: #000000;
+
+    font-size: 14px;
+
+    letter-spacing: 2px;
+
+    font-weight: 700;
+
+}
+
+
+
+.t_head_sv th {
+
+    font-family: 'Verdana';
+
+    color: #000000;
+
+    font-size: 14px;
+
+    font-weight: 700;
+
+}
+
+
+
+.ms_text_head {
+
+    font-family: 'Verdana';
+
+    color: #000000;
+
+    font-size: 14px;
+
+}
+
+
+
+.marksheet_row {
+
+    font-family: 'Verdana';
+
+}
+
+
+
+.sv_marksheet_table {
+
+    border-collapse: separate;
+
+    border-spacing: 2px;
+
+}
+
+
+
+html body .border-0 {
+
+    border: 0 !important;
+
+}
+
+
+
+.marksheet-container th,
+
+.marksheet-container td {
+
+    border: 1px solid #000 !important;
+
+    padding: 4px 4px !important;
+
+    line-height: 1.2em;
+
+    font-size: 13px;
+
+}
+
+
+
+html body .p-0 {
+
+    padding: 0 !important;
+
+}
+
+
+
+.marksheet-container tr,
+
+.marksheet-container table {
+
+    border: none;
+
+}
+
+
+
+.marksheet-div p {
+
+    font-family: 'Verdana';
+
+    color: #000;
+
+}
+
+
+
+.marksheet_row.attendence_row td,
+
+.marksheet_row.attendence_row th {
+
+    font-family: 'Verdana';
+
+    color: #000000;
+
+    font-size: 14px;
+
+    font-weight: 700;
+
+}
+
+
+
+.marksheet .marksheet-container:not(:first-child) {
+
+    margin-top: 60px;
+
+}
+
+
+
+
+
+/* Fees Receipt design CSS */
+
+
+
+.name_f_sv {
+
+    font-family: 'Monotype Corsiva' !important;
+
+    font-size: 24px !important;
+
+    letter-spacing: 2px;
+
+    font-weight: bold;
+
+}
+
+
+
+.student-receipt table td,
+
+.student-receipt table th {
+
+    border: 1px solid #000 !important;
+
+    line-height: 1.2em;
+
+    font-size: 13px;
+
+    font-family: 'Verdana';
+
+}
+
+
+
+.student-receipt-table:not(:first-child) {
+
+    margin-top: 40px;
+
+}
+
+
+
+.student-receipt-table tr td.border-top-0,
+
+.student-receipt-table tr th.border-top-0 {
+
+    border-top: 0px !important;
+
+}
+
+
+
+.student-receipt-table tr td.border-end-0,
+
+.student-receipt-table tr th.border-end-0 {
+
+    border-right: 0px !important;
+
+}
+
+
+
+.student-receipt-table tr td.border-start-0,
+
+.student-receipt-table tr th.border-start-0 {
+
+    border-left: 0px !important;
+
+}
+
+
+
+.student-receipt-table tr td.border-bottom-0,
+
+.student-receipt-table tr th.border-bottom-0 {
+
+    border-bottom: 0px !important;
+
+}
+
+
+
+@media (min-width:768px) {
+
+    .navbar_svps_wrap {
+
+        min-height: calc(100vh - 90px);
+
+    }
+
+    .navmenu_svps_wrap {
+
+        position: fixed;
+
+        top: 120px;
+
+    }
+
+}

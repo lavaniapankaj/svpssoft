@@ -1,115 +1,57 @@
 document.addEventListener('DOMContentLoaded', function () {
-
     var deleteButtons = document.querySelectorAll('.delete-form-btn');
-
     deleteButtons.forEach(function (button) {
-
         button.addEventListener('click', function (event) {
-
             event.preventDefault();
-
             Swal.fire({
-
                 title: 'Are you sure?',
-
                 text: "You won't be able to revert this!",
-
                 icon: 'warning',
-
                 showCancelButton: true,
-
                 confirmButtonColor: '#3085d6',
-
                 cancelButtonColor: '#d33',
-
                 confirmButtonText: 'Yes, delete it!'
-
             }).then((result) => {
-
                 if (result.isConfirmed) {
-
                     var form = this.closest('form');
-
                     var url = form.action;
-
                     var token = form.querySelector('input[name="_token"]').value;
-
-
-
                     fetch(url, {
-
                         method: 'POST',
-
                         headers: {
-
                             'Content-Type': 'application/json',
-
                             'X-CSRF-TOKEN': token
-
                         }
-
                     })
-
                         .then(response => response.json())
-
                         .then(data => {
-
                             if (data.status === 'success') {
-
                                 Swal.fire(
-
                                     'Deleted!',
-
                                     data.message,
-
                                     'success'
-
                                 ).then(() => {
-
                                     location.reload();
-
                                 });
-
                             } else {
-
                                 Swal.fire(
-
                                     'Error!',
-
                                     data.message,
-
                                     'error'
-
                                 );
-
                             }
-
                         })
-
                         .catch(error => {
-
                             Swal.fire(
-
                                 'Error!',
-
                                 'An error occurred while deleting.',
-
                                 'error'
-
                             );
-
                         });
-
                 }
-
             });
-
         });
-
     });
-
-
-
 });
 var loader = $('.loader');
 //get class and section
@@ -136,7 +78,6 @@ function getClassSection(initialClassId, initialSectionId = '', classSelect = ''
                 },
                 success: function (data) {
                     sectionSelected.empty(); // Clear the dropdown
-
                     if (data.status === "success" && data.data && Object.keys(data.data).length > 0) {
                         sectionSelected.append('<option value="">Select Section</option>');
                         $.each(data.data, function (id, name) {
@@ -149,7 +90,6 @@ function getClassSection(initialClassId, initialSectionId = '', classSelect = ''
                     } else {
                         sectionSelected.append('<option value="">No sections available</option>');
                     }
-
                     // Set initial section if provided
                     if (initialSectionId) {
                         sectionSelected.val(initialSectionId);
@@ -170,7 +110,6 @@ function getClassSection(initialClassId, initialSectionId = '', classSelect = ''
         }
     }
     var selectedClassId = classSelected.val();
-
     if (selectedClassId) {
         fetchSections(selectedClassId);
     }
@@ -180,7 +119,6 @@ function getClassSection(initialClassId, initialSectionId = '', classSelect = ''
         fetchSections(classId);
     });
 }
-
 // get session
 function getSession(initialSessionId) {
     var sessionSelect = $('#session_id');
@@ -216,7 +154,6 @@ function getSession(initialSessionId) {
     // });
     fetchSession();
 }
-
 // get subject on the basis of class
 function getClassSubject(initialClassesId, initialSubjectId, subjectGroupSection = '') {
     var classSelect = $('#class_id');
@@ -248,7 +185,6 @@ function getClassSubject(initialClassesId, initialSubjectId, subjectGroupSection
                     if (initialSubjectId) {
                         subjectSelect.val(initialSubjectId);
                     }
-
                 },
                 complete: function () {
                     loader.hide();
@@ -256,17 +192,13 @@ function getClassSubject(initialClassesId, initialSubjectId, subjectGroupSection
                 error: function (data) {
                     $.each(data.message, function (error) {
                         console.error('Error fetching sections:', error);
-
                     });
                 }
-
             });
-
         } else {
             subjectSelect.empty();
             subjectSelect.append('<option value="">Select Subject</option>');
         }
-
     }
     var subjectsGValue = subjectGroupSection.val();
     fetchSubjects(classId, subjectsGValue);
@@ -280,147 +212,126 @@ function getClassSubject(initialClassesId, initialSubjectId, subjectGroupSection
         loader.show();
         fetchSubjects(classId, subjectsGValue);
     });
-
 }
-
 //get exam
 function getExams(initialExamId) {
     var examSelected = $('#exam_id');
     loader.show();
     $.ajax({
-
         url: siteUrl + '/exams',
-
         type: 'GET',
-
         dataType: 'JSON',
-
         success: function (data) {
-
             examSelected.empty();
-
             examSelected.append('<option value="">Select Exam</option>');
-
             $.each(data.data, function (id, name) {
-
                 examSelected.append('<option value="' + id + '">' + name + '</option>');
-
             });
             if (initialExamId) {
                 examSelected.val(initialExamId);
             }
-
         },
         complete: function () {
             loader.hide();
         },
-
         error: function (data) {
-
             $.each(data.message, function (error) {
-
                 console.error('Error fetching exams:', error);
-
             })
-
-
-
         }
-
     });
-
 }
-
 // get state and district
 function getStateDistrict(stateSelect, initialStateId, districtSelct = '', initialDistrictId = '') {
     var stateSelect = stateSelect;
     var districtSelect = districtSelct;
     var initialDistrictId = initialDistrictId;
     var initialStateId = initialStateId;
-
-
     var stateId = initialStateId;
     fetchDistricts(stateId);
     function fetchDistricts(stateId) {
-
         if (stateId) {
-
             loader.show();
-
             $.ajax({
-
                 url: siteUrl + '/districts',
-
                 type: 'GET',
-
                 dataType: 'JSON',
-
                 data: {
-
                     state_id: stateId
-
                 },
-
                 success: function (data) {
                     districtSelect.empty();
                     districtSelect.append('<option value="">Select District</option>');
                     if (data.data && Object.keys(data.data).length > 0) {
-
                         $.each(data.data, function (id, name) {
-
                             districtSelect.append('<option value="' + id + '">' + name + '</option>');
-
                         });
                     } else{
                         districtSelect.append('<option value="">No District found</option>');
                     }
-
                     if (initialDistrictId) {
-
                         districtSelect.val(initialDistrictId);
-
                     }
                 },
-
                 complete: function () {
                     loader.hide();
                 },
-
                 error: function (data) {
-
                     $.each(data.message, function (error) {
-
                         console.error('Error fetching sections:', error);
-
                     });
                 }
-
             });
-
         } else {
-
             districtSelect.empty();
-
             districtSelect.append('<option value="">Select District</option>');
-
         }
-
     }
-
     var selectedStateId = stateSelect.val();
-
     if (selectedStateId) {
-
         fetchDistricts(selectedStateId);
-
     }
-
     stateSelect.change(function () {
-
         var stateId = $(this).val();
         loader.show();
         fetchDistricts(stateId);
-
     });
-
 }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const header = document.querySelector('.header'); // change to your class
+            const headerHeight = header.offsetHeight;
+            document.body.style.paddingTop = headerHeight + 'px';
+        });
+   
+document.addEventListener("DOMContentLoaded", function () {
+const body = document.querySelector("body");
+const sidebar = document.querySelector(".sidebar");
+const submenuItems = document.querySelectorAll(".submenu_item");
+const sidebarOpen = document.querySelector("#sidebarOpen");
+const sidebarClose = document.querySelector(".collapse_sidebar");
+const sidebarExpand = document.querySelector(".expand_sidebar");
+sidebarOpen.addEventListener("click", () => sidebar.classList.toggle("close"));
+
+
+
+
+
+
+submenuItems.forEach((item, index) => {
+  item.addEventListener("click", () => {
+    item.classList.toggle("show_submenu");
+    submenuItems.forEach((item2, index2) => {
+      if (index !== index2) {
+        item2.classList.remove("show_submenu");
+      }
+    });
+  });
+});
+
+if (window.innerWidth < 768) {
+  sidebar.classList.add("close");
+} else {
+  sidebar.classList.remove("close");
+}
+});

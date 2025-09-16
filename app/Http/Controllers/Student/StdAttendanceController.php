@@ -25,10 +25,7 @@ class StdAttendanceController extends Controller
 
     public function store(Request $request)
     {
-        // dd($request->all());
         try {
-            //code...
-
             $data = $request->validate([
                 'hidden_a_date' => 'required|date_format:Y-m-d',
                 'students' => 'required|array',
@@ -138,7 +135,8 @@ class StdAttendanceController extends Controller
             $stWhere = [
                 'whereIn' => ['stu_main_srno.srno' => $data->pluck('srno')->toArray(), 'stu_detail.srno' => $data->pluck('srno')->toArray()],
                 'where' => ['stu_main_srno.session_id' => $request->current_session, 'stu_main_srno.class' => $request->class, 'stu_main_srno.section' => $request->section, 'stu_main_srno.active' => 1],
-                'whereIn' => ['stu_main_srno.ssid' => [1, 2, 4, 5]],
+                // 'whereIn' => ['stu_main_srno.ssid' => [1, 2, 4, 5]],
+                'whereIn' => ['stu_main_srno.ssid' => [1, 2]],
             ];
             $stOrderBy = ['stu_main_srno.rollno' => 'asc'];
             $students = StudentMasterController::getStd($stFields, $stWhere, $stOrderBy)->get();
@@ -276,13 +274,12 @@ class StdAttendanceController extends Controller
             $stWhere = [
                 'whereIn' => ['stu_main_srno.srno' => $std, 'stu_detail.srno' => $std],
                 'where' => ['stu_main_srno.session_id' => $request->session, 'stu_main_srno.class' => $request->class, 'stu_main_srno.section' => $request->section, 'stu_main_srno.active' => 1],
-                'whereIn' => ['stu_main_srno.ssid' => [1, 2, 4, 5]],
+                // 'whereIn' => ['stu_main_srno.ssid' => [1, 2, 4, 5]],
+                'whereIn' => ['stu_main_srno.ssid' => [1, 2]],
             ];
             $stOrderBy = ['stu_main_srno.rollno' => 'asc'];
 
             $students = StudentMasterController::getStd($stFields, $stWhere, $stOrderBy)->get()->keyBy('srno');
-
-
             // Process attendance for each month
             foreach ($monthNames as $index => $monthName) {
                 // Correct month number calculation
@@ -322,15 +319,12 @@ class StdAttendanceController extends Controller
                     'Attendance' => $results[$student->srno] ?? []
                 ];
             }
-
             return response()->json([
                 'status' => 'success',
                 'message' => 'Attendance',
                 'data' => $mergeArray
             ], 200);
         } catch (\Exception $e) {
-            // More informative error logging
-
             return response()->json([
                 'status' => 'error',
                 'message' => "Failed to get cumulative attendance report: "
