@@ -5,9 +5,9 @@
         <div class="row">
             <div class="col-md-12">
                 <div class="card border-0 bg-white">
-           <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between"><h5 class="mb-0 mt-0">{{ 'Edit Mercy Fee (Both)' }}</h5>
+                    <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between">
+                        <h5 class="mb-0 mt-0">{{ 'Edit Mercy Fee (Both)' }}</h5>
                         <a href="{{ route('admin.editSection.index') }}" class="btn bg-light btn-sm" ><span class="mdi mdi-chevron-left me-2"></span>Back</a>
-
                     </div>
                     <div class="card-body">
                         <form id="class-section-form">
@@ -30,44 +30,30 @@
                                         <span class="invalid-feedback form-invalid fw-bold"
                                             role="alert">{{ $message }}</span>
                                     @enderror
-                                    <img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader"
-                                        id="loader" style="display:none; width:10%;">
+
                                 </div>
-
-
                                 <div class="form-group col-md-4">
                                     <label for="section_id" class="mt-2">Section <span
                                             class="text-danger">*</span></label>
                                     <input type="hidden" id="initialSectionId"
                                         value="{{ old('section') }}">
-                                    <select name="section" id="section_id"
-                                        class="form-control @error('section') is-invalid @enderror" required>
+                                    <select name="section" id="section_id" class="form-control @error('section') is-invalid @enderror" required>
                                         <option value="">Select Section</option>
-
                                     </select>
                                     @error('section')
-                                        <span class="invalid-feedback form-invalid fw-bold"
-                                            role="alert">{{ $message }}</span>
+                                        <span class="invalid-feedback form-invalid fw-bold" role="alert">{{ $message }}</span>
                                     @enderror
                                 </div>
                                 <div class="form-group col-md-4">
                                     <input type="hidden" name="current_session" value='' id="current_session">
                                     <label for="std_id" class="mt-2">Student<span class="text-danger">*</span></label>
-                                    <select name="std_id" id="std_id"
-                                        class="form-control mx-1 @error('std_id') is-invalid @enderror">
+                                    <select name="std_id" id="std_id" class="form-control mx-1 @error('std_id') is-invalid @enderror">
                                         <option value="">Select Student</option>
                                     </select>
                                     <span class="invalid-feedback form-invalid fw-bold student-error" role="alert"></span>
 
                                 </div>
                             </div>
-
-
-                            {{-- <div class="mt-3">
-                                <button type="button" id="show-details" class="btn btn-primary">
-                                    Show Details</button>
-                            </div> --}}
-
                         </form>
                         <div id="std-fee-due-table" class="table-responsive mt-5">
                             <table class="table table-striped table-bordered">
@@ -76,7 +62,6 @@
                                         <th colspan="10">Academic Fee Due Details</th>
                                     </tr>
                                     <tr>
-
                                         <th></th>
                                         <th>Admission Fee</th>
                                         <th>Ist Installment</th>
@@ -102,7 +87,6 @@
                                         <th colspan="9">Transport Fee Due Details</th>
                                     </tr>
                                     <tr>
-
                                         <th></th>
                                         <th>Ist Installment</th>
                                         <th>IInd Installment</th>
@@ -126,32 +110,21 @@
                                 @csrf
                                 <div class="row">
                                     <div class="form-group col-md-6">
-                                        <label for="mercy_date" class="mt-2">Mercy Date <span
-                                                class="text-danger">*</span></label>
+                                        <label for="mercy_date" class="mt-2">Mercy Date <span class="text-danger">*</span></label>
                                         <input type="date" name="mercy_date" id="mercy_date" class="form-control" required>
-
-                                        <span class="invalid-feedback form-invalid fw-bold mercy-date"
-                                            role="alert"></span>
-
-
+                                        <span class="invalid-feedback form-invalid fw-bold mercy-date" role="alert"></span>
                                     </div>
                                     <div class="form-group col-md-6">
-                                        <label for="amount" class="mt-2">Mercy Amount <span
-                                                class="text-danger">*</span></label>
+                                        <label for="amount" class="mt-2">Mercy Amount <span class="text-danger">*</span></label>
                                         <input type="text" name="amount" id="amount" class="form-control" required>
-                                        <span class="invalid-feedback form-invalid fw-bold mercy-amount"
-                                            role="alert"></span>
-
-
+                                        <span class="invalid-feedback form-invalid fw-bold mercy-amount" role="alert"></span>
                                     </div>
                                 </div>
                                 <div class="mt-3">
-                                    <button type="button" id="mercy-academic" class="btn btn-primary">Mercy Academic
-                                        Fee</button>
-                                    <button type="button" id="mercy-transport" value="" class="btn btn-primary">Mercy Transport
-                                        Fee</button>
+                                    <button type="button" id="mercy-academic" class="btn btn-primary">Mercy Academic Fee</button>
+                                    <button type="button" id="mercy-transport" value="" class="btn btn-primary">Mercy Transport Fee</button>
+                                    <img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader" id="loader" style="display:none; width:10%;">
                                 </div>
-
                             </form>
                         </div>
 
@@ -178,10 +151,14 @@
             let std = $('#std_id');
             let sessionID = $('#current_session').val();
             $('#class_id, #section_id').change(()=>{
+                $('.mercy-date').hide().html('');
+                $('.mercy-amount').hide().html('');
                 stdFeeDueTable.hide();
                 transportStdFeeDueTable.hide();
             });
             std.change(function() {
+                $('.mercy-date').hide().html('');
+                $('.mercy-amount').hide().html('');
                 let st = $(this).val();
                 let classID = $('#class_id').val();
                 let sectionID = $('#section_id').val();
@@ -237,7 +214,6 @@
                         },
                         success: function(response) {
                             if (response.status == 'success') {
-
                                 Swal.fire({
                                     title: 'Successful',
                                     text: response.message,
@@ -268,8 +244,6 @@
                                 $('.mercy-amount').show().html(message.amount);
                             }
                             console.error('Error fetching student details:', xhr);
-
-
                         }
                     });
                 }

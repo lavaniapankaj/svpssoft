@@ -11,6 +11,7 @@ use App\Models\Fee\FeeDetail;
 use App\Models\Student\Attendance;
 use App\Models\Student\StudentMaster;
 use Carbon\Carbon;
+use Illuminate\Contracts\Session\Session;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -3509,6 +3510,7 @@ class ReportController extends Controller
     public function dayWiseCollectionIndex()
     {
         $classes = ClassMasterController::getClasses();
+
         return view('admin.reports.day_wise_collection_fee_detail', compact('classes'));
     }
     /** Day wise collection report as excel */
@@ -3516,6 +3518,7 @@ class ReportController extends Controller
     public function exportdDayWiseCollectionReprt(Request $request)
     {
         try {
+
             $fromDate = $request->from_date;
             $toDate   = $request->to_date;
             $class    = $request->class_id;
@@ -3523,16 +3526,35 @@ class ReportController extends Controller
             $fee_mode = $request->fee_mode;
             $academic_trans = $request->academic_trans;
 
-            // ✅ Get detailed report (student-wise)
+            //  Get detailed report (student-wise)
             $reportData = DB::table('fee_details as fc')
-                ->join('stu_main_srno as s', 'fc.srno', '=', 's.srno')
+                /* ->join('stu_main_srno as s', 'fc.srno', '=', 's.srno')
                 ->join('parents_detail as p', 'fc.srno', '=', 'p.srno')
-                ->join('stu_detail as sd', 'fc.srno', '=', 'sd.srno')
+                ->join('stu_detail as sd', 'fc.srno', '=', 'sd.srno') */
+                ->join('stu_main_srno as s', function($join) {
+                    $join->on('fc.srno', '=', 's.srno')
+                        ->on('fc.session_id', '=', 's.session_id'); // Match fee session with student session
+                })
+                ->joinSub(
+                    DB::table('parents_detail')
+                        ->select('srno', 'f_name')
+                        ->groupBy('srno', 'f_name'),
+                    'p',
+                    'fc.srno', '=', 'p.srno'
+                )
+                ->joinSub(
+                    DB::table('stu_detail')
+                        ->select('srno', 'name')
+                        ->groupBy('srno', 'name'),
+                    'sd',
+                    'fc.srno', '=', 'sd.srno'
+                )
                 ->join('class_masters as c', 's.class', '=', 'c.id')
                 ->join('section_masters as sec', 's.section', '=', 'sec.id')
                 ->select(
                     DB::raw('DATE(fc.pay_date) as payment_date'),
                     'fc.srno',
+                    'fc.ref_slip_no',
                     'sd.name as student_name',
                     'p.f_name as parent_name',
                     'c.class as class_name',
@@ -3546,15 +3568,15 @@ class ReportController extends Controller
                 ->whereBetween('fc.pay_date', [$fromDate, $toDate])
                 ->when($class && $class !== 'all', fn($q) => $q->where('s.class', $class))
                 ->when($section && $section !== 'all', fn($q) => $q->where('s.section', $section))
-                ->when($academic_trans, fn($q) => $q->where('fc.academic_trans', $academic_trans))
+                ->when($academic_trans && $academic_trans !== 'all', fn($q) => $q->where('fc.academic_trans', $academic_trans))
                 ->when($fee_mode && $fee_mode !== 'all', fn($q) => $q->where('fc.fee_mode', $fee_mode))
                 ->orderBy('payment_date', 'ASC')
                 ->get();
 
             if ($reportData->isEmpty()) {
-                return redirect()->back()->with('error', 'No data found.');
+                return redirect()->route('admin.dayWiseCollectionIndex')->with('error', 'No data found.')->withInput();
             }
-            session()->forget('error');
+
 
             // ✅ CSV Export
             $fileName = 'day_wise_collection_report.csv';
@@ -3563,7 +3585,7 @@ class ReportController extends Controller
             // CSV headers
             $headers = [
                 'Payment Date',
-                'SR No',
+                'Receipt Number',
                 'Student Name',
                 'Parent Name',
                 'Class',
@@ -3581,10 +3603,9 @@ class ReportController extends Controller
             foreach ($reportData as $row) {
                 $grandTotal += $row->amount;
                 $totalTransactions++;
-
                 fputcsv($output, [
                     $row->payment_date,
-                    $row->srno,
+                    $row->ref_slip_no,
                     $row->student_name,
                     $row->parent_name,
                     $row->class_name,
@@ -3614,15 +3635,13 @@ class ReportController extends Controller
             rewind($output);
             $csvContent = stream_get_contents($output);
             fclose($output);
-
-            return response($csvContent, 200)
-                ->header('Content-Type', 'text/csv')
-                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
+            return response($csvContent, 200)->header('Content-Type', 'text/csv')->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         } catch (\Exception $e) {
             // return redirect()->back()->with('error', 'Something went wrong, please try again.', $e->getMessage());
-            return redirect()->back()->with('error', 'Something went wrong, please try again.');
+            return redirect()->route('admin.dayWiseCollectionIndex')->with('error', 'Something went wrong, please try again.')->withInput();
         }
     }
+
 
 
     private function getFeeModeName($id)

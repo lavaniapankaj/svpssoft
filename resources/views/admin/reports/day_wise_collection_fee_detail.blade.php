@@ -11,7 +11,8 @@
                         </a>
                     </div>
                     <div class="card-body">
-                        <form action="{{ route('admin.exportdDayWiseCollectionReprt') }}" method="GET">
+                        <form action="{{ route('admin.exportdDayWiseCollectionReprt') }}" method="POST">
+                            @csrf
                             {{-- Filters Section --}}
                             <div class="row mb-4">
 
@@ -19,8 +20,10 @@
                                 <div class="col-md-4">
                                     <label for="to_date" class="form-label">Fee Type</label>
                                     <select id="academic_trans" name="academic_trans" class="form-control" required>
-                                        <option value="1">Academic</option>
-                                        <option value="2">Transaport</option>
+                                        <option value="all" {{ old('academic_trans') === 'all' ? 'selected' : '' }}>All</option>
+                                        <option value="1" {{ old('academic_trans') == '1' ? 'selected' : '' }}>Academic</option>
+                                        <option value="2" {{ old('academic_trans') == '2' ? 'selected' : '' }}>Transport</option>
+                                        <option value="3" {{ old('academic_trans') == '3' ? 'selected' : '' }}>TC</option>
                                     </select>
                                 </div>
                                 {{-- From Date --}}
@@ -42,10 +45,10 @@
                                 <div class="col-md-4">
                                     <label for="to_date" class="form-label">Payment Mode</label>
                                     <select id="fee_mode" name="fee_mode" class="form-control" required>
-                                        <option value="all" selected>All</option>
-                                        <option value="1">Cash</option>
-                                        <option value="2">UPI</option>
-                                        <option value="3">Bank Transfer</option>
+                                        <option value="all" {{ old('fee_mode') === 'all' ? 'selected' : '' }}>All</option>
+                                        <option value="1" {{ old('fee_mode') == '1' ? 'selected' : '' }}>Cash</option>
+                                        <option value="2" {{ old('fee_mode') == '2' ? 'selected' : '' }}>UPI</option>
+                                        <option value="3" {{ old('fee_mode') == '3' ? 'selected' : '' }}>Bank Transfer</option>
                                     </select>
                                 </div>
 
@@ -78,7 +81,7 @@
 
                                 </div>
                                 <div class="col-md-3 d-flex align-items-end">
-                                    @if (session()->has('error') && session('error'))
+                                    @if(session('error'))
                                         <span class="text-danger fw-bold" id="filter-report-error" role="alert">
                                             {{ session('error') }}
                                         </span>

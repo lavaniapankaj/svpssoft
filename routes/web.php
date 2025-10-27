@@ -73,6 +73,9 @@ Route::group(['middleware' => 'auth'], function () {
     Route::get('subjects', [SubjectMasterController::class, 'getSubjectsAjax'])->name('subjects.get');
     Route::get('exams', [ExamMasterController::class, 'getExamAjax'])->name('exams.get');
     Route::get('/std-name-father', [StudentMasterController::class, 'getStdNameFather'])->name('stdNameFather.get');
+
+
+    Route::get('/get-st', [StudentMasterController::class, 'getStdForDropDown'])->name('getStdForDropDown');
 });
 
 
@@ -125,6 +128,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth', 'i
         Route::get('edit-section/edit-std-marks', 'editStdMarks')->name('editSection.editStdMarks');
         Route::post('edit-section/edit-std-marks', 'editStdMarksStore')->name('editSection.editStdMarks.store');
         Route::get('edit-section/edit-std-attendance', 'editStdAttendance')->name('editSection.editStdAttendance');
+        Route::post('edit-section/edit-std-attendance/store', 'ediStAttendancestore')->name('editSection.editStdAttendance.store');
         Route::get('edit-section/std-fee-details', 'stdFeeDetailFetch')->where('srno', '.*')->name('editSection.stdFeeDetailFetch');
         Route::get('edit-section/std-fee-edit-remove', 'editRemoveStdFee')->name('editSection.editRemoveStdFee');
         Route::post('edit-section/std-fee-edit-remove/edit', 'stdFeeEdit')->name('editSection.stdFeeEdit');
@@ -211,7 +215,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth', 'i
         /** All Class sections */
         Route::get('/all-sections','getAllClassSections')->name('allSections');
         Route::get('/day-wise-collection','dayWiseCollectionIndex')->name('dayWiseCollectionIndex');
-        Route::get('/day-wise-collection/excel','exportdDayWiseCollectionReprt')->name('exportdDayWiseCollectionReprt');
+        Route::post('/day-wise-collection/excel','exportdDayWiseCollectionReprt')->name('exportdDayWiseCollectionReprt');
     });
 
     // Route::get('full-detail-student/{prevSrno?}/{srno?}', function(?string $prevSrno=null, ?string $srno=null){
@@ -417,6 +421,10 @@ Route::group(['prefix' => 'marks', 'as' => 'marks.', 'middleware' => ['auth', 'i
         Route::post('exam-wise/play-school', 'playSchoolExamWisePrintStore')->name('marks-report.play-exam-wise.store');
         Route::get('exam-wise/play-school/print', 'playSchoolExamWisePrint')->name('marks-report.play-exam-wise.print');
         Route::get('marksheet-report', 'getMarkSheetReport')->name('marksheet-report');
+        Route::get('exam-wise/pg', 'pgClassExamWise')->name('marks-report.pg-class-exam-wise');
+        Route::post('exam-wise/pg', 'pgClassExamWisePrintStore')->name('marks-report.pg-class-exam-wise.store');
+        Route::get('exam-wise/pg/print', 'pgClassExamWisePrint')->name('marks-report.pg-class-exam-wise.print');
+        Route::get('pg-marksheet-report', 'getPgClassMarkSheetReport')->name('pg-marksheet-report');
 
         Route::get('rank-report', 'rankReport')->name('rank-class-wise');
 

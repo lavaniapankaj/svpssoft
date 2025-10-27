@@ -1,27 +1,6 @@
 @extends('admin.index')
 @section('sub-content')
 <div class="container-fluid">
-    @if (Session::has('success'))
-    @section('scripts')
-    <script>
-        swal("Successful", "{{ Session::get('success') }}", "success").then(() => {
-            $('#std-form').hide();
-            location.reload();
-        });
-    </script>
-    @endsection
-    @endif
-
-    @if (Session::has('error'))
-    @section('scripts')
-    <script>
-        swal("Error", "{{ Session::get('error') }}", "error").then(() => {
-            $('#std-form').hide();
-            location.reload();
-        });
-    </script>
-    @endsection
-    @endif
     <div class="row">
         <div class="col-md-12">
             <div class="card border-0 bg-white">
@@ -135,48 +114,49 @@
         let initialClassId = $('#class_id').val();
         let initialSectionId = $('#initialSectionId').val();
         getClassSection(initialClassId, initialSectionId);
-        $('#class_id, #section_id').change(() => {
-            $('#std-form').hide();
-        });
+
+        // Hide initially
         $('#std-form').hide();
+
+        // Reset function
+        function resetAttendanceForm() {
+            $('#std-form').hide();
+            $('#std-container table tbody').html(''); // clear students
+            $('#hidden_class').val('');
+            $('#hidden_section').val('');
+            $('#hidden_a_date').val('');
+        }
+
+        // Reset whenever these fields change
+        $('#class_id, #section_id, #a_date').on('change input', function() {
+            resetAttendanceForm();
+        });
+
         $('#class-section-form').validate({
             rules: {
-                a_date: {
-                    required: true,
-                },
-                class: {
-                    required: true,
-                },
-                section: {
-                    required: true,
-                },
+                a_date: { required: true },
+                class: { required: true },
+                section: { required: true },
             },
             messages: {
-                a_date: {
-                    required: "Please select a date.",
-                },
-                class: {
-                    required: "Please select a class.",
-                },
-                section: {
-                    required: "Please select a section.",
-                },
+                a_date: { required: "Please select a date." },
+                class: { required: "Please select a class." },
+                section: { required: "Please select a section." },
             },
         });
 
         $('#show-details').on('click', function() {
             if ($('#class-section-form').valid()) {
-
                 const classId = $('#class_id').val();
                 const sectionId = $('#section_id').val();
                 const sessionId = $('#current_session').val();
                 const date = $('#a_date').val();
-                const $paginationContainer = $('#std-pagination');
+
                 $('#hidden_class').val(classId);
                 $('#hidden_section').val(sectionId);
                 $('#hidden_a_date').val(date);
 
-               if (classId && sectionId && sessionId) {
+                if (classId && sectionId && sessionId) {
                     $('#std-form').show();
                     $.ajax({
                         url: '{{ route('stdNameFather.get') }}',
@@ -191,24 +171,28 @@
                             let stdHtml = '';
                             $.each(students, function(index, std) {
                                 stdHtml += `<tr>
-                                                <td>${std.rollno}</td>
-                                                <td>
-                                                    <input type="hidden" name="students[${index}][srno]" value="${std.srno}" class="std-srno" id="std-srno" data-index="${index}">
-                                                    ${std.student_name}
-                                                </td>
-                                                <td>
-                                                   ${std.f_name}
-                                                </td>
-                                                 <td>
-                                                    <input type="checkbox" name="students[${index}][status]" value="1" class="status-checkbox" data-index="${index}" checked>
-                                                </td>
-
-                                                </tr>`;
-
+                                    <td>${std.rollno}</td>
+                                    <td>
+                                        <input type="hidden" name="students[${index}][srno]"
+                                               value="${std.srno}"
+                                               class="std-srno"
+                                               data-index="${index}">
+                                        ${std.student_name}
+                                    </td>
+                                    <td>${std.f_name}</td>
+                                    <td>
+                                        <input type="checkbox"
+                                               name="students[${index}][status]"
+                                               value="1"
+                                               class="status-checkbox"
+                                               data-index="${index}"
+                                               checked>
+                                    </td>
+                                </tr>`;
                             });
+
                             if (stdHtml === '') {
-                                stdHtml =
-                                    '<tr><td colspan="4">No Student found</td></tr>';
+                                stdHtml = '<tr><td colspan="4">No Student found</td></tr>';
                             }
                             $('#std-container table tbody').html(stdHtml);
                         },
@@ -216,32 +200,28 @@
                             loader.hide();
                         },
                         error: function(xhr) {
-                           console.error(xhr.responseText);
-
+                            console.error(xhr.responseText);
                         }
                     });
                 }
-
             }
         });
 
-
         $('#section-updateBtn').click(function() {
             $.ajax({
-                url: "{{ route('student.attendance.store') }}",
+                url: "{{ route('admin.editSection.editStdAttendance.store') }}",
                 type: "POST",
                 data: $('#std-form').serialize(),
                 dataType: 'JSON',
                 success: function(data) {
                     if (data.status == 'success') {
-
                         Swal.fire({
                             title: 'Successful',
                             text: data.message,
                             icon: 'success',
                             confirmButtonColor: 'rgb(122 190 255)',
                         }).then(() => {
-                            location.reload();
+                            // location.reload();
                         });
                     } else {
                         Swal.fire({
@@ -251,15 +231,27 @@
                             confirmButtonColor: 'rgb(122 190 255)',
                         });
                     }
-
                 },
                 error: function(xhr) {
-                    console.error(xhr);
-
+                    // Handle Laravel validation / duplicate attendance JSON
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        Swal.fire({
+                            title: 'Error',
+                            text: xhr.responseJSON.message,
+                            icon: 'error',
+                            confirmButtonColor: 'rgb(122 190 255)',
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'Error',
+                            text: 'Something went wrong!',
+                            icon: 'error',
+                            confirmButtonColor: 'rgb(122 190 255)',
+                        });
+                    }
                 }
             });
         });
-
     });
 </script>
 @endsection

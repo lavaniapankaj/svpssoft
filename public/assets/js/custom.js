@@ -65,6 +65,7 @@ function getClassSection(initialClassId, initialSectionId = '', classSelect = ''
         classSelected = $('#class_id');
         sectionSelected = $('#section_id');
     }
+
     var classId = initialClassesId;
     fetchSections(classId);
     function fetchSections(classId) {
@@ -86,7 +87,6 @@ function getClassSection(initialClassId, initialSectionId = '', classSelect = ''
                     } else if (data.status === "error") {
                         // Handle error message from server
                         sectionSelected.append('<option value="">No sections available</option>');
-                        console.warn(data.message);
                     } else {
                         sectionSelected.append('<option value="">No sections available</option>');
                     }
@@ -303,7 +303,7 @@ function getStateDistrict(stateSelect, initialStateId, districtSelct = '', initi
             const headerHeight = header.offsetHeight;
             document.body.style.paddingTop = headerHeight + 'px';
         });
-   
+
 document.addEventListener("DOMContentLoaded", function () {
 const body = document.querySelector("body");
 const sidebar = document.querySelector(".sidebar");

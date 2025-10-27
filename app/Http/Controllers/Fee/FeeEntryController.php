@@ -1283,13 +1283,13 @@ class FeeEntryController extends Controller
         $first_inst_fee_total = FeeDetail::where('srno', $request->std_id)->where('session_id', $current_session)->where('active', 1)->where('academic_trans', 2)->where('fee_of', 1)->where('paid_mercy', 1)->sum('amount');
         $second_inst_fee_total = FeeDetail::where('srno', $request->std_id)->where('session_id', $current_session)->where('active', 1)->where('academic_trans', 2)->where('fee_of', 2)->where('paid_mercy', 1)->sum('amount');
         $complete_fee_total = FeeDetail::where('srno', $request->std_id)->where('session_id', $current_session)->where('active', 1)->where('academic_trans', 2)->where('fee_of', 3)->where('paid_mercy', 1)->sum('amount');
-        $mercy_fee_total = FeeDetail::where('srno', $request->std_id)->where('session_id', $current_session)->where('active', 1)->where('academic_trans', 2)->where('fee_of', 4)->where('paid_mercy', 2)->sum('amount');
+        $mercy_fee_total = FeeDetail::where('srno', $request->std_id)->where('session_id', $current_session)->where('active', 1)->where('academic_trans', 2)->where('fee_of', 3)->where('paid_mercy', 2)->sum('amount');
 
 
         $first_inst_fee_exists = FeeDetail::where('srno', $request->std_id)->where('session_id', $current_session)->where('academic_trans', 2)->where('fee_of', 1)->where('paid_mercy', 1)->where('active', 1)->exists();
         $second_inst_fee_exists = FeeDetail::where('srno', $request->std_id)->where('session_id', $current_session)->where('academic_trans', 2)->where('fee_of', 2)->where('paid_mercy', 1)->where('active', 1)->exists();
         $complete_fee_exists = FeeDetail::where('srno', $request->std_id)->where('session_id', $current_session)->where('academic_trans', 2)->where('fee_of', 3)->where('paid_mercy', 1)->where('active', 1)->exists();
-        $mercy_fee_exists = FeeDetail::where('srno', $request->std_id)->where('session_id', $current_session)->where('academic_trans', 2)->where('fee_of', 4)->where('paid_mercy', 2)->where('active', 1)->exists();
+        $mercy_fee_exists = FeeDetail::where('srno', $request->std_id)->where('session_id', $current_session)->where('academic_trans', 2)->where('fee_of', 3)->where('paid_mercy', 2)->where('active', 1)->exists();
 
         $firstInstFeeDueTotal = 0;
         $secondInstFeeDueTotal = 0;

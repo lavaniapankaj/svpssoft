@@ -17,8 +17,7 @@
                     <input type="hidden" id="class_id" value="{{$class}}">
                     <input type="hidden" id="section_id" value="{{$section}}">
                     <input type="hidden" id="std_id" value="{{$students}}">
-                    <img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader"
-                                    id="loader" style="width:10%;">
+                    <img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader" id="loader" style="width:10%;">
                     <div class="marksheet-div">
                             <div class="marksheet">
                             </div>

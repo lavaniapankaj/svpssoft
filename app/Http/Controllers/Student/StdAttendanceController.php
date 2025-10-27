@@ -26,58 +26,56 @@ class StdAttendanceController extends Controller
     public function store(Request $request)
     {
         try {
-            $data = $request->validate([
-                'hidden_a_date' => 'required|date_format:Y-m-d',
-                'students' => 'required|array',
-                'students.*.srno' => 'required|exists:stu_main_srno,srno',
-                'students.*.status' => 'in:1,0',
-            ]);
+                $data = $request->validate([
+                    'hidden_a_date' => 'required|date_format:Y-m-d',
+                    'students' => 'required|array',
+                    'students.*.srno' => 'required|exists:stu_main_srno,srno',
+                    'students.*.status' => 'in:1,0',
+                ]);
 
-            $updatedCount = 0;
+                // First check if attendance already exists for this date/class/section/session
+                $exists = Attendance::where([
+                    'class'      => $request->hidden_class,
+                    'section'    => $request->hidden_section,
+                    'a_date'     => $request->hidden_a_date,
+                    'session_id' => $request->current_session,
+                ])->exists();
 
-            foreach ($data['students'] as $std) {
-                $student = Attendance::updateOrCreate(
-                    [
-                        'srno' => $std['srno'],
-                        'class' => $request->hidden_class,
-                        'section' => $request->hidden_section,
-                        'a_date' => $request->hidden_a_date,
-                        'session_id' => $request->current_session,
-                    ],
-                    [
-                        'session_id' => $request->current_session,
-                        'class' => $request->hidden_class,
-                        'section' => $request->hidden_section,
-                        'srno' => $std['srno'],
-                        'a_date' => $request->hidden_a_date,
-                        'status' => isset($std['status']) ? $std['status'] : 0,
-                        'add_user_id' => Session::get('login_user'),
-                        'edit_user_id' => Session::get('login_user'),
-                    ]
-                );
-
-                if ($student) {
-                    $updatedCount++;
+                if ($exists) {
+                    return response()->json([
+                        'status'  => 'error',
+                        'message' => "Attendance has already been taken for this date."
+                    ], 400);
                 }
-            }
 
-            if ($updatedCount > 0) {
+                // If not exists → Insert fresh attendance
+                $insertedCount = 0;
+
+                foreach ($data['students'] as $std) {
+                    Attendance::create([
+                        'session_id'   => $request->current_session,
+                        'class'        => $request->hidden_class,
+                        'section'      => $request->hidden_section,
+                        'srno'         => $std['srno'],
+                        'a_date'       => $request->hidden_a_date,
+                        'status'       => isset($std['status']) ? $std['status'] : 0,
+                        'add_user_id'  => Session::get('login_user'),
+                        'edit_user_id' => Session::get('login_user'),
+                    ]);
+                    $insertedCount++;
+                }
+
                 return response()->json([
-                    'status' => 'success',
-                    'message' => "Attendance updated successfully for $updatedCount students."
+                    'status'  => 'success',
+                    'message' => "Attendance recorded successfully for $insertedCount students."
                 ], 200);
-            } else {
+
+            } catch (\Exception $e) {
                 return response()->json([
-                    'status' => 'error',
-                    'message' => "Something went wrong, please try again."
-                ], 400);
+                    'status'  => 'error',
+                    'message' => "Failed to update student attendance"
+                ], 500);
             }
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => "Failed to update student attendance"
-            ], 500);
-        }
     }
 
     // Student Attendance report view

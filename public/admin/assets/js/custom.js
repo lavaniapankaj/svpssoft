@@ -24,31 +24,32 @@ function getStdDropdown() {
     $('#section_id').change(function () {
         let classId = $('#class_id').val();
         let sectionId = $(this).val();
-        let sessionId = $('#current_session').val();
+        // let sessionId = $('#current_session').val();
         let stdSelect = $('#std_id');
-        if (classId && sectionId && sessionId) {
+        if (classId && sectionId) {
             loader.show();
             $.ajax({
-                url: siteUrl + '/std-name-father',
+                // url: siteUrl + '/std-name-father',
+                url: siteUrl + '/get-st',
                 type: 'GET',
                 dataType: 'JSON',
                 data: {
                     class_id: classId,
                     section_id: sectionId,
-                    session_id: sessionId,
+                    // session_id: sessionId,
                 },
                 success: function (students) {
                     stdSelect.empty();
                     let options = '<option value="">Select Students</option>';
-                    if (students.length > 0) {
-                        $.each(students, function (index, student) {
-                            options += '<option value="' + student.srno + '">' +
-                                student.rollno + '. ' + student.student_name +
-                                '/SH. ' +
-                                student.f_name + '</option>';
+
+                    if (students.data && students.data.length > 0) {
+                        $.each(students.data, function(index, student) {
+                            options += '<option value="' + student.srno + '">' + student.display_name + '</option>';
                         });
+                        stdSelect.html(options);
                     } else {
-                        options += '<option value="">No students found</option>';
+                        stdSelect.empty();
+                        stdSelect.append('<option value="">No students found</option>');
                     }
                     stdSelect.html(options);
                 },
@@ -56,7 +57,8 @@ function getStdDropdown() {
                     loader.hide();
                 },
                 error: function (xhr) {
-                    console.error(xhr.responseText);
+                    stdSelect.empty();
+                    stdSelect.append('<option value="">No students found</option>');
                 }
             });
         }
@@ -237,16 +239,11 @@ function adcademicAndTransportFeePopulate(st, sessionID, classID, sectionID) {
                             footerstdHtml +=
                                 `<tr><td colspan = "5">${totalAmount}</td><td colspan = "5">${dueAmount}</td></tr>`;
                             // Transport Fees Section
-                            if (session.transport && session.transport.transport ==
-                                1) {
-                                const firstTransInst = session.transport
-                                    .trans_installments.first_inst || [];
-                                const secondTransInst = session.transport
-                                    .trans_installments.second_inst || [];
-                                const completeTransInst = session.transport
-                                    .trans_installments.complete_inst || [];
-                                const mercyTrans = session.transport
-                                    .trans_installments.mercy || [];
+                            if (session.transport && session.transport.transport == 1) {
+                                const firstTransInst = session.transport.trans_installments.first_inst || [];
+                                const secondTransInst = session.transport.trans_installments.second_inst || [];
+                                const completeTransInst = session.transport.trans_installments.complete_inst || [];
+                                const mercyTrans = session.transport.trans_installments.mercy || [];
                                 const allTransInstallments = [
                                     ...firstTransInst.map(inst => ({
                                         ...inst,
@@ -276,17 +273,12 @@ function adcademicAndTransportFeePopulate(st, sessionID, classID, sectionID) {
                                                     <td>-</td>
                                                     <td>-</td>
                                                 </tr>`;
-                                const totalTransAmount = allTransInstallments
-                                    .length > 0 ?
-                                    allTransInstallments.reduce((total, inst) =>
-                                        total + (inst.amount || 0), 0) :
-                                    0;
-                                const dueTransAmount = (session.transport
-                                    .inst_total) - totalTransAmount;
+                                const totalTransAmount = allTransInstallments.length > 0 ? allTransInstallments.reduce((total, inst) => total + (inst.amount || 0), 0) : 0;
+                                const dueTransAmount = (session.transport.inst_total) - totalTransAmount;
                                 allTransInstallments.forEach((inst, index) => {
                                     transportHtml += `<tr>
-                                                <td>Paid Transport Fee</td>
-                                                 <td>${inst.type === 'first' ? inst.amount : '0'}</td>
+                                                    <td>Paid Transport Fee</td>
+                                                    <td>${inst.type === 'first' ? inst.amount : '0'}</td>
                                                     <td>${inst.type === 'second' ? inst.amount : '0'}</td>
                                                     <td>${inst.type === 'complete' ? inst.amount : '0'}</td>
                                                     <td>${inst.type === 'mercy' ? inst.amount : '0'}</td>
@@ -296,15 +288,11 @@ function adcademicAndTransportFeePopulate(st, sessionID, classID, sectionID) {
                                                     <td>${inst.ref_slip_no || '-'}</td>
                                             </tr>`;
                                 });
-                                footerTransHtml +=
-                                    `<tr><td colspan = "8" class="table-group-divider text-center fw-bold fs-5">Total</td></tr>`;
-                                footerTransHtml +=
-                                    `<tr><td colspan = "4" class="fw-bold">Paid</td><td colspan="4" class="fw-bold">Due</td></tr>`;
-                                footerTransHtml +=
-                                    `<tr><td colspan = "4">${totalTransAmount}</td><td colspan = "4">${dueTransAmount}</td></tr>`;
+                                footerTransHtml += `<tr><td colspan = "9" class="table-group-divider text-center fw-bold fs-5">Total</td></tr>`;
+                                footerTransHtml += `<tr><td colspan = "4" class="fw-bold">Paid</td><td colspan="5" class="fw-bold">Due</td></tr>`;
+                                footerTransHtml += `<tr><td colspan = "4">${totalTransAmount}</td><td colspan = "5">${dueTransAmount}</td></tr>`;
                             } else {
-                                transportHtml +=
-                                    '<tr><td colspan = "9">No Transport Fee Applicable </td></tr>';
+                                transportHtml += '<tr><td colspan = "9">No Transport Fee Applicable </td></tr>';
                             }
                         }
                     });

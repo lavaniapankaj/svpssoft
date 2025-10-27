@@ -1,43 +1,20 @@
 @extends('student.index')
 @section('sub-content')
     <div class="container-fluid">
-        @if (Session::has('success'))
-            @section('scripts')
-                <script>
-                    swal("Successful", "{{ Session::get('success') }}", "success").then(() => {
-                        location.reload();
-                    });
-                </script>
-            @endsection
-        @endif
-
-        @if (Session::has('error'))
-            @section('scripts')
-                <script>
-                    swal("Error", "{{ Session::get('error') }}", "error").then(() => {
-                        location.reload();
-                    });
-                </script>
-            @endsection
-        @endif
         <div class="row ">
             <div class="col-md-12">
                 <div class="card border-0 bg-white">
            <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between"><h5 class="mb-0 mt-0">{{ 'Attendance Entry' }}</h5>
                         <a href="{{ route('student.attendance.index') }}" class="btn bg-light btn-sm" ><span class="mdi mdi-chevron-left me-2"></span>Back</a>
-
                     </div>
                     <div class="card-body">
                         <form id="class-section-form">
                             <div class="row">
                                 <div class="form-group col-md-12">
-                                    <label for="a_date" class="mt-2">Enter Date <span
-                                            class="text-danger">*</span></label>
-                                    <input type="date" name="a_date" id="a_date"
-                                        class="form-control @error('a_date') is-invalid @enderror" required>
+                                    <label for="a_date" class="mt-2">Enter Date <span class="text-danger">*</span></label>
+                                    <input type="date" name="a_date" id="a_date" class="form-control @error('a_date') is-invalid @enderror" required>
                                     @error('a_date')
-                                        <span class="invalid-feedback form-invalid fw-bold"
-                                            role="alert">{{ $message }}</span>
+                                        <span class="invalid-feedback form-invalid fw-bold" role="alert">{{ $message }}</span>
                                     @enderror
                                 </div>
                             </div>
@@ -56,40 +33,25 @@
                                         @endif
                                     </select>
                                     @error('class')
-                                        <span class="invalid-feedback form-invalid fw-bold"
-                                            role="alert">{{ $message }}</span>
+                                        <span class="invalid-feedback form-invalid fw-bold" role="alert">{{ $message }}</span>
                                     @enderror
-
                                 </div>
-
-
                                 <div class="form-group col-md-6">
-                                    <label for="section_id" class="mt-2">Section <span
-                                            class="text-danger">*</span></label>
+                                    <label for="section_id" class="mt-2">Section <span class="text-danger">*</span></label>
                                     <input type="hidden" id="initialSectionId" value="{{ old('section') }}">
-                                    <select name="section" id="section_id"
-                                        class="form-control @error('section') is-invalid @enderror" required>
+                                    <select name="section" id="section_id" class="form-control @error('section') is-invalid @enderror" required>
                                         <option value="">Select Section</option>
-
                                     </select>
                                     @error('section')
-                                        <span class="invalid-feedback form-invalid fw-bold"
-                                            role="alert">{{ $message }}</span>
+                                        <span class="invalid-feedback form-invalid fw-bold" role="alert">{{ $message }}</span>
                                     @enderror
-                                    <img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader"
-                                        id="loader" style="display:none; width:10%;">
+                                    <img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader" id="loader" style="display:none; width:10%;">
                                 </div>
                             </div>
-
-
                             <div class="mt-3">
-                                <button type="button" id="show-details" class="btn btn-primary">
-                                    Show Details</button>
+                                <button type="button" id="show-details" class="btn btn-primary">Show Details</button>
                             </div>
-
                         </form>
-
-
                         <div id="std-container" class="mt-4">
                             <form action="" method="POST" id="std-form">
                                 @csrf
@@ -98,8 +60,6 @@
                                     <input type="hidden" name="hidden_class" value='' id="hidden_class">
                                     <input type="hidden" name="hidden_section" value='' id="hidden_section">
                                     <input type="hidden" name="hidden_a_date" value='' id="hidden_a_date">
-                                    {{-- <input type="hidden" name="current_session" value='' id="current_session"> --}}
-
                                     <thead>
                                         <tr>
                                             <th>Roll No.</th>
@@ -109,13 +69,11 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-
                                     </tbody>
                                 </table>
                                <div class="row">
                                     <div class="mt-3">
-                                        <button type="button" class="btn btn-primary"
-                                            id="section-updateBtn">Update</button>
+                                        <button type="button" class="btn btn-primary" id="section-updateBtn">Update</button>
                                     </div>
                                 </div>
                             </form>
@@ -134,116 +92,109 @@
         getClassSection(initialClassId, initialSectionId);
         $('#std-form').hide();
         $('#class-section-form').validate({
-                rules: {
-                    a_date: {
-                        required: true,
-                    },
-                    class: {
-                        required: true,
-                    },
-                    section: {
-                        required: true,
-                    },
+            rules: {
+                a_date: {
+                    required: true,
                 },
-                messages: {
-                    a_date: {
-                        required: "Please select a date.",
-                    },
-                    class: {
-                        required: "Please select a class.",
-                    },
-                    section: {
-                        required: "Please select a section.",
-                    },
+                class: {
+                    required: true,
                 },
-            });
-
-            $('#show-details').on('click', function() {
-                if ($('#class-section-form').valid()) {
-
-                    const classId = $('#class_id').val();
-                    const sectionId = $('#section_id').val();
-                    const sessionId = $('#current_session').val();
-                    const date = $('#a_date').val();
-                    const $paginationContainer = $('#std-pagination');
-                    $('#hidden_class').val(classId);
-                    $('#hidden_section').val(sectionId);
-                    $('#hidden_a_date').val(date);
-
-                    function stdDetails() {
-                        if (classId && sectionId && sessionId) {
-                            $('#std-form').show();
-                            $.ajax({
-                                url: '{{ route('stdNameFather.get') }}',
-                                type: 'GET',
-                                dataType: 'JSON',
-                                data: {
-                                    class_id: classId,
-                                    section_id: sectionId,
-                                    session_id: sessionId,
-
-                                },
-                                success: function(students) {
-                                    let stdHtml = '';
-                                    $.each(students, function(index, std) {
-
-
-                                        stdHtml += `<tr>
-                                                <td>${std.rollno}</td>
+                section: {
+                    required: true,
+                },
+            },
+            messages: {
+                a_date: {
+                    required: "Please select a date.",
+                },
+                class: {
+                    required: "Please select a class.",
+                },
+                section: {
+                    required: "Please select a section.",
+                },
+            },
+        });
+        // Reset table when class, section, or date changes
+        $('#class_id, #section_id, #a_date').on('change', function() {
+            $('#std-form').hide();                          // hide form
+            $('#std-container table tbody').empty();        // clear table
+            $('#hidden_class').val('');
+            $('#hidden_section').val('');
+            $('#hidden_a_date').val('');
+        });
+        $('#show-details').on('click', function() {
+            if ($('#class-section-form').valid()) {
+                const classId = $('#class_id').val();
+                const sectionId = $('#section_id').val();
+                const sessionId = $('#current_session').val();
+                const date = $('#a_date').val();
+                const $paginationContainer = $('#std-pagination');
+                $('#hidden_class').val(classId);
+                $('#hidden_section').val(sectionId);
+                $('#hidden_a_date').val(date);
+                function stdDetails() {
+                    if (classId && sectionId && sessionId) {
+                        $('#std-form').show();
+                        $.ajax({
+                            url: '{{ route('stdNameFather.get') }}',
+                            type: 'GET',
+                            dataType: 'JSON',
+                            data: {
+                                class_id: classId,
+                                section_id: sectionId,
+                                session_id: sessionId,
+                            },
+                            success: function(students) {
+                                let stdHtml = '';
+                                $.each(students, function(index, std) {
+                                    stdHtml += `<tr>
+                                            <td>${std.rollno}</td>
+                                            <td>
+                                                <input type="hidden" name="students[${index}][srno]" value="${std.srno}" class="std-srno" id="std-srno" data-index="${index}">
+                                                ${std.student_name}
+                                            </td>
+                                            <td>
+                                                ${std.f_name}
+                                            </td>
                                                 <td>
-                                                    <input type="hidden" name="students[${index}][srno]" value="${std.srno}" class="std-srno" id="std-srno" data-index="${index}">
-                                                    ${std.student_name}
-                                                </td>
-                                                <td>
-                                                   ${std.f_name}
-                                                </td>
-                                                 <td>
-                                                    <input type="checkbox" name="students[${index}][status]" value="1" class="status-checkbox" data-index="${index}" checked>
-                                                </td>
-
-                                                </tr>`;
-
-                                    });
-                                    if (stdHtml === '') {
-                                        stdHtml =
-                                            '<tr><td colspan="4">No Student found</td></tr>';
-                                    }
-                                    $('#std-container table tbody').html(stdHtml);
-
-                                },
-                                complete: function() {
-                                    loader.hide();
-                                },
-                                error: function(xhr) {
-                                    console.error(xhr.responseText);
-
+                                                <input type="checkbox" name="students[${index}][status]" value="1" class="status-checkbox" data-index="${index}" checked>
+                                            </td>
+                                            </tr>`;
+                                });
+                                if (stdHtml === '') {
+                                    stdHtml =
+                                        '<tr><td colspan="4">No Student found</td></tr>';
                                 }
-                            });
-                        }
+                                $('#std-container table tbody').html(stdHtml);
+                            },
+                            complete: function() {
+                                loader.hide();
+                            },
+                            error: function(xhr) {
+                                console.error(xhr.responseText);
+                            }
+                        });
                     }
-
-
-                    stdDetails();
                 }
-            });
-
-            $('#section-updateBtn').click(function(){
+                stdDetails();
+            }
+        });
+        $('#section-updateBtn').click(function(){
                 $.ajax({
                     url: "{{ route('student.attendance.store') }}",
                     type: "POST",
                     data: $('#std-form').serialize(),
                     dataType: 'JSON',
                     success: function(data) {
-                        console.log(data);
                         if (data.status == 'success') {
-
                             Swal.fire({
                                 title: 'Successful',
                                 text: data.message,
                                 icon: 'success',
                                 confirmButtonColor: 'rgb(122 190 255)',
                             }).then(() => {
-                                location.reload();
+                                // location.reload();
                             });
                         }else{
                             Swal.fire({
@@ -253,16 +204,29 @@
                                 confirmButtonColor: 'rgb(122 190 255)',
                             });
                         }
-
                     },
                     error: function(xhr) {
-                        console.log(xhr);
-
+                        // Handle Laravel validation / duplicate attendance JSON
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            Swal.fire({
+                                title: 'Error',
+                                text: xhr.responseJSON.message,
+                                icon: 'error',
+                                confirmButtonColor: 'rgb(122 190 255)',
+                            });
+                        } else {
+                            Swal.fire({
+                                title: 'Error',
+                                text: 'Something went wrong!',
+                                icon: 'error',
+                                confirmButtonColor: 'rgb(122 190 255)',
+                            });
+                        }
                     }
                 });
-            });
+        });
+
 
     });
 </script>
 @endsection
-

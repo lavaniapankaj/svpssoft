@@ -1,17 +1,14 @@
 @extends('student.index')
 @section('sub-content')
     <div class="container-fluid">
-
         <div class="row ">
             <div class="col-md-12">
                 <div class="card border-0 bg-white">
            <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between"><h5 class="mb-0 mt-0">{{ 'Attendance Report' }}</h5>
                         <a href="{{ route('student.attendance.report') }}" class="btn bg-light btn-sm" ><span class="mdi mdi-chevron-left me-2"></span>Back</a>
-
                     </div>
                     <div class="card-body">
                         <form id="class-section-form" method="GET">
-
                             <div class="row">
                                 <div class="form-group col-md-4">
                                     <label for="class_id" class="mt-2">Class <span class="text-danger">*</span></label>
@@ -30,10 +27,7 @@
                                         <span class="invalid-feedback form-invalid fw-bold"
                                             role="alert">{{ $message }}</span>
                                     @enderror
-
                                 </div>
-
-
                                 <div class="form-group col-md-4">
                                     <label for="section_id" class="mt-2">Section <span
                                             class="text-danger">*</span></label>
@@ -42,15 +36,13 @@
                                     <select name="section" id="section_id"
                                         class="form-control @error('section') is-invalid @enderror" required>
                                         <option value="">Select Section</option>
-
                                     </select>
                                     <input type="hidden" name="current_session" value='' id="current_session">
                                     @error('section')
                                         <span class="invalid-feedback form-invalid fw-bold"
                                             role="alert">{{ $message }}</span>
                                     @enderror
-                                    <img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader"
-                                        id="loader" style="display:none; width:10%;">
+
                                 </div>
                                 <div class="form-group col-md-4">
                                     <label for="std_id" class="mt-2">Student <span class="text-danger">*</span></label>
@@ -89,15 +81,14 @@
                             <div class="mt-3">
                                 <button type="button" id="show-report" class="btn btn-primary"> Show Report</button>
                                 <span class="text-danger fw-bold" id="no-data"></span>
+                                <img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader" id="loader" style="display:none; width:5%;">
                             </div>
-
                         </form>
                         <div class="row table mt-2" id="report-table">
-
                             <table id="report-excel" class="table table-striped table-bordered">
                                 <thead>
                                     <tr>
-                                        <th colspan="3">Summary</th>
+                                        <th colspan="5">Summary</th>
                                     </tr>
                                     <tr>
                                         <th colspan="3">Days</th>
@@ -120,9 +111,7 @@
                                         <th colspan="2">Date</th>
                                         <th>Status</th>
                                     </tr>
-
                                 </tbody>
-
                             </table>
                             <button id="download-csv" type="button" class="btn btn-sm btn-primary mt-2 col-2">Download Excel</button>
                         </div>
@@ -133,9 +122,7 @@
     </div>
 @endsection
 @section('std-scripts')
-
     <script>
-
         $(document).ready(function() {
             var reportTable = $('#report-table');
             reportTable.hide();
@@ -181,7 +168,19 @@
                 },
             });
             getStudentDropdown();
+            // Reset table and message function
+            function resetReportTable() {
+                $('#details-row').nextAll().remove(); // remove previous rows
+                $('#present').text('');
+                $('#absent').text('');
+                $('#no-data').hide().text('');
+                reportTable.hide();
+            }
 
+            // Attach reset on change events
+            $('#class_id, #section_id, #std_id, #start_date, #end_date').on('change input', function() {
+                resetReportTable();
+            });
             $('#show-report').on('click', function() {
                 if ($('#class-section-form').valid()) {
                     const classId = $('#class_id').val();
@@ -190,7 +189,6 @@
                     const endDate = $('#end_date').val();
                     const std = $('#std_id').val();
                     const session = $('#current_session').val();
-
                     $.ajax({
                         url: '{{ route('student.attendance.report.get') }}',
                         type: 'GET',
@@ -206,7 +204,6 @@
                         success: function(data) {
                             $('#details-row').nextAll().remove();
                             if (data.message === 'No Record Found') {
-                                console.log(data.message);
                                 $('#no-data').show().text(data.message);
                                 reportTable.hide();
                             } else {
@@ -223,7 +220,6 @@
                                     `;
                                     $('#details-row').after(rowHtml);
                                 });
-
                                 reportTable.show();
                                 $('#no-data').hide();
                             }
@@ -239,7 +235,6 @@
                     reportTable.hide();
                 }
             });
-
             $('#download-csv').on('click', function() {
                 const classId = $('#class_id').val();
                 const section = $('#section_id').val();
@@ -247,16 +242,11 @@
                 const endDate = $('#end_date').val();
                 const std = $('#std_id').val();
                 const session = $('#current_session').val();
-
                 // Redirect to the download route with parameters
                 window.location.href = '{{ route('student.download.attendance.csv') }}?class=' + classId +
                     '&section=' + section + '&start_date=' + startDate + '&end_date=' + endDate +
                     '&std_id=' + std + '&current_session=' + session;
             });
-
-
-
-
         });
     </script>
 @endsection

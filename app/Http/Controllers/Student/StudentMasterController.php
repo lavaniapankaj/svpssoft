@@ -876,62 +876,7 @@ class StudentMasterController extends Controller
     /**
      * Get students with their relatives. for student panel
      */
-    // public function getStdsWithRelativeStd(Request $request)
-    // {
-    //     try {
-    //         // Validate the request input
-    //         $validator = Validator::make($request->all(), [
-    //             'srno' => 'required',
-    //         ]);
 
-    //         if ($validator->fails()) {
-    //             return response()->json([
-    //                 'status' => 'error',
-    //                 'message' => $validator->errors()
-    //             ], 400);
-    //         }
-
-    //         // Fetch the input srno(s)
-    //         $srnoList = explode(',', $request->srno);
-
-    //         // Get the base query of students
-    //         $baseQuery = self::getStdWithNames(false);
-
-    //         // Filter the base query by the provided srno(s)
-    //         $students = $baseQuery->whereIn('stu_main_srno.srno', $srnoList)->get();
-    //         if ($students->isEmpty()) {
-    //             return response()->json([
-    //                 'status' => 'error',
-    //                 'message' => 'No student found with the provided srno(s).'
-    //             ], 404);
-    //         }
-
-    //         $resultData = [];
-    //         foreach ($students as $student) {
-    //             $relatives = self::getStdWithNames(false)->where('relation_code', $student->relation_code)
-    //                 ->where('stu_main_srno.srno', '!=', $student->srno)
-    //                 ->whereNotNull('relation_code')
-    //                 ->get();
-
-    //             $studentData = [
-    //                 'student' => $student,
-    //                 'relatives' => $relatives
-    //             ];
-    //             $resultData[] = $studentData;
-    //         }
-
-    //         return response()->json([
-    //             'status' => 'success',
-    //             'message' => 'Students with their relatives fetched successfully.',
-    //             'data' => $resultData
-    //         ], 200);
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'status' => 'error',
-    //             'message' => 'Failed to get students'
-    //         ], 500);
-    //     }
-    // }
     public function getStdsWithRelativeStd(Request $request)
     {
         try {
@@ -1512,13 +1457,9 @@ class StudentMasterController extends Controller
         }
         return $query;
     }
-
-
-
-
-     /**
+    /**
      * with ssid for marksheet
-     */
+    */
     public static function getMarksheetStdWithNames($isSSID = false, $field = [])
     {
         $fields = !empty($field) ? $field : [
@@ -1575,6 +1516,140 @@ class StudentMasterController extends Controller
         $orderBy = ['class_masters.sort' => 'asc', 'stu_main_srno.rollno' => 'asc'];
         $baseQuery = self::getMarksheetStd($fields, $where, $orderBy);
         return $baseQuery;
+    }
+
+    /** Date 20-09-2025 */
+
+    /* Get Student For Drop-down (SSid-1) */
+    public function getStdForDropDown(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'session_id' => 'nullable|exists:session_masters,id,active,1',
+                'class_id' => 'required|exists:class_masters,id,active,1',
+                'section_id' => 'required|exists:section_masters,id,active,1',
+            ]);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $validator->errors()
+                ], 400);
+            }
+            $currentSession =  isset($request->session_id) ? $request->session_id : session('current_session')->id ?? null;
+            $baseQuery = DB::table('stu_main_srno')
+                ->leftJoin('stu_detail', 'stu_main_srno.srno', '=', 'stu_detail.srno')
+                ->leftJoin('parents_detail as parents', 'stu_main_srno.srno', '=', 'parents.srno')
+                ->select(
+                    'stu_main_srno.srno',
+                    'stu_main_srno.rollno',
+                    'stu_detail.name as student_name',
+                    'parents.f_name as father_name',
+                )
+                ->where('stu_main_srno.active', 1)
+                ->where('stu_main_srno.session_id', $currentSession)
+                ->where('stu_main_srno.ssid', 1)->orderBy('stu_main_srno.rollno', 'asc');
+
+            if(!empty($request->class_id) && !empty($request->section_id)) {
+                $baseQuery->where('stu_main_srno.class', $request->class_id)->where('stu_main_srno.section', $request->section_id);
+            }
+            $data = $baseQuery->get();
+            if ($data->isEmpty()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'No student found for the selected class and section.',
+                    'data' => []
+                ], 404);
+            }else {
+                $data = $data->map(function ($item) {
+                    return [
+                        'srno' => $item->srno,
+                        'display_name' => $item->rollno . ' - ' . $item->student_name . ' / ' . $item->father_name
+                    ];
+                })->values(); // Reindex the collection
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Students fetched successfully.',
+                    'data' => $data
+                ], 200);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => "Failed to get students",
+                'data' => []
+            ], 500);
+        }
+    }
+
+    /** Get Student Query */
+    public static function getOnlyStQuery($where = [], $fields = [], $joins=null, $orderBy = [])
+    {
+        $query = DB::table('stu_main_srno');
+        // Handle joins
+        if (!empty($joins) && is_array($joins)) {
+            foreach ($joins as $join) {
+                // $join should be an array like: ['table' => 'other_table', 'first' => 'stu_main_srno.id', 'operator' => '=', 'second' => 'other_table.stu_id', 'type' => 'left']
+                $type = $join['type'] ?? 'inner';
+                $query->join($join['table'], $join['first'], $join['operator'], $join['second'], $type);
+            }
+        }
+        if (!empty($fields) && is_array($fields)) {
+            $query->select($fields);
+        } else {
+            $query->select(
+                'stu_main_srno.*',
+            );
+        }
+        if (!empty($where) && is_array($where)) {
+            foreach ($where as $field => $value) {
+                if (is_array($value)) {
+                    if ($field == 'orWhere') {
+                        /* For 'orWhere', wrap conditions in a closure */
+                        $query->where(function ($query) use ($value) {
+                            foreach ($value as $secondField => $secondValue) {
+                                if (is_array($secondValue)) {
+                                    /* Handle [operator, value] format correctly */
+                                    $query->orWhere($secondField, $secondValue[0], $secondValue[1]);
+                                } else {
+                                    $query->orWhere($secondField, $secondValue);
+                                }
+                            }
+                        });
+                    } elseif ($field == 'whereBetween') {
+                        /* For 'whereBetween', handle differently */
+                        $query->whereBetween(key($value), $value[key($value)]);
+                    } elseif ($field == 'customWhere') {
+                        /* Custom closure support */
+                        foreach ($value as $closure) {
+                            if (is_callable($closure)) {
+                                $query->where($closure);
+                            }
+                        }
+                    } else {
+                        /* For 'where', 'whereIn', etc., handle normally */
+                        foreach ($value as $secondField => $secondValue) {
+                            if (is_array($secondValue)) {
+                                if ($field == 'whereIn') {
+                                    $query->$field($secondField, $secondValue);
+                                } else {
+                                    $query->$field($secondField, $secondValue[0], $secondValue[1]);
+                                }
+                            } else {
+                                $query->$field($secondField, $secondValue);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+         if (!empty($orderBy) && is_array($orderBy)) {
+            foreach ($orderBy as $field => $direction) {
+                $query->orderBy($field, $direction);
+            }
+        } else {
+            $query->orderBy('stu_main_srno.created_at', 'desc');
+        }
+        return $query;
     }
 
 }

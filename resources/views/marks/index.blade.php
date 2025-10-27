@@ -43,12 +43,15 @@
                 </div>
 
             <ul class="menu_items submenu">
-              <a href="{{ route('marks.marks-report.public-exam-wise') }}" class="nav_link sublink"><span class="navlink_icon">
+                <a href="{{ route('marks.marks-report.public-exam-wise') }}" class="nav_link sublink"><span class="navlink_icon">
                  <span class="mdi mdi-menu-right"></span>
                 </span>Exam Wise Report (Public School)</a>
                 <a href="{{ route('marks.marks-report.play-exam-wise') }}" class="nav_link sublink"><span class="navlink_icon">
                  <span class="mdi mdi-menu-right"></span>
                 </span>Exam Wise Report (Play School)</a>
+                <a href="{{ route('marks.marks-report.pg-class-exam-wise') }}" class="nav_link sublink"><span class="navlink_icon">
+                 <span class="mdi mdi-menu-right"></span>
+                </span>Exam Wise Report (Only for PG)</a>
                 <a href="{{ route('marks.marks-report.marksheet.pg.nursary') }}" class="nav_link sublink"><span class="navlink_icon">
                  <span class="mdi mdi-menu-right"></span>
                 </span>Final Marksheet (Only for PG and Nursary)</a>

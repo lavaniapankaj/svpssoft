@@ -219,6 +219,12 @@
             stdFeeDueTable.hide();
             relativeStdFeeDueTable.hide();
             stdSelect.change(function() {
+                // Hide and clear table
+                $('#std-fee-due-table').hide();
+                $('#std-fee-due-table table tbody').html('');
+                // Optionally clear fee input fields and due labels
+                $('#first_inst_fee, #second_inst_fee, #complete_fee').val('');
+                $('#class-error, #section-error, #session-error, #std-error, #fee-date-error, #ref-slip-error, #admission-fee-error, #first-inst-fee-error, #second-inst-fee-error, #complete-fee-error, #mercy-fee-error, #not-applicable-error, #total-amount-error').hide().html('');
                 let session = $('#current_session').val();
                 let classSelect = $('#class_id').val();
                 let sectionSelect = $('#section_id').val();

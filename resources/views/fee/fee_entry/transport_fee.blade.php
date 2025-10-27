@@ -48,7 +48,7 @@
                             <div class="row">
                                 <div class="form-group col-md-6">
                                     <label for="class_id" class="mt-2">Class <span class="text-danger">*</span></label>
-                                    <select name="class" id="class_id" class="form-control " required>
+                                    <select name="class" id="class_id" class="form-control" required>
                                         <option value="">Select Class</option>
                                         @if (count($classes) > 0)
                                             @foreach ($classes as $key => $class)
@@ -60,21 +60,18 @@
                                             <option value="">No Class Found</option>
                                         @endif
                                     </select>
-                                    <span class="invalid-feedback form-invalid fw-bold" id="class-error"
-                                        role="alert"></span>
+                                    <span class="invalid-feedback form-invalid fw-bold" id="class-error" role="alert"></span>
 
                                 </div>
 
 
                                 <div class="form-group col-md-6">
-                                    <label for="section_id" class="mt-2">Section <span
-                                            class="text-danger">*</span></label>
+                                    <label for="section_id" class="mt-2">Section <span class="text-danger">*</span></label>
                                     <input type="hidden" id="initialSectionId" value="{{ old('section') }}">
                                     <select name="section" id="section_id" class="form-control  " required>
                                         <option value="">Select Section</option>
                                     </select>
-                                    <span class="invalid-feedback form-invalid fw-bold" id="section-error"
-                                        role="alert"></span>
+                                    <span class="invalid-feedback form-invalid fw-bold" id="section-error" role="alert"></span>
 
                                 </div>
                             </div>
@@ -155,12 +152,9 @@
                             </div>
 
                             <div class="mt-3">
-                                <button type="button" id="submit-fee" class="btn btn-primary">
-                                    Submit</button>
-                                <span class="invalid-feedback form-invalid fw-bold" id="total-amount-error"
-                                    role="alert"></span>
-                                <span class="invalid-feedback form-invalid fw-bold" id="not-applicable-error"
-                                    role="alert"></span>
+                                <button type="button" id="submit-fee" class="btn btn-primary">Submit</button>
+                                <span class="invalid-feedback form-invalid fw-bold" id="total-amount-error" role="alert"></span>
+                                <span class="invalid-feedback form-invalid fw-bold" id="not-applicable-error" role="alert"></span>
                             </div>
 
                         </form>
@@ -181,6 +175,22 @@
             var stdFeeDueTable = $('#std-fee-due-table');
             stdFeeDueTable.hide();
             stdSelect.change(function() {
+                // Hide and clear table
+                $('#std-fee-due-table').hide();
+                $('#std-fee-due-table table tbody').html('');
+                // Optionally clear fee input fields and due labels
+                $('#first_inst_fee, #second_inst_fee, #complete_fee').val('');
+                $('#class-error').hide().html('');
+                $('#section-error').hide().html('');
+                $('#session-error').hide().html('');
+                $('#std-error').hide().html('');
+                $('#fee-date-error').hide().html('');
+                $('#ref-slip-error').hide().html('');
+                $('#first-inst-fee-error').hide().html('');
+                $('#second-inst-fee-error').hide().html('');
+                $('#complete-fee-error').hide().html('');
+                $('#not-applicable-error').hide().html();
+
                 let session = $('#current_session').val();
                 let classSelect = $('#class_id').val();
                 let sectionSelect = $('#section_id').val();
@@ -202,7 +212,6 @@
 
                     success: function(response) {
                         let stdHtml = '';
-
                         // Process student data
                         const students = response.data;
                         $.each(students, function(index, student) {
@@ -217,7 +226,7 @@
                                 </tr>`;
                             });
                         });
-                        if (stdHtml === '') {
+                        if (stdHtml == '') {
                             stdHtml = '<tr><td colspan = "6">No Student found</td></tr>';
                         }
                         $('#std-fee-due-table table tbody').html(stdHtml);
@@ -228,6 +237,20 @@
                         console.error(xhr.responseText);
                     }
                 });
+            });
+
+            // Reset student dropdown and table when class or section changes
+            $('#class_id, #section_id').change(function() {
+                // Clear student dropdown
+                $('#std_id').html('<option value="">Select Students</option>');
+
+                // Hide and clear table
+                $('#std-fee-due-table').hide();
+                $('#std-fee-due-table table tbody').html('');
+
+                // Optionally clear fee input fields and due labels
+                $('#first_inst_fee, #second_inst_fee, #complete_fee').val('');
+                $('#first-inst-fee-due, #second-inst-fee-due, #complete-fee-due').text('');
             });
 
 

@@ -104,6 +104,7 @@ $('#submit-fee').click(function (e) {
                 type: "POST",
                 dataType: 'JSON',
                 success: function (data) {
+                    resetErrors();
                     Swal.fire({
                         title: 'Successful',
                         text: data.message,
@@ -116,10 +117,10 @@ $('#submit-fee').click(function (e) {
                         if (result.isConfirmed) {
                             if (data.print_url) {
                                 window.open(data.print_url, '_blank');
-                                 // Reload the current page after a short delay (e.g., 500ms)
-                                setTimeout(() => {
+
+                                /* setTimeout(() => {
                                     location.reload();
-                                }, 500); // Adjust the delay as needed
+                                }, 200); */
                             } else {
                                 Swal.fire({
                                     title: 'Error!',
@@ -127,7 +128,7 @@ $('#submit-fee').click(function (e) {
                                     icon: 'error',
                                 });
                             }
-                            location.reload();
+                            // location.reload();
                         }
                     });
                 },
@@ -183,6 +184,12 @@ $('#submit-fee').click(function (e) {
         }
     }
 });
+
+//  Helper function to reset error messages
+function resetErrors() {
+    $('#class-error, #section-error, #session-error, #std-error, #fee-date-error, #ref-slip-error, #admission-fee-error, #first-inst-fee-error, #second-inst-fee-error, #complete-fee-error, #mercy-fee-error, #not-applicable-error, #total-amount-error')
+        .hide().html('');
+}
 function adcademicAndTransportFeePopulate(st, sessionID, classID, sectionID) {
     var stdSelect = st;
     var stdFeeDueTable = $('#std-fee-due-table');

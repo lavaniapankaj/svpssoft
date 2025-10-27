@@ -2,7 +2,12 @@
 
 namespace App\Http\Controllers\Marks;
 
+use App\Http\Controllers\Admin\ClassMasterController;
+use App\Http\Controllers\Admin\ExamMasterController;
+use App\Http\Controllers\Admin\SubjectMasterController;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Student\StdAttendanceController;
+use App\Http\Controllers\Student\StudentMasterController;
 use App\Models\Admin\AttendanceSchedule;
 use App\Models\Admin\ClassMaster;
 use App\Models\Admin\ExamMaster;
@@ -20,16 +25,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
-use PhpParser\Node\Stmt\TryCatch;
-use App\Http\Controllers\Admin\ClassMasterController;
-use App\Http\Controllers\Admin\ExamMasterController;
-use App\Http\Controllers\Admin\SectionMasterController;
-use App\Http\Controllers\Admin\SessionMasterController;
-use App\Http\Controllers\Admin\SubjectMasterController;
-use App\Http\Controllers\Student\StdAttendanceController;
-use App\Http\Controllers\Student\StudentController;
-use App\Http\Controllers\Student\StudentMasterController;
 
 class StdMarksController extends Controller
 {
@@ -38,6 +33,7 @@ class StdMarksController extends Controller
     {
         $classes = ClassMasterController::getClasses();
         $exams = ExamMasterController::getAllExam();
+
         return view('marks.marks_entry.index', compact('classes', 'exams'));
     }
 
@@ -59,16 +55,16 @@ class StdMarksController extends Controller
             }
             $existingMarks = Marks::where('class_id', $request->class_id)->where('exam_id', $request->exam_id)->where('subject_id', $request->subject_id)->where('session_id', $request->session_id)->whereIn('srno', $studentSrnos)->exists();
             // Fetch names for friendly message
-            $class   = ClassMaster::find($request->class_id)->class ?? 'Unknown Class';
+            $class = ClassMaster::find($request->class_id)->class ?? 'Unknown Class';
             $section = SectionMaster::find($request->section_id)->section ?? 'Unknown Section';
             $subject = SubjectMaster::find($request->subject_id)->subject ?? 'Unknown Subject';
-            $exam    = ExamMaster::find($request->exam_id)->exam ?? 'Unknown Exam';
+            $exam = ExamMaster::find($request->exam_id)->exam ?? 'Unknown Exam';
 
             $msg = $existingMarks ? "Marks are already filled for {$subject} in {$class} - {$section} for {$exam}." : "No marks have been filled yet for {$subject} in {$class} - {$section} for {$exam}.";
 
             return response()->json([
-                'msg'    => $msg,
-                'exists' => $existingMarks
+                'msg' => $msg,
+                'exists' => $existingMarks,
             ]);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
@@ -151,14 +147,14 @@ class StdMarksController extends Controller
         if ($updatedCount > 0) {
             return response()->json([
                 'success' => true,
-                'message' => "Students Marks Entered successfully.",
+                'message' => 'Students Marks Entered successfully.',
 
             ]);
             // return redirect()->route('marks.marks-entry.index')->with('success', 'Students Marks Entered successfully.');
         } else {
             return response()->json([
                 'error' => true,
-                'message' => "Something went wrong, please try again.",
+                'message' => 'Something went wrong, please try again.',
 
             ]);
             // return redirect()->back()->with('error', 'Something went wrong, please try again.');
@@ -169,6 +165,7 @@ class StdMarksController extends Controller
     {
         $classes = ClassMasterController::getClasses();
         $exams = ExamMasterController::getAllExam();
+
         return view('marks.marks_entry.report', compact('classes', 'exams'));
     }
 
@@ -185,28 +182,25 @@ class StdMarksController extends Controller
             if ($validator->fails()) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => $validator->errors()
+                    'message' => $validator->errors(),
                 ], 400);
             }
             $sessionId = $request->session;
             $examId = $request->exam;
             $classId = $request->class;
-            $subjectIds = explode(",", $request->subject);
-            $studentIds = explode(",", $request->std_id);
-
-
+            $subjectIds = explode(',', $request->subject);
+            $studentIds = explode(',', $request->std_id);
 
             $marks = Marks::where('session_id', $sessionId)->where('exam_id', $examId)->where('class_id', $classId)->whereIn('subject_id', $subjectIds)->whereIn('srno', $studentIds)->get();
             $marksGroup = $marks->groupBy(['subject_id', 'srno']);
             $subjects = SubjectMasterController::getAllSubjects(['id', 'subject'], '', [], [], false, '', false, ['id' => $subjectIds]);
-
 
             $report = [];
 
             foreach ($subjects as $subjectId => $subjectName) {
                 $subjectReport = [
                     'subject' => $subjectName,
-                    'students' => []
+                    'students' => [],
                 ];
 
                 foreach ($studentIds as $studentId) {
@@ -233,15 +227,16 @@ class StdMarksController extends Controller
 
                 $report[] = $subjectReport;
             }
+
             return response()->json([
                 'status' => 200,
-                'message' => "Subject Marks List",
-                'data' => $report
+                'message' => 'Subject Marks List',
+                'data' => $report,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get subjects"
+                'message' => 'Failed to get subjects',
             ], 500);
         }
     }
@@ -249,7 +244,6 @@ class StdMarksController extends Controller
     /**
      * Marks-Report Excel File
      */
-
     public function marksReportExcel(Request $request)
     {
         try {
@@ -258,17 +252,17 @@ class StdMarksController extends Controller
             if ($response->getStatusCode() !== 200) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Failed to generate report: ' . $response->getContent()
+                    'message' => 'Failed to generate report: '.$response->getContent(),
                 ], 500);
             }
 
             $decodedResponse = json_decode($response->getContent(), true);
             if (json_last_error() !== JSON_ERROR_NONE) {
-                return response()->json(['status' => 'error', 'message' => 'Invalid JSON response: ' . json_last_error_msg()], 500);
+                return response()->json(['status' => 'error', 'message' => 'Invalid JSON response: '.json_last_error_msg()], 500);
             }
 
             $reportData = $decodedResponse['data'] ?? null;
-            if (!$reportData) {
+            if (! $reportData) {
                 return response()->json(['status' => 'error', 'message' => 'No data found'], 404);
             }
 
@@ -287,10 +281,10 @@ class StdMarksController extends Controller
                 $subjects[] = $subjectData['subject'];
 
                 foreach ($subjectData['students'] as $student) {
-                    if (!isset($studentsData[$student['roll_number']])) {
+                    if (! isset($studentsData[$student['roll_number']])) {
                         $studentsData[$student['roll_number']] = [
                             'name' => $student['name'],
-                            'marks' => []
+                            'marks' => [],
                         ];
                     }
                     $studentsData[$student['roll_number']]['marks'][$subjectData['subject']] = $student['marks'];
@@ -316,7 +310,7 @@ class StdMarksController extends Controller
                     $mark = $student['marks'][$subject] ?? 'N/A';
                     $row[] = $mark;
                     if ($mark !== 'N/A' && $mark !== null) {
-                        $totalMarks += (float)$mark;
+                        $totalMarks += (float) $mark;
                     }
                 }
 
@@ -335,11 +329,11 @@ class StdMarksController extends Controller
             fclose($output);
 
             return response($csvContent, 200)->header('Content-Type', 'text/csv')
-                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
+                ->header('Content-Disposition', 'attachment; filename="'.$fileName.'"');
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to export report"
+                'message' => 'Failed to export report',
             ], 500);
         }
     }
@@ -347,7 +341,6 @@ class StdMarksController extends Controller
     /**
      * Marksheet
      */
-
     public function marksheet()
     {
         return view('marks.marksheet.index');
@@ -360,6 +353,7 @@ class StdMarksController extends Controller
     {
         $classes = ClassMasterController::getClasses();
         $exams = ExamMasterController::getAllExam();
+
         return view('marks.marksheet.exam_wise_public_report', compact('classes', 'exams'));
     }
 
@@ -375,7 +369,7 @@ class StdMarksController extends Controller
             'exam' => $exam,
             'class' => $class,
             'section' => $section,
-            'students' => $students
+            'students' => $students,
         ]);
         // return view('marks.marksheet.exam_wise_public_report_print');
     }
@@ -385,15 +379,15 @@ class StdMarksController extends Controller
         $request->validate([
             'exam' => [
                 'required',
-                'exists:exam_masters,id,active,1'
+                'exists:exam_masters,id,active,1',
             ],
             'class' => [
                 'required',
-                'exists:class_masters,id,active,1'
+                'exists:class_masters,id,active,1',
             ],
             'section' => [
                 'required',
-                'exists:section_masters,id,active,1'
+                'exists:section_masters,id,active,1',
             ],
             'std_id' => 'required',
         ]);
@@ -401,6 +395,7 @@ class StdMarksController extends Controller
         $classId = $request->class;
         $sectionId = $request->section;
         $students = $request->std_id;
+
         return redirect()->route('marks.marks-report.public-exam-wise.print')->with('exam', $exam)->with('class', $classId)->with('section', $sectionId)->with('students', $students);
 
         // return view('marks.marksheet.exam_wise_public_report_print');
@@ -413,6 +408,7 @@ class StdMarksController extends Controller
     {
         $classes = ClassMasterController::getClasses();
         $exams = ExamMasterController::getAllExam();
+
         return view('marks.marksheet.exam_wise_play_report', compact('classes', 'exams'));
     }
 
@@ -428,24 +424,25 @@ class StdMarksController extends Controller
             'exam' => $exam,
             'class' => $class,
             'section' => $section,
-            'students' => $students
+            'students' => $students,
         ]);
         // return view('marks.marksheet.exam_wise_play_report_print');
     }
+
     public function playSchoolExamWisePrintStore(Request $request)
     {
         $request->validate([
             'exam' => [
                 'required',
-                'exists:exam_masters,id,active,1'
+                'exists:exam_masters,id,active,1',
             ],
             'class' => [
                 'required',
-                'exists:class_masters,id,active,1'
+                'exists:class_masters,id,active,1',
             ],
             'section' => [
                 'required',
-                'exists:section_masters,id,active,1'
+                'exists:section_masters,id,active,1',
             ],
             'std_id' => 'required',
         ]);
@@ -453,6 +450,7 @@ class StdMarksController extends Controller
         $classId = $request->class;
         $sectionId = $request->section;
         $students = $request->std_id;
+
         return redirect()->route('marks.marks-report.play-exam-wise.print')
             ->with('exam', $exam)
             ->with('class', $classId)
@@ -464,113 +462,115 @@ class StdMarksController extends Controller
     {
         if ($total == 5) {
             if ($marks == 5) {
-                return "A";
-            } else if ($marks == 4) {
-                return "B";
-            } else if ($marks == 3) {
-                return "C";
+                return 'A';
+            } elseif ($marks == 4) {
+                return 'B';
+            } elseif ($marks == 3) {
+                return 'C';
             } else {
-                return "D";
+                return 'D';
             }
-        } else if ($total == 10) {
+        } elseif ($total == 10) {
             if ($marks >= 9 && $marks <= 10) {
-                return "A";
-            } else if ($marks >= 7 && $marks <= 8) {
-                return "B";
-            } else if ($marks >= 5 && $marks <= 6) {
-                return "C";
+                return 'A';
+            } elseif ($marks >= 7 && $marks <= 8) {
+                return 'B';
+            } elseif ($marks >= 5 && $marks <= 6) {
+                return 'C';
             } else {
-                return "D";
+                return 'D';
             }
-        } else if ($total == 20) {
+        } elseif ($total == 20) {
             if ($marks >= 17 && $marks <= 20) {
-                return "A";
-            } else if ($marks >= 13 && $marks <= 16) {
-                return "B";
-            } else if ($marks >= 9 && $marks <= 12) {
-                return "C";
+                return 'A';
+            } elseif ($marks >= 13 && $marks <= 16) {
+                return 'B';
+            } elseif ($marks >= 9 && $marks <= 12) {
+                return 'C';
             } else {
-                return "D";
+                return 'D';
             }
-        } else if ($total == 25) {
+        } elseif ($total == 25) {
             if ($marks >= 21 && $marks <= 25) {
-                return "A";
-            } else if ($marks >= 16 && $marks <= 20) {
-                return "B";
-            } else if ($marks >= 11 && $marks <= 15) {
-                return "C";
+                return 'A';
+            } elseif ($marks >= 16 && $marks <= 20) {
+                return 'B';
+            } elseif ($marks >= 11 && $marks <= 15) {
+                return 'C';
             } else {
-                return "D";
+                return 'D';
             }
-        } else if ($total == 50) {
+        } elseif ($total == 50) {
             if ($marks >= 41 && $marks <= 50) {
-                return "A";
-            } else if ($marks >= 31 && $marks <= 40) {
-                return "B";
-            } else if ($marks >= 21 && $marks <= 30) {
-                return "C";
+                return 'A';
+            } elseif ($marks >= 31 && $marks <= 40) {
+                return 'B';
+            } elseif ($marks >= 21 && $marks <= 30) {
+                return 'C';
             } else {
-                return "D";
+                return 'D';
             }
-        } else if ($total == 70) {
+        } elseif ($total == 70) {
             if ($marks >= 57 && $marks <= 70) {
-                return "A";
-            } else if ($marks >= 43 && $marks <= 56) {
-                return "B";
-            } else if ($marks >= 29 && $marks <= 42) {
-                return "C";
+                return 'A';
+            } elseif ($marks >= 43 && $marks <= 56) {
+                return 'B';
+            } elseif ($marks >= 29 && $marks <= 42) {
+                return 'C';
             } else {
-                return "D";
+                return 'D';
             }
-        } else if ($total == 100) {
+        } elseif ($total == 100) {
             if ($marks >= 81 && $marks <= 100) {
-                return "A";
-            } else if ($marks >= 61 && $marks <= 80) {
-                return "B";
-            } else if ($marks >= 41 && $marks <= 60) {
-                return "C";
+                return 'A';
+            } elseif ($marks >= 61 && $marks <= 80) {
+                return 'B';
+            } elseif ($marks >= 41 && $marks <= 60) {
+                return 'C';
             } else {
-                return "D";
+                return 'D';
             }
-        } else if ($total == 150) {
+        } elseif ($total == 150) {
             if ($marks >= 136 && $marks <= 150) {
-                return "A+";
-            } else if ($marks >= 121 && $marks <= 135) {
-                return "A";
-            } else if ($marks >= 91 && $marks <= 120) {
-                return "B+";
+                return 'A+';
+            } elseif ($marks >= 121 && $marks <= 135) {
+                return 'A';
+            } elseif ($marks >= 91 && $marks <= 120) {
+                return 'B+';
             } else {
-                return "B";
+                return 'B';
             }
-        } else if ($total == 200) {
+        } elseif ($total == 200) {
             if ($marks >= 161 && $marks <= 200) {
-                return "A";
-            } else if ($marks >= 121 && $marks <= 160) {
-                return "B";
-            } else if ($marks >= 81 && $marks <= 120) {
-                return "C";
+                return 'A';
+            } elseif ($marks >= 121 && $marks <= 160) {
+                return 'B';
+            } elseif ($marks >= 81 && $marks <= 120) {
+                return 'C';
             } else {
-                return "D";
+                return 'D';
             }
         }
-        return "ER";
+
+        return 'ER';
     }
+
     private function getPGNurGrade($total, $marks)
     {
         if ($total == 0) {
-            return "E";
+            return 'E';
         }
         $percent_m = $marks * 100 / $total;
         if ($percent_m >= 86) {
-            return "A";
-        } else if ($percent_m >= 71) {
-            return "B";
-        } else if ($marks >= 51) {
-            return "C";
-        } else if ($marks >= 33) {
-            return "D";
+            return 'A';
+        } elseif ($percent_m >= 71) {
+            return 'B';
+        } elseif ($marks >= 51) {
+            return 'C';
+        } elseif ($marks >= 33) {
+            return 'D';
         } else {
-            return "E";
+            return 'E';
         }
     }
 
@@ -763,7 +763,7 @@ class StdMarksController extends Controller
             if ($validator->fails()) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => $validator->errors()
+                    'message' => $validator->errors(),
                 ], 400);
             }
 
@@ -771,7 +771,7 @@ class StdMarksController extends Controller
             $examId = $request->exam;
             $classId = $request->class;
             $sectionId = $request->section;
-            $studentIds = explode(",", $request->std_id);
+            $studentIds = explode(',', $request->std_id);
             $fields = [
                 'stu_main_srno.session_id',
                 'session_masters.session as session_name',
@@ -798,7 +798,7 @@ class StdMarksController extends Controller
             if ($students->isNotEmpty()) {
                 $exam = ExamMasterController::getAllExam(['id', 'exam'], ['id' => $examId]);
                 $report = [
-                    'student' => []
+                    'student' => [],
                 ];
 
                 /** variables to collect the max marks data */
@@ -808,20 +808,19 @@ class StdMarksController extends Controller
                 /** priority 2 */
                 $max_marks_practicle = 0;
                 /** priority 3 */
-
                 $subjects = SubjectMasterController::getAllSubjects(['subject', 'id', 'subject_id', 'by_m_g', 'priority', 'class_id'], '', ['class_id' => $classId], [], true);
                 foreach ($subjects as $subject) {
 
-                    if (!empty($subject) && $subject['priority'] == 1 && $subject['by_m_g'] == 1) {
+                    if (! empty($subject) && $subject['priority'] == 1 && $subject['by_m_g'] == 1) {
                         $marksMaster = MarksMaster::where('exam_id', $examId)->where('session_id', $sessionId)->where('class_id', $classId)->where('subject_id', $subject['id'])->where('active', 1)->get();
                         $max_marks_written = $marksMaster['0']['max_marks'] ?? 0;
                     }
-                    if (!empty($subject) && $subject['priority'] == 2 && $subject['by_m_g'] == 1) {
+                    if (! empty($subject) && $subject['priority'] == 2 && $subject['by_m_g'] == 1) {
 
                         $marksMaster = MarksMaster::where('exam_id', $examId)->where('session_id', $sessionId)->where('class_id', $classId)->where('subject_id', $subject['id'])->where('active', 1)->get();
                         $max_marks_oral = $marksMaster['0']['max_marks'] ?? 0;
                     }
-                    if (!empty($subject) && $subject['priority'] == 3 && $subject['by_m_g'] == 1) {
+                    if (! empty($subject) && $subject['priority'] == 3 && $subject['by_m_g'] == 1) {
                         $marksMaster = MarksMaster::where('exam_id', $examId)->where('session_id', $sessionId)->where('class_id', $classId)->where('subject_id', $subject['id'])->where('active', 1)->get();
                         $max_marks_practicle = $marksMaster['0']['max_marks'] ?? 0;
                     }
@@ -867,7 +866,6 @@ class StdMarksController extends Controller
                         $oralValue = $oralMarks ? $oralMarks->marks : null;
                         $practicalValue = $practicalMarks ? $practicalMarks->marks : null; */
 
-
                         $writtenValue = ($writtenMarks && $writtenMarks->attendance == 1) ? $writtenMarks->marks : ($writtenMarks ? 'Ab.' : null);
 
                         $oralValue = ($oralMarks && $oralMarks->attendance == 1) ? $oralMarks->marks : ($oralMarks ? 'Ab.' : null);
@@ -878,13 +876,12 @@ class StdMarksController extends Controller
 
                         $totalMaxMarks = $maxMarksWrittenGrade + $maxMarksOralGrade + $maxMarksPracticalGrade;
 
-
                         /* if ($writtenValue !== null) $totalMarks += $writtenValue;
                         if ($oralValue !== null) $totalMarks += $oralValue;
                         if ($practicalValue !== null) $totalMarks += $practicalValue; */
                         if ($writtenValue === 'Ab.' || $oralValue === 'Ab.' || $practicalValue === 'Ab.') {
                             $totalMarks = 'Ab.';
-                        }else {
+                        } else {
                             $totalMarks += is_numeric($writtenValue) ? $writtenValue : 0;
                             $totalMarks += is_numeric($oralValue) ? $oralValue : 0;
                             $totalMarks += is_numeric($practicalValue) ? $practicalValue : 0;
@@ -895,9 +892,9 @@ class StdMarksController extends Controller
                                 'name' => $writtenSubject->subject,
                                 'by_m_g' => $writtenSubject->by_m_g,
                                 'written' => $st->school == 1 && $writtenSubject->by_m_g == 2 ? ($writtenValue !== null ? ($maxMarksWrittenGrade !== 0 ? $this->getGrade($maxMarksWrittenGrade, $writtenValue) : '') : '') : $writtenValue,
-                                'oral' => $st->school == 1 && $writtenSubject->by_m_g == 2  ? ($oralValue !== null ? ($maxMarksOralGrade !== 0 ? $this->getGrade($maxMarksOralGrade, $oralValue) : '') : '') : $oralValue,
-                                'practical' => $st->school == 1  && $writtenSubject->by_m_g == 2  ? ($practicalValue !== null ? ($maxMarksPracticalGrade !== 0 ? $this->getGrade($maxMarksPracticalGrade, $practicalValue) : '') : '') : $practicalValue,
-                                'total' => $st->school == 1 && $writtenSubject->by_m_g == 2  ? (($writtenValue !== null || $oralValue !== null || $practicalValue !== null) ? ($totalMaxMarks !== 0 ? $this->getGrade($totalMaxMarks, $totalMarks) : '') : '') : $totalMarks,
+                                'oral' => $st->school == 1 && $writtenSubject->by_m_g == 2 ? ($oralValue !== null ? ($maxMarksOralGrade !== 0 ? $this->getGrade($maxMarksOralGrade, $oralValue) : '') : '') : $oralValue,
+                                'practical' => $st->school == 1 && $writtenSubject->by_m_g == 2 ? ($practicalValue !== null ? ($maxMarksPracticalGrade !== 0 ? $this->getGrade($maxMarksPracticalGrade, $practicalValue) : '') : '') : $practicalValue,
+                                'total' => $st->school == 1 && $writtenSubject->by_m_g == 2 ? (($writtenValue !== null || $oralValue !== null || $practicalValue !== null) ? ($totalMaxMarks !== 0 ? $this->getGrade($totalMaxMarks, $totalMarks) : '') : '') : $totalMarks,
                             ];
                         } else {
                             $studentSubjects[] = [
@@ -947,20 +944,20 @@ class StdMarksController extends Controller
 
                 return response()->json([
                     'status' => 200,
-                    'message' => "Student With Marks List",
-                    'data' => $report
+                    'message' => 'Student With Marks List',
+                    'data' => $report,
                 ]);
             } else {
                 return response()->json([
                     'status' => 202,
-                    'message' => "Student Not Found",
-                    'data' => []
+                    'message' => 'Student Not Found',
+                    'data' => [],
                 ]);
             }
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get report"
+                'message' => 'Failed to get report',
             ], 500);
         }
     }
@@ -968,17 +965,16 @@ class StdMarksController extends Controller
     /**
      * Rank Report
      */
-
     public function rankReport()
     {
         $classes = ClassMasterController::getClasses();
+
         return view('marks.marks_entry.rank_class_wise', compact('classes'));
     }
 
     /**
      * Class Wise Rank Report Get
      */
-
     public function classWiseRankReport(Request $request)
     {
         try {
@@ -990,7 +986,7 @@ class StdMarksController extends Controller
             if ($validator->fails()) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => $validator->errors()
+                    'message' => $validator->errors(),
                 ], 400);
             }
 
@@ -1043,7 +1039,7 @@ class StdMarksController extends Controller
                             'session_id' => $sessionId,
                             'srno' => $st->srno,
                             'class' => $st->class,
-                        ]
+                        ],
                     ];
                     $meetingsAttended = StdAttendanceController::getAttendance(['id', 'session_id', 'srno', 'class', 'status'], $whereAttend)->sum('status');
                     $meetingsAttended = $meetingsAttended ? ($meetingsAttended * 2) : 0;
@@ -1068,7 +1064,7 @@ class StdMarksController extends Controller
                 $uniqueMarks = [];
                 $rank = 1;
                 foreach ($report as $item) {
-                    if (!isset($uniqueMarks[$item['total_marks']])) {
+                    if (! isset($uniqueMarks[$item['total_marks']])) {
                         $uniqueMarks[$item['total_marks']] = $rank++;
                     }
                 }
@@ -1080,21 +1076,21 @@ class StdMarksController extends Controller
 
                 return response()->json([
                     'status' => 200,
-                    'message' => "Class-Wise Rank Report",
-                    'data' => $report
+                    'message' => 'Class-Wise Rank Report',
+                    'data' => $report,
                 ]);
             } else {
-                # code...
+                // code...
                 return response()->json([
                     'status' => 200,
-                    'message' => "Class-Wise Rank Report",
-                    'data' => []
+                    'message' => 'Class-Wise Rank Report',
+                    'data' => [],
                 ]);
             }
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get Class-Wise Rank Report"
+                'message' => 'Failed to get Class-Wise Rank Report',
             ], 500);
         }
     }
@@ -1110,19 +1106,19 @@ class StdMarksController extends Controller
             if ($response->getStatusCode() !== 200) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Failed to generate report: ' . $response->getContent()
+                    'message' => 'Failed to generate report: '.$response->getContent(),
                 ], 500);
             }
 
             $decodedResponse = json_decode($response->getContent(), true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
-                return response()->json(['status' => 'error', 'message' => 'Invalid JSON response: ' . json_last_error_msg()], 500);
+                return response()->json(['status' => 'error', 'message' => 'Invalid JSON response: '.json_last_error_msg()], 500);
             }
 
             $reportData = $decodedResponse['data'] ?? null;
 
-            if (!$reportData) {
+            if (! $reportData) {
                 return response()->json(['status' => 'error', 'message' => 'No data found'], 404);
             }
 
@@ -1163,11 +1159,11 @@ class StdMarksController extends Controller
             // Return the content as a response for download
             return response($csvContent, 200)
                 ->header('Content-Type', 'text/csv')
-                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
+                ->header('Content-Disposition', 'attachment; filename="'.$fileName.'"');
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to export report"
+                'message' => 'Failed to export report',
             ], 500);
         }
     }
@@ -1175,10 +1171,10 @@ class StdMarksController extends Controller
     /**
      * Final Marksheet Only For Class PG And Nursary
      */
-
     public function finalMarksheetOnlyForClassPGAndNursary()
     {
         $classes = ClassMasterController::getClasses();
+
         return view('marks.marksheet.marksheet_final_pg_nur', compact('classes'));
     }
 
@@ -1197,7 +1193,7 @@ class StdMarksController extends Controller
             'section' => $section,
             'students' => $students,
             'sessionMessage' => $sessionMessage,
-            'dateMessage' => $dateMessage
+            'dateMessage' => $dateMessage,
         ]);
 
         // return view('marks.marksheet.marksheet_final_pg_nur_print');
@@ -1208,11 +1204,11 @@ class StdMarksController extends Controller
         $request->validate([
             'class' => [
                 'required',
-                'exists:class_masters,id,active,1'
+                'exists:class_masters,id,active,1',
             ],
             'section' => [
                 'required',
-                'exists:section_masters,id,active,1'
+                'exists:section_masters,id,active,1',
             ],
             'std_id' => 'required',
         ]);
@@ -1221,7 +1217,6 @@ class StdMarksController extends Controller
         $students = $request->std_id;
         $sessionMessage = $request->sessionMessage;
         $dateMessage = $request->dateMessage;
-
 
         return redirect()->route('marks.marks-report.marksheet.pg.nursary.print')
             ->with('class', $classId)
@@ -1240,19 +1235,19 @@ class StdMarksController extends Controller
             // Validate input parameters
             $validated = $request->validate([
                 'class' => 'required|exists:class_masters,id,active,1',
-                'section' => 'required|exists:section_masters,id,active,1'
+                'section' => 'required|exists:section_masters,id,active,1',
             ]);
 
             // Get current active session
             $session = session('marks_current_session');
 
-            if (!$session) {
+            if (! $session) {
                 return response()->json([
                     'error' => 'No active session found',
-                    'message' => 'Set Current Session'
+                    'message' => 'Set Current Session',
                 ], 400);
             }
-            $srno = explode(",", $request->std_id);
+            $srno = explode(',', $request->std_id);
             // Get students for this session, class, and section
 
             $fields = [
@@ -1284,12 +1279,11 @@ class StdMarksController extends Controller
             if ($students->isEmpty()) {
                 return response()->json([
                     'error' => 'No students found',
-                    'message' => 'No students in this class and section'
+                    'message' => 'No students in this class and section',
                 ], 404);
             }
 
             $studentReports = [];
-
 
             foreach ($students as $student) {
                 // Get student details
@@ -1299,7 +1293,6 @@ class StdMarksController extends Controller
                     ->where('stu_main_srno.class', $student->class)
                     ->where('stu_main_srno.section', $student->section)
                     ->where('stu_main_srno.srno', $student->srno)->first();
-
 
                 // Get subjects for this class
                 $subFields = ['id', 'class_id', 'subject', 'subject_id', 'by_m_g', 'priority', 'active'];
@@ -1319,7 +1312,7 @@ class StdMarksController extends Controller
                         'subject_name' => $subject->subject,
                         'sub_subject_id' => $subject->subject_id,
                         'by_m_g' => $subject->by_m_g,
-                        'exams' => []
+                        'exams' => [],
                     ];
 
                     $subjectTotalMax = 0;
@@ -1355,7 +1348,7 @@ class StdMarksController extends Controller
                                     'max_marks' => $marks->max_marks ?? 0,
                                     'grade' => $this->getPGNurGrade($marks->max_marks, $marks->marks) ?? 'Abst',
                                     // 'grade' => $this->getGrade($marks->max_marks, $marks->marks) ?? 'Abst',
-                                    'status' => $marks->marks ? 'Present' : 'Abst'
+                                    'status' => $marks->marks ? 'Present' : 'Abst',
                                 ];
 
                                 $subjectTotalMax += $marks->max_marks ?? 0;
@@ -1367,7 +1360,7 @@ class StdMarksController extends Controller
                                     'obtained_marks' => 0,
                                     'max_marks' => 0,
                                     'grade' => $this->getPGNurGrade(0, 0) ?? 'Abst',
-                                    'status' => 'Abst'
+                                    'status' => 'Abst',
                                 ];
                             }
                         }
@@ -1395,7 +1388,7 @@ class StdMarksController extends Controller
                     ->sum('status');
                 $studentAttendance = 0;
                 if ($totalAttendanceDays > 0 || $totalObtained !== '') {
-                    # code...
+                    // code...
                     $studentAttendance = StdAttendanceController::getAttendance(['id', 'status', 'session_id', 'class', 'section', 'srno'])->where('session_id', $session->id)->where('class', $student->class)->where('section', $student->section)->where('srno', $student->srno)->sum('status');
                 }
 
@@ -1408,7 +1401,7 @@ class StdMarksController extends Controller
                         'class' => $studentDetail->class_name,
                         'section' => $studentDetail->section_name,
                         'roll_no' => $student->rollno,
-                        'dob' => $studentDetail->dob ? Carbon::parse($studentDetail->dob)->format('d-M-Y') : 'N/A'
+                        'dob' => $studentDetail->dob ? Carbon::parse($studentDetail->dob)->format('d-M-Y') : 'N/A',
                     ],
                     'subject_marks' => $subjectMarks,
                     'total_marks' => [
@@ -1424,7 +1417,7 @@ class StdMarksController extends Controller
                         'result' => 'Pass',
                         'result_date_message' => $request->dateMessage ?? '',
                         'session_start_message' => $request->sessionMessage ?? '',
-                    ]
+                    ],
                 ];
             }
 
@@ -1432,14 +1425,14 @@ class StdMarksController extends Controller
                 'session' => $session->session,
                 'logo' => [
                     'school_logo' => config('myconfig.mylogo'),
-                    'principal_sign' => config('myconfig.mysignature')
+                    'principal_sign' => config('myconfig.mysignature'),
                 ],
-                'students' => $studentReports
+                'students' => $studentReports,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Access Denied',
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 500);
         }
     }
@@ -1447,10 +1440,10 @@ class StdMarksController extends Controller
     /**
      * Final Marksheet Only For Class KG
      */
-
     public function finalMarksheetOnlyForClassKG()
     {
         $classes = ClassMasterController::getClasses();
+
         return view('marks.marksheet.marksheet_final_kg', compact('classes'));
     }
 
@@ -1472,19 +1465,20 @@ class StdMarksController extends Controller
             'section' => $section,
             'students' => $students,
             'sessionMessage' => $sessionMessage,
-            'dateMessage' => $dateMessage
+            'dateMessage' => $dateMessage,
         ]);
     }
+
     public function finalMarksheetOnlyForClassKGStore(Request $request)
     {
         $request->validate([
             'class' => [
                 'required',
-                'exists:class_masters,id,active,1'
+                'exists:class_masters,id,active,1',
             ],
             'section' => [
                 'required',
-                'exists:section_masters,id,active,1'
+                'exists:section_masters,id,active,1',
             ],
             'std_id' => 'required',
         ]);
@@ -1493,7 +1487,6 @@ class StdMarksController extends Controller
         $students = $request->std_id;
         $sessionMessage = $request->sessionMessage;
         $dateMessage = $request->dateMessage;
-
 
         return redirect()->route('marks.marks-report.marksheet.kg.print')
             ->with('class', $classId)
@@ -1524,7 +1517,7 @@ class StdMarksController extends Controller
         $validated = $validator->validated();
 
         $fields = ['stu_main_srno.class', 'stu_main_srno.section', 'stu_main_srno.session_id', 'stu_main_srno.srno'];
-        $studentIds = explode(",", $request->students);
+        $studentIds = explode(',', $request->students);
 
         $reportCards = [];
         $session = session('marks_current_session');
@@ -1544,7 +1537,7 @@ class StdMarksController extends Controller
             } catch (Exception $e) {
                 $reportCards[] = [
                     'student_id' => $student,
-                    'error' => $e->getMessage()
+                    'error' => $e->getMessage(),
                 ];
             }
         }
@@ -1554,30 +1547,29 @@ class StdMarksController extends Controller
             'success' => true,
             'logo' => [
                 'school_logo' => config('myconfig.mylogo'),
-                'principal_sign' => config('myconfig.mysignature')
+                'principal_sign' => config('myconfig.mysignature'),
             ],
             'session' => [
                 'name' => $session->session,
-                'id' => $session->id
+                'id' => $session->id,
             ],
             'report_cards' => $reportCards,
             'class_id' => $validated['class'],
             'section_id' => $validated['section'] ?? null,
-            'total_students' => count($reportCards)
+            'total_students' => count($reportCards),
         ]);
     }
 
-
-    private function generateSingleReportCard($student, $classId, $sectionId = null, $dateMessage, $sessionMessage)
+    private function generateSingleReportCard($student, $classId, $sectionId, $dateMessage, $sessionMessage)
     {
 
         // Get current active session
         $session = session('marks_current_session');
 
-        if (!$session) {
+        if (! $session) {
             return response()->json([
                 'error' => 'Session Error',
-                'message' => 'No active session found'
+                'message' => 'No active session found',
             ], 404);
         }
 
@@ -1602,17 +1594,16 @@ class StdMarksController extends Controller
             'parents_detail.m_name',
         ];
 
-
         // $detail = StudentMasterController::getStdWithNames(false, $fields)
         $detail = StudentMasterController::getMarksheetStdWithNames(false, $fields)
             ->where('stu_main_srno.srno', $student)
             ->where('stu_main_srno.class', $classId)
             ->where('stu_main_srno.section', $sectionId)
             ->where('stu_main_srno.session_id', $session->id)->first();
-        if (!$detail) {
+        if (! $detail) {
             return response()->json([
                 'error' => 'No students found',
-                'message' => 'No students in this class and section'
+                'message' => 'No students in this class and section',
             ], 404);
         }
 
@@ -1620,7 +1611,6 @@ class StdMarksController extends Controller
         $subFields = ['id', 'class_id', 'subject', 'subject_id', 'by_m_g', 'priority', 'active'];
         $subWhere = ['class_id' => $classId];
         $subjects = SubjectMasterController::getAllSubjects($subFields, '', $subWhere, ['by_m_g' => 'asc'], true);
-
 
         // Fetch exams
         $exams = ExamMasterController::getAllExam(['id', 'exam']);
@@ -1633,6 +1623,7 @@ class StdMarksController extends Controller
         if ($totalAttendanceDays > 0) {
             $studentAttendance = StdAttendanceController::getAttendance(['id', 'status', 'session_id', 'class', 'section', 'srno'])->where('session_id', $session->id)->where('srno', $detail->srno)->where('class', $classId)->sum('status');
         }
+
         return [
 
             'student_id' => $detail->srno,
@@ -1655,7 +1646,7 @@ class StdMarksController extends Controller
 
             ],
             'marks_data' => $marksData,
-            'summary' => $this->calculateReportSummary($marksData)
+            'summary' => $this->calculateReportSummary($marksData),
         ];
     }
 
@@ -1696,7 +1687,7 @@ class StdMarksController extends Controller
                         'exam_name' => $exam,
                         'max_marks' => $maxMarks ?? 0,
                         'obtained_marks' => ($maxMarks != null && $obtainedMarks == 0) ? 'Abs' : $obtainedMarks,
-                        'grade' => $grade
+                        'grade' => $grade,
                     ];
 
                     // Accumulate total marks
@@ -1716,7 +1707,7 @@ class StdMarksController extends Controller
                 'percentage' => $totalMaxMarks > 0
                     ? round(($totalObtainedMarks / $totalMaxMarks) * 100, 2)
                     : 'NaN',
-                'overall_grade' => $this->calculateGrade($totalObtainedMarks, $totalMaxMarks)
+                'overall_grade' => $this->calculateGrade($totalObtainedMarks, $totalMaxMarks),
             ];
         }
 
@@ -1743,7 +1734,7 @@ class StdMarksController extends Controller
             'overall_percentage' => $totalMaxMarks > 0
                 ? round(($totalObtainedMarks / $totalMaxMarks) * 100, 2)
                 : null,
-            'overall_result' => $this->determineOverallResult($subjectGrades)
+            'overall_result' => $this->determineOverallResult($subjectGrades),
         ];
     }
 
@@ -1752,35 +1743,39 @@ class StdMarksController extends Controller
         $total = $maxMarks;
         if ($total == 50) {
             if ($obtainedMarks >= 46 && $obtainedMarks <= 50) {
-                return "A+";
+                return 'A+';
             } elseif ($obtainedMarks >= 41 && $obtainedMarks <= 45) {
-                return "A";
+                return 'A';
             } elseif ($obtainedMarks >= 31 && $obtainedMarks <= 40) {
-                return "B+";
+                return 'B+';
             } else {
-                return "B";
+                return 'B';
             }
-        } else if ($total == 150) {
+        } elseif ($total == 150) {
             if ($obtainedMarks >= 136 && $obtainedMarks <= 150) {
-                return "A+";
+                return 'A+';
             } elseif ($obtainedMarks >= 121 && $obtainedMarks <= 135) {
-                return "A";
+                return 'A';
             } elseif ($obtainedMarks >= 91 && $obtainedMarks <= 120) {
-                return "B+";
+                return 'B+';
             } else {
-                return "B";
+                return 'B';
             }
         }
-        return "ER";
+
+        return 'ER';
     }
+
     private function determineOverallResult($grades)
     {
         // Simple result determination based on grades
         $failGrades = array_filter($grades, function ($grade) {
             return $grade == 'F' || $grade == 'D';
         });
+
         return count($failGrades) > 0 ? 'Fail' : 'Pass';
     }
+
     private function gradeDisplay($marksObtained, $maxMarks)
     {
         if ($marksObtained == 'Abst') {
@@ -1807,14 +1802,13 @@ class StdMarksController extends Controller
         }
     }
 
-
     /**
      * Final Marksheet Only For Class First And Second
      */
-
     public function finalMarksheetOnlyForClassFirstSecond()
     {
         $classes = ClassMasterController::getClasses();
+
         return view('marks.marksheet.marksheet_final_first_second', compact('classes'));
     }
 
@@ -1836,7 +1830,7 @@ class StdMarksController extends Controller
             'section' => $section,
             'students' => $students,
             'sessionMessage' => $sessionMessage,
-            'dateMessage' => $dateMessage
+            'dateMessage' => $dateMessage,
         ]);
     }
 
@@ -1845,11 +1839,11 @@ class StdMarksController extends Controller
         $request->validate([
             'class' => [
                 'required',
-                'exists:class_masters,id,active,1'
+                'exists:class_masters,id,active,1',
             ],
             'section' => [
                 'required',
-                'exists:section_masters,id,active,1'
+                'exists:section_masters,id,active,1',
             ],
             'std_id' => 'required',
         ]);
@@ -1858,7 +1852,6 @@ class StdMarksController extends Controller
         $students = $request->std_id;
         $sessionMessage = $request->sessionMessage;
         $dateMessage = $request->dateMessage;
-
 
         return redirect()->route('marks.marks-report.marksheet.first.second.print')
             ->with('class', $classId)
@@ -1903,7 +1896,7 @@ class StdMarksController extends Controller
             if ($mainSubjects->isEmpty()) {
                 return response()->json(['error' => 'No subjects found'], 404);
             }
-            $studentIds = explode(",", $request->students);
+            $studentIds = explode(',', $request->students);
 
             // Student details query
             $fields = [
@@ -1917,7 +1910,7 @@ class StdMarksController extends Controller
                 'parents_detail.f_name',
                 'parents_detail.m_name',
                 'class_masters.class as class_name',
-                'section_masters.section as section_name'
+                'section_masters.section as section_name',
             ];
             // $studentDetails = StudentMasterController::getStdWithNames(false, $fields)
             $studentDetails = StudentMasterController::getMarksheetStdWithNames(false, $fields)
@@ -1926,10 +1919,8 @@ class StdMarksController extends Controller
                 ->where('stu_main_srno.class', $validatedData['class'])
                 ->where('stu_main_srno.section', $validatedData['section'])->get();
 
-
             // Fetch exams
             $exams = ExamMasterController::getAllExam(['id', 'exam']);
-
 
             $finalData = [];
 
@@ -1950,7 +1941,7 @@ class StdMarksController extends Controller
                         'by_m_g' => $subject->by_m_g,
                         'priority' => $subject->priority,
                         'subSubjectId' => $subject->subject_id,
-                        'exam-info' => []
+                        'exam-info' => [],
                     ];
 
                     // Collect marks and grades for each exam
@@ -1964,7 +1955,7 @@ class StdMarksController extends Controller
                         );
 
                         // If marks data exists, add to the subject's exam-info
-                        if (!empty($examMarks)) {
+                        if (! empty($examMarks)) {
 
                             $subjectMarksData['exam-info'][] = [
                                 'exam_id' => $key,
@@ -1975,7 +1966,7 @@ class StdMarksController extends Controller
                                 'oral_max_marks' => $examMarks['oral_max_marks'],
                                 'total_marks' => $examMarks['total_marks'],
                                 'max_marks' => $examMarks['max_marks'],
-                                'grade' => $examMarks['grade']
+                                'grade' => $examMarks['grade'],
                             ];
                         }
                     }
@@ -2007,7 +1998,7 @@ class StdMarksController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'An error occurred',
-                'message' => $e->getMessage() . " at line number " . $e->getLine()
+                'message' => $e->getMessage().' at line number '.$e->getLine(),
             ], 500);
         }
     }
@@ -2067,7 +2058,7 @@ class StdMarksController extends Controller
             ->first();
 
         // If no marks found, return null
-        if (!$mainMarks && !$oralMarks) {
+        if (! $mainMarks && ! $oralMarks) {
             return null;
         }
 
@@ -2079,13 +2070,13 @@ class StdMarksController extends Controller
         $grade = $this->getGradeFirstSecond($totalMarks, $totalMaxMarks);
 
         return [
-            'written_marks' => $mainMarks && $mainMarks->attendance == 1 ? $mainMarks->written_marks : "Abs",
+            'written_marks' => $mainMarks && $mainMarks->attendance == 1 ? $mainMarks->written_marks : 'Abs',
             'written_max_marks' => $mainMarks ? $mainMarks->written_max_marks : 0,
-            'oral_marks' => $oralMarks && $oralMarks->attendance == 1 ? $oralMarks->oral_marks : "Abs",
+            'oral_marks' => $oralMarks && $oralMarks->attendance == 1 ? $oralMarks->oral_marks : 'Abs',
             'oral_max_marks' => $oralMarks ? $oralMarks->oral_max_marks : 0,
             'total_marks' => $totalMarks,
             'max_marks' => $totalMaxMarks,
-            'grade' => $grade
+            'grade' => $grade,
         ];
     }
 
@@ -2094,22 +2085,22 @@ class StdMarksController extends Controller
     {
         $total = $marks * 100.00 / $max_marks;
         if ($total > 80) {
-            return "A";
+            return 'A';
         } elseif ($total > 60) {
-            return "B";
+            return 'B';
         } elseif ($total > 40) {
-            return "C";
+            return 'C';
         } else {
-            return "D";
+            return 'D';
         }
-        return "ER";
+
+        return 'ER';
     }
 
     //Attendance for class First and Second
 
     private function firstSecondAttendance($sessionId, $studentId)
     {
-
 
         // Complete list of months with their full names
         $monthNames = [
@@ -2124,7 +2115,7 @@ class StdMarksController extends Controller
             12 => 'December',
             1 => 'January',
             2 => 'February',
-            3 => 'March'
+            3 => 'March',
         ];
 
         $monthlyData = [];
@@ -2154,7 +2145,7 @@ class StdMarksController extends Controller
                 'attended_meetings' => $studentAttendanceQuery * 2,
                 'attendance_percentage' => $meetingsQuery > 0
                     ? round(($studentAttendanceQuery / $meetingsQuery) * 100, 2)
-                    : 0
+                    : 0,
             ];
 
             $monthlyData[] = $monthData;
@@ -2174,9 +2165,8 @@ class StdMarksController extends Controller
                 'total_attended' => $totalAttended * 2,
                 'overall_attendance_percentage' => $totalMeetings > 0
                     ? round(($totalAttended / $totalMeetings) * 100, 2)
-                    : 0
+                    : 0,
             ],
-
 
         ];
 
@@ -2208,7 +2198,7 @@ class StdMarksController extends Controller
             'section' => $section,
             'students' => $students,
             'sessionMessage' => $sessionMessage,
-            'dateMessage' => $dateMessage
+            'dateMessage' => $dateMessage,
         ]);
 
         // return view('marks.marksheet.marksheet_print_options', $data);
@@ -2221,8 +2211,10 @@ class StdMarksController extends Controller
     public function finalMarksheetThirdToFifth()
     {
         $classes = ClassMasterController::getClasses();
+
         return view('marks.marksheet.marksheet_final_third_fifth', compact('classes'));
     }
+
     public function finalMarksheetThirdToFifthPrint(Request $request)
     {
         // Retrieve the data from the session
@@ -2253,11 +2245,11 @@ class StdMarksController extends Controller
         $request->validate([
             'class' => [
                 'required',
-                'exists:class_masters,id,active,1'
+                'exists:class_masters,id,active,1',
             ],
             'section' => [
                 'required',
-                'exists:section_masters,id,active,1'
+                'exists:section_masters,id,active,1',
             ],
             'std_id' => 'required',
         ]);
@@ -2267,7 +2259,6 @@ class StdMarksController extends Controller
         $sessionMessage = $request->sessionMessage;
         $dateMessage = $request->dateMessage;
 
-
         return redirect()->route('marks.marks-report.select.exam')
             ->with('class', $classId)
             ->with('section', $sectionId)
@@ -2275,16 +2266,17 @@ class StdMarksController extends Controller
             ->with('sessionMessage', $sessionMessage)
             ->with('dateMessage', $dateMessage);
     }
+
     public function selectExamWithOrWithoutStore(Request $request)
     {
         $request->validate([
             'class' => [
                 'required',
-                'exists:class_masters,id,active,1'
+                'exists:class_masters,id,active,1',
             ],
             'section' => [
                 'required',
-                'exists:section_masters,id,active,1'
+                'exists:section_masters,id,active,1',
             ],
             'students' => 'required',
         ]);
@@ -2319,7 +2311,7 @@ class StdMarksController extends Controller
             if ($validator->fails()) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => $validator->errors()
+                    'message' => $validator->errors(),
                 ], 400);
             }
 
@@ -2337,19 +2329,18 @@ class StdMarksController extends Controller
             $subWhereIn = ['priority' => [1]];
             $mainSubjects = SubjectMasterController::getAllSubjects($subFields, '', $subWhere, ['by_m_g' => 'asc'], true, '', false, $subWhereIn);
 
-
             if ($mainSubjects->isEmpty()) {
                 return response()->json(['status' => 'error', 'message' => 'No subjects found'], 404);
             }
 
-            $examIds = explode(",", $request->exam);
+            $examIds = explode(',', $request->exam);
             $exams = ExamMasterController::getAllExam(['id', 'exam'], [], [], '', false, ['id' => $examIds]);
             if (empty($exams)) {
                 return response()->json(['status' => 'error', 'message' => 'No exams found'], 404);
             }
 
             // Fetch students with necessary details using joins
-            $studentIds = explode(",", $request->students);
+            $studentIds = explode(',', $request->students);
             $fields = [
                 'stu_main_srno.srno',
                 'stu_main_srno.rollno',
@@ -2361,7 +2352,7 @@ class StdMarksController extends Controller
                 'parents_detail.f_name',
                 'parents_detail.m_name',
                 'class_masters.class as class_name',
-                'section_masters.section as section_name'
+                'section_masters.section as section_name',
             ];
             // $students = StudentMasterController::getStdWithNames(false, $fields)
             $students = StudentMasterController::getMarksheetStdWithNames(false, $fields)
@@ -2384,7 +2375,7 @@ class StdMarksController extends Controller
                             $studentDetail->srno
                         );
                     }),
-                    'attendance' => $this->firstSecondAttendance($session->id, $studentDetail->srno)
+                    'attendance' => $this->firstSecondAttendance($session->id, $studentDetail->srno),
                 ];
             });
 
@@ -2396,13 +2387,13 @@ class StdMarksController extends Controller
                     'school_logo' => config('myconfig.mylogo'),
                     'principal_sign' => config('myconfig.mysignature'),
                     'result_date_message' => $request->dateMessage ?? '',
-                    'session_start_message' => $request->sessionMessage ?? ''
+                    'session_start_message' => $request->sessionMessage ?? '',
                 ],
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to export report"
+                'message' => 'Failed to export report',
             ], 500);
         }
     }
@@ -2427,7 +2418,7 @@ class StdMarksController extends Controller
             'section' => $section,
             'students' => $students,
             'sessionMessage' => $sessionMessage,
-            'dateMessage' => $dateMessage
+            'dateMessage' => $dateMessage,
         ]);
     }
 
@@ -2438,8 +2429,10 @@ class StdMarksController extends Controller
     public function finalMarksheetSixToEighth()
     {
         $classes = ClassMasterController::getClasses();
+
         return view('marks.marksheet.marksheet_final_six_eighth', compact('classes'));
     }
+
     public function finalMarksheetSixToEighthPrint(Request $request)
     {
         // Retrieve the data from the session
@@ -2471,11 +2464,11 @@ class StdMarksController extends Controller
         $request->validate([
             'class' => [
                 'required',
-                'exists:class_masters,id,active,1'
+                'exists:class_masters,id,active,1',
             ],
             'section' => [
                 'required',
-                'exists:section_masters,id,active,1'
+                'exists:section_masters,id,active,1',
             ],
             'std_id' => 'required',
         ]);
@@ -2492,16 +2485,17 @@ class StdMarksController extends Controller
             ->with('sessionMessage', $sessionMessage)
             ->with('dateMessage', $dateMessage);
     }
+
     public function selectExamWithOrWithoutSixEighthStore(Request $request)
     {
         $request->validate([
             'class' => [
                 'required',
-                'exists:class_masters,id,active,1'
+                'exists:class_masters,id,active,1',
             ],
             'section' => [
                 'required',
-                'exists:section_masters,id,active,1'
+                'exists:section_masters,id,active,1',
             ],
             'students' => 'required',
         ]);
@@ -2536,6 +2530,7 @@ class StdMarksController extends Controller
             'exam-info' => collect($exams)->map(function ($exam, $key) use (&$allExamsTotal, $class, $sessionId, $studentSrno, $subject) {
                 $examMarks = $this->getExamMarksForStudent($class, $key, $sessionId, $studentSrno, $subject->id);
                 $allExamsTotal += $examMarks ? $examMarks['total_marks'] : 0;
+
                 return $examMarks ? [
                     'exam_id' => $key,
                     'exam' => $exam,
@@ -2545,7 +2540,7 @@ class StdMarksController extends Controller
                     'oral_max_marks' => $examMarks['oral_max_marks'],
                     'total_marks' => $examMarks['total_marks'],
                     'max_marks' => $examMarks['max_marks'],
-                    'grade' => $examMarks['grade']
+                    'grade' => $examMarks['grade'],
                 ] : null;
             })->filter()->values(),
             'allExamsTotal' => $allExamsTotal,
@@ -2567,7 +2562,7 @@ class StdMarksController extends Controller
             if ($validator->fails()) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => $validator->errors()
+                    'message' => $validator->errors(),
                 ], 400);
             }
 
@@ -2585,19 +2580,18 @@ class StdMarksController extends Controller
             $subWhereIn = ['priority' => [1]];
             $mainSubjects = SubjectMasterController::getAllSubjects($subFields, '', $subWhere, ['by_m_g' => 'asc'], true, '', false, $subWhereIn);
 
-
             if ($mainSubjects->isEmpty()) {
                 return response()->json(['status' => 'error', 'message' => 'No subjects found'], 404);
             }
 
-            $examIds = explode(",", $request->exam);
+            $examIds = explode(',', $request->exam);
             $exams = ExamMasterController::getAllExam(['id', 'exam'], [], [], '', false, ['id' => $examIds]);
             if (empty($exams)) {
                 return response()->json(['status' => 'error', 'message' => 'No exams found'], 404);
             }
 
             // Fetch students with necessary details using joins
-            $studentIds = explode(",", $request->students);
+            $studentIds = explode(',', $request->students);
             $fields = [
                 'stu_main_srno.srno',
                 'stu_main_srno.rollno',
@@ -2609,7 +2603,7 @@ class StdMarksController extends Controller
                 'parents_detail.f_name',
                 'parents_detail.m_name',
                 'class_masters.class as class_name',
-                'section_masters.section as section_name'
+                'section_masters.section as section_name',
             ];
             // $students = StudentMasterController::getStdWithNames(false, $fields)
             $students = StudentMasterController::getMarksheetStdWithNames(false, $fields)
@@ -2631,9 +2625,10 @@ class StdMarksController extends Controller
                             $studentDetail->srno
                         );
                     }),
-                    'attendance' => $this->firstSecondAttendance($session->id, $studentDetail->srno)
+                    'attendance' => $this->firstSecondAttendance($session->id, $studentDetail->srno),
                 ];
             });
+
             return response()->json([
                 'status' => 'success',
                 'session' => $session,
@@ -2642,14 +2637,235 @@ class StdMarksController extends Controller
                     'school_logo' => config('myconfig.mylogo'),
                     'principal_sign' => config('myconfig.mysignature'),
                     'result_date_message' => $request->dateMessage ?? '',
-                    'session_start_message' => $request->sessionMessage ?? ''
+                    'session_start_message' => $request->sessionMessage ?? '',
                 ],
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to export report" . $e->getMessage()
+                'message' => 'Failed to export report'.$e->getMessage(),
             ], 500);
+        }
+    }
+
+    /**
+     * PG Exam-Wise
+     */
+    public function pgClassExamWise()
+    {
+        $classes = ClassMasterController::getClasses();
+        $exams = ExamMasterController::getAllExam();
+
+        return view('marks.marksheet.pg_class_exam_wise_play_report', compact('classes', 'exams'));
+    }
+
+    public function pgClassExamWisePrint(Request $request)
+    {
+        $exam = $request->session()->get('exam');
+        $class = $request->session()->get('class');
+        $section = $request->session()->get('section');
+        $students = $request->session()->get('students');
+
+        // Pass the data to the view
+        return view('marks.marksheet.pg_class_exam_wise_play_report_print', [
+            'exam' => $exam,
+            'class' => $class,
+            'section' => $section,
+            'students' => $students,
+        ]);
+        // return view('marks.marksheet.exam_wise_play_report_print');
+    }
+
+    public function pgClassExamWisePrintStore(Request $request)
+    {
+        $request->validate([
+            'exam' => [
+                'required',
+                'exists:exam_masters,id,active,1',
+            ],
+            'class' => [
+                'required',
+                'exists:class_masters,id,active,1',
+            ],
+            'section' => [
+                'required',
+                'exists:section_masters,id,active,1',
+            ],
+            'std_id' => 'required',
+        ]);
+        $exam = $request->exam;
+        $classId = $request->class;
+        $sectionId = $request->section;
+        $students = $request->std_id;
+
+        return redirect()->route('marks.marks-report.pg-class-exam-wise.print')->with('exam', $exam)->with('class', $classId)->with('section', $sectionId)->with('students', $students);
+    }
+
+    public function getPgClassMarkSheetReport(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'class' => 'required|exists:class_masters,id,active,1',
+                'section' => 'required|exists:section_masters,id,active,1',
+                'exam' => 'required|exists:exam_masters,id,active,1',
+            ]);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $validator->errors(),
+                ], 400);
+            }
+
+            $sessionId = (int) $request->session;
+            $examId = $request->exam;
+            $classId = $request->class;
+            $sectionId = $request->section;
+            $studentIds = explode(',', $request->std_id);
+            $fields = [
+                'stu_main_srno.session_id',
+                'session_masters.session as session_name',
+                'class_masters.class as class_name',
+                'section_masters.section as section_name',
+                'stu_main_srno.class',
+                'stu_main_srno.section',
+                'stu_main_srno.srno',
+                'stu_main_srno.school',
+                'stu_main_srno.rollno',
+                'stu_main_srno.ssid',
+                'stu_main_srno.active',
+                'stu_detail.name',
+                'stu_detail.dob',
+                'stu_detail.srno',
+                'parents_detail.srno',
+                'parents_detail.f_name',
+                'parents_detail.m_name',
+            ];
+
+            $students = StudentMasterController::getMarksheetStdWithNames(false, $fields)
+                ->whereIn('stu_main_srno.srno', $studentIds)
+                ->where('stu_main_srno.class', $classId)
+                ->where('stu_main_srno.section', $sectionId)
+                ->where('stu_main_srno.session_id', $sessionId)
+                ->get();
+
+            if ($students->isNotEmpty()) {
+                $exam = ExamMasterController::getAllExam(['id', 'exam'], ['id' => $examId]);
+                $report = [
+                    'student' => [],
+                ];
+
+                /** variables to collect the max marks data */
+                $max_marks = 0;
+                $subjects = SubjectMasterController::getAllSubjects(['subject', 'id', 'subject_id', 'by_m_g', 'priority', 'class_id'], '', ['class_id' => $classId], ['order_by' => 'asc'], true);
+
+
+                foreach ($students as $key => $st) {
+                    $writtenSubjects = $subjects->whereNull('subject_id')->where('priority', 1)->values();
+                    $studentSubjects = [];
+                    $totalObtained = 0;
+                    $totalMaxMarksOverall = 0;
+
+                    $marks = Marks::where('exam_id', $examId)->where('session_id', $sessionId)->where('class_id', $st->class)->where('srno', $st->srno)->where('active', 1)->get();
+
+                    $marksMaster = MarksMaster::where('exam_id', $examId)->where('session_id', $sessionId)->where('class_id', $st->class)->where('active', 1)->get();
+
+                    foreach ($writtenSubjects as $writtenSubject) {
+                        $writtenMarks = $marks->where('subject_id', $writtenSubject->id)->first();
+                        $maxMarksWrittenGrade = $marksMaster->where('subject_id', $writtenSubject->id)->value('max_marks') ?? 0;
+
+                        $writtenValue = ($writtenMarks && $writtenMarks->attendance == 1) ? $writtenMarks->marks : ($writtenMarks ? 'Ab.' : null);
+
+                        $totalMarks = 0;
+                        $totalMaxMarks = $maxMarksWrittenGrade;
+
+                        if ($writtenValue === 'Ab.') {
+                            $totalMarks = 'Ab.';
+                        } else {
+                            $totalMarks += is_numeric($writtenValue) ? $writtenValue : 0;
+                        }
+
+                        // Add to overall calculation
+                        $totalObtained += is_numeric($totalMarks) ? $totalMarks : 0;
+                        $totalMaxMarksOverall += $totalMaxMarks;
+
+                        $studentSubjects[] = [
+                            'name' => $writtenSubject->subject,
+                            'by_m_g' => $writtenSubject->by_m_g,
+                            'written' => $writtenValue !== null ? ($maxMarksWrittenGrade !== 0 ? $this->getPgClassGrade($maxMarksWrittenGrade, $writtenValue) : '') : '',
+                            'total' => ($writtenValue !== null) ? ($totalMaxMarks !== 0 ? $this->getPgClassGrade($totalMaxMarks, $totalMarks) : '') : '',
+                        ];
+                    }
+                    // ✅ Calculate overall grade
+                    $overallGrade = $totalMaxMarksOverall > 0 ? $this->getPgClassGrade($totalMaxMarksOverall, $totalObtained) : '';
+                    $report['student'][] = [
+                        'session' => $st->session_name,
+                        'logo' => config('myconfig.mylogo'),
+                        'school' => $st->school == 1 ? 'St. Vivekanand Play House' : 'St. Vivekanand Public Secondary School',
+                        'srno' => $st->srno,
+                        'name' => $st->name ?? 'N/A',
+                        'rollno' => $st->rollno,
+                        'dob' => $st->dob ? date('d-M-Y', strtotime($st->dob)) : 'N/A',
+                        'father_name' => $st->f_name,
+                        'mother_name' => $st->m_name,
+                        'class_name' => $st->class_name,
+                        'section_name' => $st->section_name,
+                        'exam_name' => array_values($exam)[0],
+                        'principle_sign' => config('myconfig.mysignature'),
+                        'subjects' => $studentSubjects,
+                        'overall_grade' => $overallGrade,
+                    ];
+                }
+
+
+
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'Student With Marks List',
+                    'data' => $report,
+                ]);
+            } else {
+                return response()->json([
+                    'status' => 202,
+                    'message' => 'Student Not Found',
+                    'data' => [],
+                ]);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to get report',
+            ], 500);
+        }
+    }
+
+    private function getPgClassGrade($maxMarks, $obtainedMarks)
+    {
+        // Handle absent case
+        if ($obtainedMarks === 'Ab.' || $obtainedMarks === null) {
+            return 'Ab.';
+        }
+
+        // Ensure numeric values
+        if (!is_numeric($obtainedMarks) || !is_numeric($maxMarks) || $maxMarks <= 0) {
+            return '';
+        }
+
+        // Calculate percentage
+        $percentage = ($obtainedMarks / $maxMarks) * 100;
+
+        // Assign grade based on percentage ranges
+        if ($percentage >= 80 && $percentage <= 100) {
+            return 'A';
+        } elseif ($percentage >= 65 && $percentage < 80) {
+            return 'B';
+        } elseif ($percentage >= 50 && $percentage < 65) {
+            return 'C';
+        } elseif ($percentage >= 33 && $percentage < 50) {
+            return 'D';
+        } elseif ($percentage >= 0 && $percentage < 33) {
+            return 'E';
+        } else {
+            return '';
         }
     }
 }
