@@ -7,7 +7,6 @@
                 <div class="card border-0 bg-white">
                     <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between"><h5 class="mb-0 mt-0">{{ 'Promote or Demote Student' }}</h5>
                         <a href="{{ route('admin.promote-std.index') }}" class="btn bg-light btn-sm" ><span class="mdi mdi-chevron-left me-2"></span>Back</a>
-
                     </div>
                     <div class="card-body">
                         <table id="example" class="table table-striped table-bordered">
@@ -23,15 +22,13 @@
                                         <td>Session</td>
                                         <td>
                                             Current Session
-                                            <input type="hidden" name="current_session" value=''
-                                                id="current_session">
+                                            <input type="hidden" name="current_session" value='' id="current_session">
                                         </td>
                                     </tr>
                                     <tr>
                                         <td>Select Class</td>
                                         <td>
-                                            <input type="hidden" id="initialClassId" name="initialClassId"
-                                                value="{{ old('initialClassId', request()->get('class_id') !== null ? request()->get('class_id') : '') }}">
+                                            <input type="hidden" id="initialClassId" name="initialClassId" value="{{ old('initialClassId', request()->get('class_id') !== null ? request()->get('class_id') : '') }}">
                                             <select name="class_id" id="class_id" class="form-control mx-1" required>
                                                 <option value="">Select Class</option>
                                                 @if (count($classes) > 0)
@@ -45,43 +42,35 @@
                                                     <option value="">No Class Found</option>
                                                 @endif
                                             </select>
-                                            <span class="invalid-feedback form-invalid fw-bold first-class-error"
-                                                role="alert"></span>
+                                            <span class="invalid-feedback form-invalid fw-bold first-class-error" role="alert"></span>
                                         </td>
                                     </tr>
                                     <tr>
                                         <td>Select Section</td>
                                         <td>
-                                            <input type="hidden" id="initialSectionId" name="initialSectionId"
-                                                value="{{ old('section_id') }}">
+                                            <input type="hidden" id="initialSectionId" name="initialSectionId" value="{{ old('section_id') }}">
                                             <select name="section_id" id="section_id" class="form-control mx-1" required>
                                                 <option value="">Select Section</option>
                                             </select>
-                                            <span class="invalid-feedback form-invalid fw-bold first-section-error"
-                                                role="alert"></span>
+                                            <span class="invalid-feedback form-invalid fw-bold first-section-error" role="alert"></span>
                                         </td>
                                     </tr>
                                     <tr>
                                         <td>Select Student</td>
                                         <td>
-                                            <input type="hidden" id="initialStdId" name="initialStdId"
-                                                value="{{ old('initialStdId', request()->get('std_id') !== null ? request()->get('std_id') : '') }}">
+                                            <input type="hidden" id="initialStdId" name="initialStdId" value="{{ old('initialStdId', request()->get('std_id') !== null ? request()->get('std_id') : '') }}">
                                             <select name="std_id[]" id="std_id" class="form-control" multiple required>
                                                 <option value="">Select Student</option>
                                             </select>
-                                            <span class="invalid-feedback form-invalid fw-bold first-std-error"
-                                                role="alert"></span>
+                                            <span class="invalid-feedback form-invalid fw-bold first-std-error" role="alert"></span>
                                         </td>
                                     </tr>
 
                                     <th colspan="2">To</th>
-
                                     <tr>
                                         <td>Entry Date</td>
-                                        <td><input type="date" name="promote_date" id="promote_date" class="form-control"
-                                                required>
-                                            <span class="invalid-feedback form-invalid fw-bold promote-date-error"
-                                                role="alert"></span>
+                                        <td><input type="date" name="promote_date" id="promote_date" class="form-control" required>
+                                            <span class="invalid-feedback form-invalid fw-bold promote-date-error" role="alert"></span>
                                         </td>
                                     </tr>
                                     <tr>
@@ -90,14 +79,12 @@
                                             <select name="session_id" id="session_id" class="form-control">
                                                 <option value="" required>Select Session</option>
                                                 @foreach ($sessions as $id => $session)
-                                                    <option value="{{ $id }}"
-                                                        {{ old('session_id') == $id ? 'selected' : '' }}>
+                                                    <option value="{{ $id }}" {{ old('session_id') == $id ? 'selected' : '' }}>
                                                         {{ $session }}
                                                     </option>
                                                 @endforeach
                                             </select>
-                                            <span class="invalid-feedback form-invalid fw-bold session-error"
-                                                role="alert"></span>
+                                            <span class="invalid-feedback form-invalid fw-bold session-error" role="alert"></span>
                                         </td>
                                     </tr>
                                     <tr>
@@ -107,40 +94,34 @@
                                                 <option value="">Select Class</option>
                                                 @if (count($classes) > 0)
                                                     @foreach ($classes as $key => $class)
-                                                        <option value="{{ $key }}"
-                                                            {{ old('second_class_id') == $key ? 'selected' : '' }}>
-                                                            {{ $class }}</option>
+                                                        <option value="{{ $key }}" {{ old('second_class_id') == $key ? 'selected' : '' }}>
+                                                            {{ $class }}
+                                                        </option>
                                                     @endforeach
                                                 @else
                                                     <option value="">No Class Found</option>
                                                 @endif
                                             </select>
-                                            <span class="invalid-feedback form-invalid fw-bold class-error"
-                                                role="alert"></span>
+                                            <span class="invalid-feedback form-invalid fw-bold class-error" role="alert"></span>
                                         </td>
                                     </tr>
                                     <tr>
                                         <td>Select Section</td>
                                         <td>
-                                            <input type="hidden" id="initialSecondSectionId" name="initialSecondSectionId"
-                                                value="{{ old('second_section_id') }}">
+                                            <input type="hidden" id="initialSecondSectionId" name="initialSecondSectionId" value="{{ old('second_section_id') }}">
                                             <select name="second_section_id" id="second_section_id" class="form-control">
                                                 <option value="">Select Section</option>
                                             </select>
-                                            <span class="invalid-feedback form-invalid fw-bold section-error"
-                                                role="alert"></span>
+                                            <span class="invalid-feedback form-invalid fw-bold section-error" role="alert"></span>
                                         </td>
                                     </tr>
                                     <tr class="promote-school-srno">
                                         <td>Enter School SRNO</td>
                                         <td>
-                                            <input type="text" name="srno" id="srno"
-                                                class="form-control @error('srno') is-invalid @enderror">
-                                            <span class="invalid-feedback form-invalid fw-bold srno-error"
-                                                role="alert"></span>
+                                            <input type="text" name="srno" id="srno" class="form-control @error('srno') is-invalid @enderror">
+                                            <span class="invalid-feedback form-invalid fw-bold srno-error" role="alert"></span>
                                             @error('srno')
-                                                <span class="invalid-feedback form-invalid fw-bold"
-                                                    role="alert">{{ $message }}</span>
+                                                <span class="invalid-feedback form-invalid fw-bold" role="alert">{{ $message }}</span>
                                             @enderror
                                         </td>
                                     </tr>
@@ -164,26 +145,19 @@
                                             <select name="second_std_id[]" id="second_std_id" class="form-control" multiple>
                                                 <option value="">Select Student</option>
                                             </select>
-
                                         </td>
                                     </tr>
                                     <tr>
                                         <td colspan="2">
-                                            <button type="submit" class="btn btn-sm btn-primary"
-                                                id="promote">Promote</button>
-                                            <button type="submit" class="btn btn-sm btn-primary" id="promoteSchool">Promote
-                                                St. School</button>
-                                            <button type="submit" class="btn btn-sm btn-primary"
-                                                id="promoteSchool2">Promote St. School</button>
+                                            <button type="submit" class="btn btn-sm btn-primary" id="promote">Promote</button>
+                                            <button type="submit" class="btn btn-sm btn-primary" id="promoteSchool">Promote St. School</button>
+                                            <button type="submit" class="btn btn-sm btn-primary" id="promoteSchool2">Promote St. School</button>
                                             <input type="hidden" name="tc" value="" id="tc-input">
-                                            <button type="submit" class="btn btn-sm btn-primary" id="tc">TC to
-                                                Student</button>
+                                            <button type="submit" class="btn btn-sm btn-primary" id="tc">TC to Student</button>
                                             <input type="hidden" name="leftOut" value="" id="left-input">
-                                            <button type="submit" class="btn btn-sm btn-primary" id="left">Left
-                                                Out</button>
+                                            <button type="submit" class="btn btn-sm btn-primary" id="left">Left Out</button>
                                             <input type="hidden" name="allStd" value="" id="allSt-input">
-                                            <button type="submit" class="btn btn-sm btn-primary" id="full-class">Promote
-                                                Full Class</button>
+                                            <button type="submit" class="btn btn-sm btn-primary" id="full-class">Promote Full Class</button>
                                         </td>
                                     </tr>
                                 </form>
@@ -226,7 +200,8 @@
             function fetchStdNameFather(classId, sectionId, sessionId, stdDropdown, callback) {
                 if (classId && sectionId && sessionId) {
                     $.ajax({
-                        url: '{{ route('stdNameFather.get') }}',
+                        // url: '{{ route('stdNameFather.get') }}',
+                        url: '{{ route('getStdForDropDown') }}',
                         type: 'GET',
                         data: {
                             class_id: classId,
@@ -243,7 +218,7 @@
                     });
                 } else {
                     stdDropdown.empty();
-                    stdDropdown.append('<option value="">Select Student</option>');
+                    stdDropdown.append('<option value="" disabled>Select Student</option>');
                 }
             }
 
@@ -251,10 +226,16 @@
                 var classId = classSelect.val();
                 var sectionId = sectionSelect.val();
                 var sessionId = sessionSelect.val();
+                // Clear previous selection
+                // stdSelect.val(null).trigger('change');
                 fetchStdNameFather(classId, sectionId, sessionId, stdSelect, function(data) {
-                    if (initialStdId) {
-                        stdSelect.val(initialStdId).trigger('change');
+                    if (initialSecondStdId) {
+                        stdSecondSelect.val(initialSecondStdId).trigger('change');
                     }
+                    /* if (initialStdId && data && data.data && data.data.length > 0) {
+                        stdSelect.val(initialStdId).trigger('change');
+                        initialStdId = ''; // Clear after first use
+                    } */
                 });
             }
 
@@ -262,24 +243,38 @@
                 var classId = secondClassSelect.val();
                 var sectionId = secondSectionSelect.val();
                 var sessionId = $('#session_id').val();
+                // Clear previous selection
+                // stdSecondSelect.val(null).trigger('change');
                 fetchStdNameFather(classId, sectionId, sessionId, stdSecondSelect, function(data) {
                     if (initialSecondStdId) {
                         stdSecondSelect.val(initialSecondStdId).trigger('change');
                     }
+                   /* if (initialStdId && data && data.data && data.data.length > 0) {
+                        stdSelect.val(initialStdId).trigger('change');
+                        initialStdId = ''; // Clear after first use
+                    } */
                 });
             }
-
-            function populateDropdowns(data, dropdown) {
+            function populateDropdowns(response, dropdown) {
                 dropdown.empty();
-                dropdown.append('<option value="">Select Student</option>');
-                $.each(data, function(id, value) {
-                    if (value.ssid == 1) {
-                        dropdown.append('<option value="' + value.srno + '">' +
-                            value.rollno + '. ' + value.student_name + '/SH. ' + value.f_name +
-                            '</option>');
-
+                if (!response || !response.data || response.data.length === 0) {
+                    dropdown.append('<option value="" disabled>No students found</option>');
+                    if (dropdown.hasClass('select2-hidden-accessible')) {
+                        dropdown.val(null).trigger('change');
                     }
+                    return;
+                }
+                dropdown.append('<option value="" disabled>Select Student</option>');
+                $.each(response.data, function(id, value) {
+                    /* if (value.ssid == 1) {
+                    } */
+                    dropdown.append('<option value="' + value.srno + '">' + value.display_name + '</option>');
                 });
+
+                // Trigger change to update Select2
+                if (dropdown.hasClass('select2-hidden-accessible')) {
+                    dropdown.trigger('change');
+                }
             }
             handlePrimaryDropdowns();
             handleSecondaryDropdowns();
@@ -297,8 +292,7 @@
             });
 
             $('#session_id').change(function() {
-                getClassSection(initialSecondClassId, initialSecondSectionId, secondClassSelect,
-                    secondSectionSelect);
+                getClassSection(initialSecondClassId, initialSecondSectionId, secondClassSelect, secondSectionSelect);
             });
 
             $('#promoteSchool').on('click', function(e) {
@@ -354,7 +348,6 @@
 
                         if (message.std_id) {
                             $('.first-std-error').show().html(message.std_id);
-
                         }
                         if (message.class_id) {
                             $('.first-class-error').show().html(message.class_id);
@@ -380,7 +373,6 @@
                     }
                 });
             }
-
             $('#tc').on('click', function(e) {
                 $('.class-error').hide().html('');
                 $('.section-error').hide().html('');
@@ -405,10 +397,8 @@
                 });
                 $('#allSt-input').val('2');
                 formSubmit(e);
-
             });
             $('#promoteSchool2').click(function(e) {
-                // $('.srno-error').hide().html('');
                 $('.class-error').html('').hide();
                 $('.section-error').html('').hide();
                 $('.session-error').html('').hide();
@@ -417,7 +407,6 @@
             $('#promote').click(function(e) {
                 formSubmit(e);
             });
-
         });
     </script>
 @endsection

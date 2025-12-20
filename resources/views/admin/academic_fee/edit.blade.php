@@ -69,7 +69,7 @@
 
                                 </div>
 
-                               
+
 
                                     <div class="row mt-1">
                                         <div class="form-group col-md-6 mt-2">
@@ -127,7 +127,7 @@
                                         </div>
 
                                     </div>
-                                
+
 
                                 <div class="mt-5">
                                     <input class="btn btn-primary" type="submit" value="Update">
@@ -137,20 +137,13 @@
                         </div>
                     </div>
 
-               
+
             </div>
         </div>
     </div>
 @endsection
 @section('admin-scripts')
     <script>
-        // document.addEventListener("DOMContentLoaded", (event) => {
-
-        //     var initialSessionId = '{{ old('session_id', isset($feeMaster) ? $feeMaster->session_id : '') }}';
-        //     var initialClassId = '{{ old('class_id', isset($feeMaster) ? $feeMaster->class_id : '') }}';
-        //     getClassSection(initialClassId);
-        //     getSession(initialSessionId);
-        // });
         $(document).ready(function() {
 
             function calculateTotal() {

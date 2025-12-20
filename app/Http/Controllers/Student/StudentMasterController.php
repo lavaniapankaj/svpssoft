@@ -1020,7 +1020,7 @@ class StudentMasterController extends Controller
                 }
             })->whereIn('stu_main_srno.ssid', [1, 4, 5]);
         }
-        $data = $baseQuery->where('session_id', $currentSession)->whereIn('stu_main_srno.ssid', [1, 4, 5])->orderBy('class_masters.sort', 'asc')->paginate(10);
+        $data = $baseQuery->where('session_id', $currentSession)->whereIn('stu_main_srno.ssid', [1, 4, 5])->orderBy('class_masters.sort', 'asc')->paginate(15);
         $sessions = SessionMaster::where('id', '>=', $currentSession)->where('active', 1)->pluck('session', 'id');
         return view('admin.student.search', compact('data', 'sessions', 'classes'));
     }
@@ -1402,7 +1402,6 @@ class StudentMasterController extends Controller
                     $query->$whereAttr($field, $value);
                 }
                 $query = $query;
-                // dd($query->toSql());
             }
         }
         if (!empty($orderBy) && is_array($orderBy)) {
@@ -1533,7 +1532,7 @@ class StudentMasterController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => $validator->errors()
-                ], 400);
+                ], 200);
             }
             $currentSession =  isset($request->session_id) ? $request->session_id : session('current_session')->id ?? null;
             $baseQuery = DB::table('stu_main_srno')
@@ -1558,12 +1557,15 @@ class StudentMasterController extends Controller
                     'status' => 'error',
                     'message' => 'No student found for the selected class and section.',
                     'data' => []
-                ], 404);
+                ], 200);
             }else {
                 $data = $data->map(function ($item) {
                     return [
                         'srno' => $item->srno,
-                        'display_name' => $item->rollno . ' - ' . $item->student_name . ' / ' . $item->father_name
+                        'rollno' => $item->rollno,
+                        'display_name' => $item->rollno . ' - ' . $item->student_name . ' / ' . $item->father_name,
+                        'student_name' => $item->student_name,
+                        'father_name' => $item->father_name,
                     ];
                 })->values(); // Reindex the collection
                 return response()->json([
@@ -1577,7 +1579,7 @@ class StudentMasterController extends Controller
                 'status' => 'error',
                 'message' => "Failed to get students",
                 'data' => []
-            ], 500);
+            ], 200);
         }
     }
 

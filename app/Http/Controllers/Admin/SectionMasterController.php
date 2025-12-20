@@ -28,7 +28,7 @@ class SectionMasterController extends Controller
         $orderBy = ['created_at' => 'DESC'];
         if (!empty($fields)) {
             $classes = ClassMasterController::getClasses();
-            $data = self::getAllSection($fields, $whereAttb,  $where, $orderBy, 10, true);
+            $data = self::getAllSection($fields, $whereAttb,  $where, $orderBy, 15, true);
             return view('admin.section.index', compact('data', 'classes'));
         } else {
             return redirect()->back()->with('error', 'Something went wrong, please try again.');
@@ -49,8 +49,6 @@ class SectionMasterController extends Controller
      */
     public function store(Request $request)
     {
-        //
-
         $request->validate([
             'section' => [
                 'required',
@@ -60,6 +58,12 @@ class SectionMasterController extends Controller
                 }),
             ],
             'class_id' => 'required|exists:class_masters,id,active,1',
+        ], [
+            'section.required' => 'Please enter the section name.',
+            'section.string'   => 'The section name must be valid text.',
+            'section.unique'   => 'This section already exists for the selected class.',
+            'class_id.required' => 'Please select a class.',
+            'class_id.exists'   => 'The selected class is invalid or inactive.',
         ]);
 
         $sectionData = [
@@ -106,7 +110,6 @@ class SectionMasterController extends Controller
      */
     public function update(Request $request, SectionMaster $sectionMaster)
     {
-        //
         $request->validate([
             'section' => [
                 'required',
@@ -116,6 +119,12 @@ class SectionMasterController extends Controller
                 })->ignore($request->id),
             ],
             'class_id' => 'required|exists:class_masters,id,active,1',
+        ],[
+            'section.required' => 'Please enter the section name.',
+            'section.string'   => 'The section name must contain valid text.',
+            'section.unique'   => 'This section name is already assigned to the selected class.',
+            'class_id.required' => 'Please select a class.',
+            'class_id.exists'   => 'The selected class is invalid or inactive.',
         ]);
 
         $sectionData = [

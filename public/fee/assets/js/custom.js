@@ -677,108 +677,362 @@ function updatePaginationControls(data) {
     paginationContainer.html(paginationHtml);
 }
 // for due report section
+// function dueReportSection() {
+//     let classId = $('#back_class_id');
+//     let sectionId = $('#back_section_id');
+//     let sessionId = $('#current_session').val();
+//     let stdId = $('#back_std_id');
+//     let loader = $('#loader');
+//     let reportType = $('#report');
+
+//     // Initial state - hide table
+//     $('#complete-fee-table').hide();
+//     $('#no-records-message').hide();
+
+//     classSectionWithAll(fetchStudentsForSession, fetchStudents);
+
+//     function fetchStudentsForSession() {
+//         let allSectionsValue = sectionId.find('option:first').val();
+//         fetchStudents(allSectionsValue);
+//     }
+
+//     // Reset table and hide it
+//     function resetTable() {
+//         $('#complete-fee-table').hide();
+//         $('#complete-fee-table table tbody').html('');
+//         $('#no-records-message').hide();
+//         $('#std-pagination').html(''); // Clear pagination
+//     }
+
+//     function studentTable(st, page = 1) {
+//         let reportTypeValue = reportType.val();
+
+//         if (!classId.val() || !sectionId.val() || !st || !reportTypeValue) {
+//             console.warn('Missing required field: class, section, student, or report.');
+//             resetTable();
+//             return;
+//         }
+
+//         loader.show();
+
+//         $.ajax({
+//             url: siteUrl + '/fee/student-without-ssid',
+//             type: 'POST',
+//             dataType: 'JSON',
+//             headers: {
+//                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+//             },
+//             data: {
+//                 session: sessionId,
+//                 class: classId.val(),
+//                 section: sectionId.val(),
+//                 srno: st,
+//                 page: page,
+//             },
+//             success: function (data) {
+//                 let stdHtml = '';
+//                 const isAllStudents = st.includes(',');
+//                 const isAllSections = sectionId.val().includes(',');
+
+//                 if (data.data.length > 0) {
+//                     let hasValidRecords = false;
+
+//                     data.data.forEach(value => {
+//                         let isValidateIsAll = isAllSections === false ?
+//                             (st === value.student.srno.toString()) && (sectionId.val() == value.student.section.toString()) :
+//                             (st === value.student.srno.toString());
+
+//                         if (isAllStudents || isValidateIsAll) {
+//                             const firstInst = value.installments.first_inst;
+//                             const transFirstInst = value.trans_installments.first_inst || [];
+
+//                             // Calculate amounts for academic fee
+//                             const academicInstAmount = firstInst.reduce((total, inst) => total + (inst.amount || 0), 0);
+
+//                             // Calculate amounts for transport fee
+//                             const transportInstAmount = transFirstInst.reduce((total, inst) => total + (inst.amount || 0), 0);
+
+//                             // Calculate due amounts
+//                             const academicDue = reportTypeValue == 'complete' ?
+//                                 (value.payable_amount ?? 0) - (value.paid_amount ?? 0) :
+//                                 (value.inst_1 ?? 0) - academicInstAmount;
+
+//                             const transportDue = value.transport == 1 ?
+//                                 (reportTypeValue == 'complete' ?
+//                                     (value.trans_payable_amount ?? 0) - (value.trans_paid_amount ?? 0) :
+//                                     (value.trans_inst_1 ?? 0) - transportInstAmount) : 0;
+
+//                             const totalDue = academicDue + transportDue;
+
+//                             // Only include the student if there's a due amount
+//                             if ((reportTypeValue === 'complete' && totalDue > 0) || (reportTypeValue === 'firstInstDue' && totalDue > 0)) {
+//                                 hasValidRecords = true;
+//                                 stdHtml += `<tr>
+//                                     <td>${value.class_name}</td>
+//                                     <td>${value.section_name}</td>
+//                                     <td>${value.student_name}</td>
+//                                     <td>${value.father_name}</td>
+//                                     <td>${reportTypeValue == 'firstInstDue' ? value.inst_1 : value.payable_amount}</td>
+//                                     <td>${reportTypeValue == 'firstInstDue' ? academicInstAmount : value.paid_amount}</td>
+//                                     <td>${academicDue}</td>
+//                                     <td>${value.transport == 1 ? (reportTypeValue == 'firstInstDue' ? (value.trans_1st_inst ?? 0) : (value.trans_payable_amount ?? 0)) : 0}</td>
+//                                     <td>${value.transport == 1 ? (reportTypeValue == 'firstInstDue' ? transportInstAmount : (value.trans_paid_amount ?? 0)) : 0}</td>
+//                                     <td>${transportDue}</td>
+//                                     <td>${totalDue}</td>
+//                                     <td><a href='${siteUrl}/fee/back-session/individual-fee-details/${value.student.srno}/${value.student.session_id}/${value.student.class}/${value.student.section}' class="btn btn-sm btn-icon p-1">
+//                                         <i class="mdi mdi-eye mx-1" data-bs-toggle="tooltip" data-bs-offset="0,4" data-bs-placement="top" title="View"></i>
+//                                     </a></td>
+//                                 </tr>`;
+//                             }
+//                         }
+//                     });
+
+//                     if (!hasValidRecords) {
+//                         stdHtml = '<tr><td colspan="12">No Student Record Found</td></tr>';
+//                     }
+//                 } else {
+//                     stdHtml = '<tr><td colspan="12">No Student Record Found</td></tr>';
+//                 }
+
+//                 $('#complete-fee-table table tbody').html(stdHtml);
+//                 $('#complete-fee-table').show();
+//                 updatePaginationControls(data.pagination);
+//             },
+//             complete: function () {
+//                 loader.hide();
+//             },
+//             error: function (data) {
+//                 console.error('Error fetching students:', data.responseJSON ? data.responseJSON.message : 'Unknown error');
+//                 loader.hide();
+//             }
+//         });
+//     }
+
+//     function fetchStudents(sectionIds) {
+//         loader.show();
+
+//         $.ajax({
+//             url: siteUrl + '/std-name-father',
+//             type: 'GET',
+//             dataType: 'JSON',
+//             data: {
+//                 class_id: classId.val(),
+//                 section_id: sectionIds,
+//                 session_id: sessionId,
+//             },
+//             success: function (data) {
+//                 stdId.empty();
+//                 let allStdIds = [];
+
+//                 if (sectionIds.includes(',')) {
+//                     // Always populate allStdIds
+//                     $.each(data, function (id, value) {
+//                         allStdIds.push(value.srno);
+//                     });
+//                     // Add "All Students" option
+//                     stdId.append('<option value="' + allStdIds.join(',') + '" selected>All Students</option>');
+//                 } else {
+//                     // Add individual student options
+//                     $.each(data, function (id, value) {
+//                         allStdIds.push(value.srno);
+//                         stdId.append('<option value="' + value.srno + '">' + value.rollno + '. ' + value.student_name + '/SH. ' + value.f_name + '</option>');
+//                     });
+//                     stdId.prepend('<option value="' + allStdIds.join(',') + '" selected>All Students</option>');
+//                 }
+
+//                 // Reset the table when students are reloaded
+//                 resetTable();
+//             },
+//             complete: function () {
+//                 loader.hide();
+//             },
+//             error: function (data) {
+//                 console.error('Error fetching students:', data.responseJSON ? data.responseJSON.message : 'Unknown error');
+//                 loader.hide();
+//             }
+//         });
+//     }
+
+//     // Pagination click handler
+//     $(document).on('click', '#std-pagination .page-link', function (e) {
+//         e.preventDefault();
+//         var st = stdId.val();
+//         var page = $(this).data('page');
+//         studentTable(st, page);
+//     });
+
+//     // When section changes - reset and hide table
+//     sectionId.change(function () {
+//         resetTable();
+//         fetchStudents($(this).val());
+//     });
+
+//     // When student changes - reset and hide table
+//     stdId.change(function () {
+//         resetTable();
+//     });
+
+//     // When report type changes - reset and hide table
+//     reportType.change(function () {
+//         resetTable();
+//     });
+
+//     // When class changes - reset and hide table
+//     classId.change(function () {
+//         resetTable();
+//     });
+
+//     // Show details button - validates and displays the report
+//     $('#show-details').click(function () {
+//         let reportTypeValue = reportType.val();
+//         let selectedStudents = stdId.val();
+
+//         if (!classId.val() || !sectionId.val() || !selectedStudents || !reportTypeValue) {
+//             resetTable();
+//             $('#no-records-message').show();
+//             return;
+//         }
+
+//         $('#no-records-message').hide();
+//         studentTable(selectedStudents);
+//     });
+// }
+
+
 function dueReportSection() {
     let classId = $('#back_class_id');
     let sectionId = $('#back_section_id');
     let sessionId = $('#current_session').val();
     let stdId = $('#back_std_id');
     let loader = $('#loader');
+    let reportType = $('#report');
+
+    // Initial state - hide table
     $('#complete-fee-table').hide();
+    $('#no-records-message').hide();
+
     classSectionWithAll(fetchStudentsForSession, fetchStudents);
+
     function fetchStudentsForSession() {
         let allSectionsValue = sectionId.find('option:first').val();
         fetchStudents(allSectionsValue);
     }
+
+    // Reset table and hide it
+    function resetTable() {
+        $('#complete-fee-table').hide();
+        $('#complete-fee-table table tbody').html('');
+        $('#no-records-message').hide();
+        $('#std-pagination').html(''); // Clear pagination
+    }
+
     function studentTable(st, page = 1) {
-        let reportType = $('#report').val();
-        if (!classId.val() || !sectionId.val() || !st || !reportType) {
+        let reportTypeValue = reportType.val();
+
+        if (!classId.val() || !sectionId.val() || !st || !reportTypeValue) {
             console.warn('Missing required field: class, section, student, or report.');
-            $('#complete-fee-table').hide(); // Hide the table if any field is missing
-            $('#no-records-message').show(); // Show "No Records Found" message
+            resetTable();
             return;
-        } else {
-            $('#no-records-message').hide(); // Hide "No Records Found" message if data is available
-            $.ajax({
-                url: siteUrl + '/fee/student-without-ssid',
-                type: 'POST',
-                // type: 'GET',
-                dataType: 'JSON',
-                headers: {
-                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                },
-                data: {
-                    session: sessionId,
-                    class: classId.val(),
-                    section: sectionId.val(),
-                    srno: st,
-                    page: page,
-                },
-                success: function (data) {
-                    let stdHtml = '';
-                    const isAllStudents = st.includes(',');
-                    const isAllSections = sectionId.val().includes(',');
-                    if (data.data.length > 0) {
-                        let hasValidRecords = false;
-                        data.data.forEach(value => {
-                            let isValidateIsAll = isAllSections === false ? (st === value
-                                .student.srno.toString()) && (sectionId.val() == value
-                                    .student.section.toString()) : (st === value.student
-                                        .srno
-                                        .toString());
-                            if (isAllStudents || isValidateIsAll) {
-                                const firstInst = value.installments.first_inst;
-                                const transFirstInst = value.trans_installments
-                                    .first_inst || [];
-                                // Calculate amounts for academic fee
-                                const academicInstAmount = firstInst.reduce((total, inst) => total + (inst.amount || 0), 0);
-                                // Calculate amounts for transport fee
-                                const transportInstAmount = transFirstInst.reduce((total, inst) => total + (inst.amount || 0), 0);
-                                // Calculate due amounts
-                                const academicDue = reportType == 'complete' ? (value.payable_amount ?? 0) - (value.paid_amount ?? 0) : (value.inst_1 ?? 0) - academicInstAmount;
-                                const transportDue = value.transport == 1 ?
-                                    (reportType == 'complete' ? (value.trans_payable_amount ?? 0) - (value.trans_paid_amount ?? 0) : (value.trans_inst_1 ?? 0) - transportInstAmount) : 0;
-                                const totalDue = academicDue + transportDue;
-                                // Only include the student if it's a complete report or if there's a due amount
-                                if ((reportType === 'complete' || totalDue > 0) || (reportType === 'firstInstDue' && totalDue > 0)) {
-                                    hasValidRecords = true;
-                                    stdHtml += `<tr>
-                                        <td>${value.class_name}</td>
-                                        <td>${value.section_name}</td>
-                                        <td>${value.student_name}</td>
-                                        <td>${value.father_name}</td>
-                                        <td>${reportType == 'firstInstDue' ? value.inst_1 : value.payable_amount}</td>
-                                        <td>${reportType == 'firstInstDue' ? academicInstAmount : value.paid_amount}</td>
-                                        <td>${academicDue}</td>
-                                        <td>${value.transport == 1  ? (reportType == 'firstInstDue' ? (value.trans_1st_inst ?? 0) : (value.trans_payable_amount ?? 0)) : 0}</td>
-                                        <td>${value.transport == 1 ? (reportType == 'firstInstDue' ? transportInstAmount : (value.trans_paid_amount ?? 0)) : 0}</td>
-                                        <td>${transportDue}</td>
-                                        <td>${totalDue}</td>
-                                        <td><a href='${siteUrl}/fee/back-session/individual-fee-details/${value.student.srno}/${value.student.session_id}/${value.student.class}/${value.student.section}' class="btn btn-sm btn-icon p-1"> <i class="mdi mdi-eye mx-1" data-bs-toggle="tooltip"
-                                        data-bs-offset="0,4" data-bs-placement="top" title="View"></i></a></td>
-                                    </tr>`;
-                                }
+        }
+
+        loader.show();
+
+        $.ajax({
+            url: siteUrl + '/fee/student-without-ssid',
+            type: 'POST',
+            dataType: 'JSON',
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
+            data: {
+                session: sessionId,
+                class: classId.val(),
+                section: sectionId.val(),
+                srno: st,
+                page: page,
+            },
+            success: function (data) {
+                let stdHtml = '';
+                const isAllStudents = st.includes(',');
+                const isAllSections = sectionId.val().includes(',');
+
+                if (data.data.length > 0) {
+                    let hasValidRecords = false;
+
+                    data.data.forEach(value => {
+                        let isValidateIsAll = isAllSections === false ?
+                            (st === value.student.srno.toString()) && (sectionId.val() == value.student.section.toString()) :
+                            (st === value.student.srno.toString());
+
+                        if (isAllStudents || isValidateIsAll) {
+                            const firstInst = value.installments.first_inst;
+                            const transFirstInst = value.trans_installments.first_inst || [];
+
+                            // Calculate amounts for academic fee
+                            const academicInstAmount = firstInst.reduce((total, inst) => total + (inst.amount || 0), 0);
+
+                            // Calculate amounts for transport fee
+                            const transportInstAmount = transFirstInst.reduce((total, inst) => total + (inst.amount || 0), 0);
+
+                            // Calculate due amounts
+                            const academicDue = reportTypeValue == 'complete' ?
+                                (value.payable_amount ?? 0) - (value.paid_amount ?? 0) :
+                                (value.inst_1 ?? 0) - academicInstAmount;
+
+                            const transportDue = value.transport == 1 ?
+                                (reportTypeValue == 'complete' ?
+                                    (value.trans_payable_amount ?? 0) - (value.trans_paid_amount ?? 0) :
+                                    (value.trans_inst_1 ?? 0) - transportInstAmount) : 0;
+
+                            const totalDue = academicDue + transportDue;
+
+                            // Only include the student if there's a due amount
+                            if ((reportTypeValue === 'complete' && totalDue > 0) || (reportTypeValue === 'firstInstDue' && totalDue > 0)) {
+                                hasValidRecords = true;
+                                stdHtml += `<tr>
+                                    <td>${value.class_name}</td>
+                                    <td>${value.section_name}</td>
+                                    <td>${value.student_name}</td>
+                                    <td>${value.father_name}</td>
+                                    <td>${reportTypeValue == 'firstInstDue' ? value.inst_1 : value.payable_amount}</td>
+                                    <td>${reportTypeValue == 'firstInstDue' ? academicInstAmount : value.paid_amount}</td>
+                                    <td>${academicDue}</td>
+                                    <td>${value.transport == 1 ? (reportTypeValue == 'firstInstDue' ? (value.trans_1st_inst ?? 0) : (value.trans_payable_amount ?? 0)) : 0}</td>
+                                    <td>${value.transport == 1 ? (reportTypeValue == 'firstInstDue' ? transportInstAmount : (value.trans_paid_amount ?? 0)) : 0}</td>
+                                    <td>${transportDue}</td>
+                                    <td>${totalDue}</td>
+                                    <td><a href='${siteUrl}/fee/back-session/individual-fee-details/${value.student.srno}/${value.student.session_id}/${value.student.class}/${value.student.section}' class="btn btn-sm btn-icon p-1">
+                                        <i class="mdi mdi-eye mx-1" data-bs-toggle="tooltip" data-bs-offset="0,4" data-bs-placement="top" title="View"></i>
+                                    </a></td>
+                                </tr>`;
                             }
-                        });
-                        if (!hasValidRecords) {
-                            stdHtml = '<tr><td colspan="12">No Student Record Found</td></tr>';
                         }
-                    } else {
+                    });
+
+                    if (!hasValidRecords) {
                         stdHtml = '<tr><td colspan="12">No Student Record Found</td></tr>';
                     }
-                    $('#complete-fee-table table tbody').html(stdHtml);
-                    updatePaginationControls(data.pagination);
-                },
-                complete: function () {
-                    loader.hide();
-                },
-                error: function (data) {
-                    console.error('Error fetching students:', data.responseJSON ? data.responseJSON.message : 'Unknown error');
+                } else {
+                    stdHtml = '<tr><td colspan="12">No Student Record Found</td></tr>';
                 }
-            });
-        }
+
+                $('#complete-fee-table table tbody').html(stdHtml);
+                $('#complete-fee-table').show();
+                updatePaginationControls(data.pagination);
+            },
+            complete: function () {
+                loader.hide();
+            },
+            error: function (data) {
+                console.error('Error fetching students:', data.responseJSON ? data.responseJSON.message : 'Unknown error');
+                loader.hide();
+            }
+        });
     }
+
     function fetchStudents(sectionIds) {
         loader.show();
+
         $.ajax({
             url: siteUrl + '/std-name-father',
             type: 'GET',
@@ -791,61 +1045,262 @@ function dueReportSection() {
             success: function (data) {
                 stdId.empty();
                 let allStdIds = [];
+
                 if (sectionIds.includes(',')) {
                     // Always populate allStdIds
                     $.each(data, function (id, value) {
                         allStdIds.push(value.srno);
                     });
                     // Add "All Students" option
-                    stdId.append('<option value="' + allStdIds.join(',') +
-                        '" selected>All Students</option>');
+                    stdId.append('<option value="' + allStdIds.join(',') + '" selected>All Students</option>');
                 } else {
                     // Add individual student options
                     $.each(data, function (id, value) {
                         allStdIds.push(value.srno);
-                        stdId.append('<option value="' + value.srno + '">'+ value.rollno + '. ' + value.student_name + '/SH. ' + value.f_name + '</option>');
+                        stdId.append('<option value="' + value.srno + '">' + value.rollno + '. ' + value.student_name + '/SH. ' + value.f_name + '</option>');
                     });
                     stdId.prepend('<option value="' + allStdIds.join(',') + '" selected>All Students</option>');
                 }
-                // Fetch students for the initial selection
-                var selectedStValue = stdId.val();
-                studentTable(selectedStValue ? selectedStValue : allStdIds.join(','));
+
+                // Reset the table when students are reloaded
+                resetTable();
             },
             complete: function () {
                 loader.hide();
             },
             error: function (data) {
                 console.error('Error fetching students:', data.responseJSON ? data.responseJSON.message : 'Unknown error');
+                loader.hide();
             }
         });
     }
+
+    // Pagination click handler
     $(document).on('click', '#std-pagination .page-link', function (e) {
         e.preventDefault();
         var st = stdId.val();
         var page = $(this).data('page');
         studentTable(st, page);
     });
+
+    // When section changes - reset and hide table
     sectionId.change(function () {
+        resetTable();
         fetchStudents($(this).val());
     });
+
+    // When student changes - reset and hide table
     stdId.change(function () {
-        studentTable($(this).val());
+        resetTable();
     });
-    // Add an event listener for the report dropdown
-    $('#report').change(function () {
-        let selectedStudents = $('#back_std_id').val();
+
+    // When report type changes - reset and hide table
+    reportType.change(function () {
+        resetTable();
+    });
+
+    // When class changes - reset and hide table
+    classId.change(function () {
+        resetTable();
+    });
+
+    // Show details button - validates and displays the report
+    $('#show-details').click(function () {
+        let reportTypeValue = reportType.val();
+        let selectedStudents = stdId.val();
+
+        if (!classId.val() || !sectionId.val() || !selectedStudents || !reportTypeValue) {
+            resetTable();
+            $('#no-records-message').show();
+            return;
+        }
+
+        $('#no-records-message').hide();
         studentTable(selectedStudents);
     });
-    // Modify the show-details button click event
-    $('#show-details').click(function () {
-        let reportType = $('#report').val();
-        if (!classId.val() || !sectionId.val() || !stdId.val() || !reportType) {
-            $('#complete-fee-table').hide(); // Hide the table if any field is missing
-            $('#no-records-message').show(); // Show "No Records Found" message
+}
+
+
+
+function newDueReportSection() {
+    let classId = $('#back_class_id');
+    let sectionId = $('#back_section_id');
+    let sessionId = $('#current_session').val();
+    let stdId = $('#back_std_id');
+    let loader = $('#loader');
+    let reportType = $('#report');
+
+    // Initial state - hide table
+    $('#complete-fee-table').hide();
+    $('#no-records-message').hide();
+
+    classSectionWithAll(fetchStudentsForSession, fetchStudents);
+
+    function fetchStudentsForSession() {
+        let allSectionsValue = sectionId.find('option:first').val();
+        fetchStudents(allSectionsValue);
+    }
+
+    // Reset table and hide it
+    function resetTable() {
+        $('#complete-fee-table').hide();
+        $('#complete-fee-table table tbody').html('');
+        $('#no-records-message').hide();
+        $('#std-pagination').html(''); // Clear pagination
+    }
+
+    function studentTable(st, page = 1) {
+        let reportTypeValue = reportType.val();
+
+        if (!classId.val() || !sectionId.val() || !st || !reportTypeValue) {
+            console.warn('Missing required field: class, section, student, or report.');
+            resetTable();
             return;
-        } else {
-            $('#no-records-message').hide(); // Hide "No Records Found" message if data is available
-            $('#complete-fee-table').show();
         }
+
+        loader.show();
+
+        $.ajax({
+            // url: siteUrl + '/fee/student-without-ssid',
+            url: siteUrl + '/fee/std-due-fee-report',
+            type: 'POST',
+            dataType: 'JSON',
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
+            data: {
+                session: sessionId,
+                class: classId.val(),
+                section: sectionId.val(),
+                srno: st,
+                reportType: reportTypeValue,
+                page: page,
+            },
+            success: function (data) {
+                let stdHtml = '';
+
+                if (data.data.length > 0) {
+                    data.data.forEach(value => {
+                        stdHtml += `<tr>
+                            <td>${value.class_name}</td>
+                            <td>${value.section_name}</td>
+                            <td>${value.student_name}</td>
+                            <td>${value.father_name}</td>
+                            <td>${value.academic_payable_amount}</td>
+                            <td>${value.academic_paid_amount}</td>
+                            <td>${value.academic_due_amount}</td>
+                            <td>${value.transport_payable_amount}</td>
+                            <td>${value.transport_paid_amount}</td>
+                            <td>${value.transport_due_amount}</td>
+                            <td>${value.total_due}</td>
+                            <td><a href='${siteUrl}/fee/back-session/individual-fee-details/${value.student_srno}/${value.session_id}/${value.class}/${value.section}' class="btn btn-sm btn-icon p-1"> <i class="mdi mdi-eye mx-1" data-bs-toggle="tooltip"
+                            data-bs-offset="0,4" data-bs-placement="top" title="View"></i></a></td>
+                        </tr>`;
+                    });
+                } else {
+                    stdHtml = '<tr><td colspan="12">No Student Record Found</td></tr>';
+                }
+
+                $('#complete-fee-table table tbody').html(stdHtml);
+                $('#complete-fee-table').show();
+                updatePaginationControls(data.pagination);
+            },
+            complete: function () {
+                loader.hide();
+            },
+            error: function (data) {
+                console.error('Error fetching students:', data.responseJSON ? data.responseJSON.message : 'Unknown error');
+                loader.hide();
+            }
+        });
+    }
+
+    function fetchStudents(sectionIds) {
+        loader.show();
+
+        $.ajax({
+            url: siteUrl + '/std-name-father',
+            type: 'GET',
+            dataType: 'JSON',
+            data: {
+                class_id: classId.val(),
+                section_id: sectionIds,
+                session_id: sessionId,
+            },
+            success: function (data) {
+                stdId.empty();
+                let allStdIds = [];
+
+                if (sectionIds.includes(',')) {
+                    // Always populate allStdIds
+                    $.each(data, function (id, value) {
+                        allStdIds.push(value.srno);
+                    });
+                    // Add "All Students" option
+                    stdId.append('<option value="' + allStdIds.join(',') + '" selected>All Students</option>');
+                } else {
+                    // Add individual student options
+                    $.each(data, function (id, value) {
+                        allStdIds.push(value.srno);
+                        stdId.append('<option value="' + value.srno + '">' + value.rollno + '. ' + value.student_name + '/SH. ' + value.f_name + '</option>');
+                    });
+                    stdId.prepend('<option value="' + allStdIds.join(',') + '" selected>All Students</option>');
+                }
+
+                // Reset the table when students are reloaded
+                resetTable();
+            },
+            complete: function () {
+                loader.hide();
+            },
+            error: function (data) {
+                console.error('Error fetching students:', data.responseJSON ? data.responseJSON.message : 'Unknown error');
+                loader.hide();
+            }
+        });
+    }
+
+    // Pagination click handler
+    $(document).on('click', '#std-pagination .page-link', function (e) {
+        e.preventDefault();
+        var st = stdId.val();
+        var page = $(this).data('page');
+        studentTable(st, page);
+    });
+
+    // When section changes - reset and hide table
+    sectionId.change(function () {
+        resetTable();
+        fetchStudents($(this).val());
+    });
+
+    // When student changes - reset and hide table
+    stdId.change(function () {
+        resetTable();
+    });
+
+    // When report type changes - reset and hide table
+    reportType.change(function () {
+        resetTable();
+    });
+
+    // When class changes - reset and hide table
+    classId.change(function () {
+        resetTable();
+    });
+
+    // Show details button - validates and displays the report
+    $('#show-details').click(function () {
+        let reportTypeValue = reportType.val();
+        let selectedStudents = stdId.val();
+
+        if (!classId.val() || !sectionId.val() || !selectedStudents || !reportTypeValue) {
+            resetTable();
+            $('#no-records-message').show();
+            return;
+        }
+
+        $('#no-records-message').hide();
+        studentTable(selectedStudents);
     });
 }

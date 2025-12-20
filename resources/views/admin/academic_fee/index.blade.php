@@ -3,30 +3,26 @@
 @section('sub-content')
     <div class="container-fluid">
         @if (Session::has('success'))
-            @section('scripts')
+            @push('swal-scripts')
                 <script>
-                    swal("Successful", "{{ Session::get('success') }}", "success").then(() => {
-                        location.reload();
-                    });
+                    swal("Successful", "{{ Session::get('success') }}", "success");
                 </script>
-            @endsection
+            @endpush
         @endif
 
         @if (Session::has('error'))
-            @section('scripts')
+            @push('swal-scripts')
                 <script>
-                    swal("Error", "{{ Session::get('error') }}", "error").then(() => {
-                        location.reload();
-                    });
+                    swal("Error", "{{ Session::get('error') }}", "error");
                 </script>
-            @endsection
+            @endpush
         @endif
-        <div class="row ">
+        <div class="row">
             <div class="col-md-12">
                 <div class="card border-0 bg-white">
                     <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between">
                         <h5 class="mb-0 mt-0">{{ __('Academic Fee Master') }}</h5>
-                       
+
                         <div class=" flex-column d-flex align-items-end ">
                              <a href="{{ route('admin.academic-fee-master.create') }}" class="btn btn-success text-white"><span class="mdi mdi-plus-circle-outline me-2"></span>Add</a>
                            <div class="d-flex align-items-center gap-1 mt-2">
@@ -75,7 +71,6 @@
                                         <th class="text-center">Action</th>
                                     </tr>
                                 </thead>
-
                                 @if (count($data) > 0)
                                     @foreach ($data as $key => $value)
                                         <tr data-entry-id="{{ $value->id }}">
@@ -87,16 +82,10 @@
                                             <td>{{ $value->inst_2 ?? '' }}</td>
                                             <td>{{ $value->ins_discount ?? '' }}</td>
                                             <td>{{ $value->inst_total ?? '' }}</td>
-
-
                                             <td class="text-center">
-                                                <a href="{{ route('admin.academic-fee-master.edit', $value->id) }}"
-                                                    class=" btn-icon editbtnGlobal">
-                                                    <i class="mdi mdi-pencil" data-bs-toggle="tooltip" data-bs-offset="0,4"
-                                                        data-bs-placement="top" title="Edit"></i>
+                                                <a href="{{ route('admin.academic-fee-master.edit', $value->id) }}" class=" btn-icon editbtnGlobal">
+                                                    <i class="mdi mdi-pencil" data-bs-toggle="tooltip" data-bs-offset="0,4" data-bs-placement="top" title="Edit"></i>
                                                 </a>
-
-
                                             </td>
                                         </tr>
                                     @endforeach
@@ -106,7 +95,6 @@
                                     </tr>
                                 @endif
                             </table>
-
                             @if (request()->get('session_id') || request()->get('class_id'))
                                 {{ $data->appends(['session_id' => request()->get('session_id'), 'class_id' => request()->get('class_id')])->links() }}
                             @else
@@ -120,13 +108,4 @@
         </div>
     </div>
 @endsection
-<!-- @section('admin-scripts')
-    <script>
-        var initialClassId =
-        '{{ old('class_id', request()->get('class_id') !== null ? request()->get('class_id') : '') }}';
-        var initialSessionId =
-            '{{ old('session_id', request()->get('session_id') !== null ? request()->get('session_id') : '') }}';
-        getClassSection(initialClassId);
-        getSession(initialSessionId);
-    </script>
-@endsection -->
+

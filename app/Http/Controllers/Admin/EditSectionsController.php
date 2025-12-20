@@ -44,10 +44,57 @@ class EditSectionsController extends Controller
             'section_masters.section as section_name',
             'stu_main_srno.ssid',
         ];
-        $session = isset($request->session_id) ? $request->session_id : session('current_session')->id;
+        $session = isset($request->session_id) ? intval($request->session_id) : session('current_session')->id;
+        $where = [
+            'where' => [
+                'stu_main_srno.active' => 1,
+                'stu_main_srno.session_id' => $session,
+            ],
+            'whereIn' => [
+                'stu_main_srno.ssid' => isset($request->session_id) ? [1, 2, 3, 4, 5] : [1],
+            ],
+        ];
+        // $fields = ['stu_main_srno.srno', 'stu_main_srno.rollno', 'stu_detail.name', 'parents_detail.f_name', 'class_masters.class', 'section_masters.section'];
+        $joins = [
+            [
+                'table' => 'stu_detail',
+                'first' => 'stu_main_srno.srno',
+                'operator' => '=',
+                'second' => 'stu_detail.srno',
+                'type' => 'left'
+            ],
+            [
+                'table' => 'parents_detail',
+                'first' => 'stu_main_srno.srno',
+                'operator' => '=',
+                'second' => 'parents_detail.srno',
+                'type' => 'left'
+            ],
+            [
+                'table' => 'class_masters',
+                'first' => 'stu_main_srno.class',
+                'operator' => '=',
+                'second' => 'class_masters.id',
+                'type' => 'left'
+            ],
+            [
+                'table' => 'section_masters',
+                'first' => 'stu_main_srno.section',
+                'operator' => '=',
+                'second' => 'section_masters.id',
+                'type' => 'left'
+            ],
+        ];
+
+        $orderBy = [
+            'class_masters.sort' => 'asc',
+            'stu_main_srno.section' => 'asc',
+            'stu_detail.name' => 'asc',
+            'stu_main_srno.rollno' => 'asc',
+        ];
+        $data = StudentMasterController::getOnlyStQuery($where, $fields, $joins, $orderBy)->paginate(15);
         $sessions = SessionMasterController::getSessions();
-        $data = StudentMasterController::getStd($fields, [], [], true)->where('stu_main_srno.session_id', $session)
-            ->whereIn('stu_main_srno.ssid', session('current_session')->id ? [1] : [1, 2, 3, 4, 5])->paginate(15);
+        // $data = StudentMasterController::getStd($fields, [], [], true)->where('stu_main_srno.session_id', $session)->whereIn('stu_main_srno.ssid', session('current_session')->id ? [1] : [1, 2, 3, 4, 5])->paginate(15);
         return view('admin.editSections.std', compact('data', 'sessions'));
     }
     public function editStdAdmissionPromotion()
@@ -413,10 +460,8 @@ class EditSectionsController extends Controller
     public function editStdEdit(string $id, Request $request)
     {
         if ($id) {
-            # code...
             $student = StudentMaster::findOrFail($id);
             if ($student !== null) {
-                # code...
                 $data = [];
                 $fields = [
                     'stu_main_srno.srno',
@@ -437,13 +482,8 @@ class EditSectionsController extends Controller
                         'data' => $data
                     ], 200);
                 }
-                $relatives = StudentMasterController::getStdWithNames(false, $fields)
-                    ->whereNotNull('stu_main_srno.relation_code')->whereNot('stu_main_srno.srno', $student->srno)
-                    ->where('stu_main_srno.session_id', $student->session_id)
-                    ->where('stu_main_srno.relation_code', $student->relation_code)
-                    ->get();
+                $relatives = StudentMasterController::getStdWithNames(false, $fields)->whereNotNull('stu_main_srno.relation_code')->whereNot('stu_main_srno.srno', $student->srno)->where('stu_main_srno.session_id', $student->session_id)->where('stu_main_srno.relation_code', $student->relation_code)->get();
                 $parent_detail = DB::table('parents_detail')->where('srno', $student->srno)->where('active', 1)->first();
-                // dd($parent_detail);
                 $student_detail = DB::table('stu_detail')->where('srno', $student->srno)->where('active', 1)->first();
                 $classes = ClassMasterController::getClasses();
                 $states = StateMasterController::getAllStates();
@@ -498,7 +538,8 @@ class EditSectionsController extends Controller
         $currentSession = session('current_session')->id;
         $anyUpdated = false;
         foreach ($data['students'] as $std) {
-            $student = StudentMaster::where('srno', $std['srno'])->whereIn('ssid', [1, 2, 4, 5])->where('session_id', $currentSession)->first();
+            // $student = StudentMaster::where('srno', $std['srno'])->whereIn('ssid', [1, 2, 4, 5])->where('session_id', $currentSession)->first();
+            $student = StudentMaster::where('srno', $std['srno'])->where('ssid', 1)->where('session_id', $currentSession)->first();
             // $student = StudentMaster::where('srno', $std['srno'])->where('ssid', 1)->first();
             $updates = [];
             if ($student) {
@@ -726,7 +767,7 @@ class EditSectionsController extends Controller
             ]);
 
             $updatedCount = 0;
-
+            $currentSession = session('current_session')->id;
             foreach ($data['students'] as $std) {
                 $student = Attendance::updateOrCreate(
                     [
@@ -734,10 +775,12 @@ class EditSectionsController extends Controller
                         'class' => $request->hidden_class,
                         'section' => $request->hidden_section,
                         'a_date' => $request->hidden_a_date,
-                        'session_id' => $request->current_session,
+                        // 'session_id' => $request->current_session,
+                        'session_id' => $currentSession,
                     ],
                     [
-                        'session_id' => $request->current_session,
+                        // 'session_id' => $request->current_session,
+                        'session_id' => $currentSession,
                         'class' => $request->hidden_class,
                         'section' => $request->hidden_section,
                         'srno' => $std['srno'],
@@ -747,7 +790,6 @@ class EditSectionsController extends Controller
                         'edit_user_id' => Session::get('login_user'),
                     ]
                 );
-
                 if ($student) {
                     $updatedCount++;
                 }

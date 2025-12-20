@@ -3,42 +3,37 @@
 @section('sub-content')
 <div class="container-fluid">
     @if (Session::has('success'))
-    @section('scripts')
-    <script>
-        swal("Successful", "{{ Session::get('success') }}", "success").then(() => {
-            location.reload();
-        });
-    </script>
-    @endsection
+        @push('swal-scripts')
+            <script>
+                swal("Successful", "{{ Session::get('success') }}", "success");
+            </script>
+        @endpush
     @endif
-
     @if (Session::has('error'))
-    @section('scripts')
-    <script>
-        swal("Error", "{{ Session::get('error') }}", "error").then(() => {
-            location.reload();
-        });
-    </script>
-    @endsection
+        @push('swal-scripts')
+            <script>
+                swal("Error", "{{ Session::get('error') }}", "error");
+            </script>
+        @endpush
     @endif
     <div class="row">
         <div class="col-md-12">
             <div class="card border-0 bg-white">
                 <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between">
                     <h5 class="mb-0 mt-0">{{ __('Marks Master') }}</h5>
-                    
+
                     <div class=" flex-column d-flex align-items-end ">
-                        <a href="{{ route('admin.marks-master.create') }}" class="btn btn-success text-white"><span class="mdi mdi-plus-circle-outline me-2"></span>Add</a>
+                        <a href="{{ route('admin.marks-master.create') }}" class="btn btn-success text-white"><span class="mdi mdi-plus-circle-outline me-2"></span>Manage</a>
                         <div class="d-flex align-items-center gap-1 mt-2">
                             <form action="{{ route('admin.marks-master.index') }}" method="get" class="d-flex">
                                 <select name="class_id" id="class_id" class="form-control mx-1" required>
                                     <option value="">Select Class</option>
                                     @if (count($classes) > 0)
-                                    @foreach ($classes as $key => $class)
-                                    <option value="{{ $key }}" {{ request()->get('class_id') == $key ? 'selected' : ''}}>{{ $class }}</option>
-                                    @endforeach
+                                        @foreach ($classes as $key => $class)
+                                            <option value="{{ $key }}" {{ request()->get('class_id') == $key ? 'selected' : ''}}>{{ $class }}</option>
+                                        @endforeach
                                     @else
-                                    <option value="">No Class Found</option>
+                                        <option value="">No Class Found</option>
                                     @endif
                                 </select>
 
@@ -46,10 +41,11 @@
                                 <select name="subject_id" id="subject_id" class="form-control mx-1" required>
                                     <option value="">Select Subject</option>
                                 </select>
-                                <img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader" id="loader" style="display:none; width:10%;">
+
                                 <button type="submit" class="btn btn-sm btn-dark mx-2 d-flex align-items-center gap-1"><span class="mdi mdi-magnify "></span> Search</button>
                             </form>
                             <a href="{{ route('admin.marks-master.index') }}" class="btn btn-dark">Reset</a>
+                            <span><img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader" id="loader" style="display:none; width:5%;"></span>
                         </div>
                     </div>
 
@@ -57,7 +53,7 @@
 
                 <div class="card-body">
                     @if (request('class_id') && request('subject_id'))
-                    <div class="table">
+                    <div class="table" id="marks-table-wrapper">
                         <table id="example" class="table table-striped table-bordered">
                             <thead>
                                 <tr>
@@ -65,29 +61,29 @@
                                     <th>Exam</th>
                                     <th>Minimum Marks</th>
                                     <th>Maximum Marks</th>
-                                    <th class="text-center">Action</th>
+                                    {{-- <th class="text-center">Action</th> --}}
                                 </tr>
                             </thead>
 
                             @if (count($data) > 0)
-                            @foreach ($data as $key => $value)
-                            <tr data-entry-id="{{ $value->id }}">
-                                <td>{{ $data->firstItem() + $key ?? '' }}</td>
-                                <td>{{ $value->exam->exam ?? '' }}</td>
-                                <td>{{ $value->min_marks ?? '' }}</td>
-                                <td>{{ $value->max_marks ?? '' }}</td>
-                                <td class="text-center">
+                                @foreach ($data as $key => $value)
+                                    <tr data-entry-id="{{ $value->id }}">
+                                        <td>{{ $data->firstItem() + $key ?? '' }}</td>
+                                        <td>{{ $value->exam->exam ?? '' }}</td>
+                                        <td>{{ $value->min_marks ?? '' }}</td>
+                                        <td>{{ $value->max_marks ?? '' }}</td>
+                                        {{-- <td class="text-center">
 
-                                    <a href="{{ route('admin.marks-master.edit', $value->id) }}"
-                                        class=" btn-icon editbtnGlobal">
-                                        <i class="mdi mdi-pencil" data-bs-toggle="tooltip" data-bs-offset="0,4"
-                                            data-bs-placement="top" title="Edit"></i>
-                                    </a>
+                                            <a href="{{ route('admin.marks-master.edit', $value->id) }}"
+                                                class=" btn-icon editbtnGlobal">
+                                                <i class="mdi mdi-pencil" data-bs-toggle="tooltip" data-bs-offset="0,4"
+                                                    data-bs-placement="top" title="Edit"></i>
+                                            </a>
 
 
-                                </td>
-                            </tr>
-                            @endforeach
+                                        </td> --}}
+                                    </tr>
+                                @endforeach
                             @else
                             <tr>
                                 <td colspan="6">No Marks Found</td>
@@ -110,8 +106,30 @@
 @endsection
 @section('admin-scripts')
 <script>
-    $(document).ready(function() {
-        getClassSubject($('#class_id').val(), $('#initialSubjectId').val());
+$(document).ready(function () {
+
+    let classSelect   = $('#class_id');
+    let subjectSelect = $('#subject_id');
+    let tableWrapper  = $('#marks-table-wrapper');
+
+    // Initial subject load
+    getClassSubject(classSelect.val(), $('#initialSubjectId').val());
+
+    // ---------------------------
+    // RESET TABLE ON CLASS CHANGE
+    // ---------------------------
+    classSelect.on('change', function () {
+        subjectSelect.val('');
+        tableWrapper.hide();
     });
+
+    // ---------------------------
+    // RESET TABLE ON SUBJECT CHANGE
+    // ---------------------------
+    subjectSelect.on('change', function () {
+        tableWrapper.hide();
+    });
+
+});
 </script>
 @endsection

@@ -391,5 +391,6 @@
 <script src="{{ asset('public/admin/assets/js/custom.js') }}" type="text/javascript"></script>
 
     @yield('admin-scripts')
+    @stack('swal-scripts')
 @endsection
 

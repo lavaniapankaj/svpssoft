@@ -170,7 +170,7 @@ function marksheetPrint() {
                             tableHtml += `
                                         <tr class="">
                                             <th colspan="7" class="border-0 pb_4">Grand Total</th>
-                                            <td class="result_number border-0 text-center pb_4">${value.grand_total_marks || ''}</td>
+                                            <td class="result_number border-0 text-center pb_4 fw-bold">${value.grand_total_marks || ''}</td>
                                         </tr>`;
                         }
                         tableHtml += ` <tr class="">

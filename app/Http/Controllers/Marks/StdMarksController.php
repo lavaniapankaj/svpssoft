@@ -451,16 +451,41 @@ class StdMarksController extends Controller
         $sectionId = $request->section;
         $students = $request->std_id;
 
-        return redirect()->route('marks.marks-report.play-exam-wise.print')
-            ->with('exam', $exam)
-            ->with('class', $classId)
-            ->with('section', $sectionId)
-            ->with('students', $students);
+        return redirect()->route('marks.marks-report.play-exam-wise.print')->with('exam', $exam)->with('class', $classId)->with('section', $sectionId)->with('students', $students);
     }
 
-    private function getGrade($total, $marks)
-    {
-        if ($total == 5) {
+    private function getGrade($total, $marks, $classId, $examId, $sessionId, $subjectId = null, $isTotal = false, $isOralPracticalSubjectExists = false)
+    {   $totalMarks = (int) $total;
+        if ($marks == 'Ab.') {
+            return 'Ab.';
+        }
+
+        // Subject-specific total grades
+        if ($isTotal && !empty($subjectId) && $isOralPracticalSubjectExists) {
+            $grade = DB::table('subject_grades')->select(['grade_name'])->where('subject_id', $subjectId)->where('is_overall', 1)->where('min_marks', '<=', $marks)->where('max_marks', '>=', $marks)->where('class_id', $classId)->where('exam_id', $examId)->where('session_id', $sessionId)->where('active', 1)->first();
+            if (!empty($grade)) {
+                return $grade->grade_name;
+            }
+        }
+        /** Subject-specific total grades */
+        if (!empty($subjectId) && $isTotal && !$isOralPracticalSubjectExists) {
+
+            $grade = DB::table('subject_grades')->select(['grade_name'])->whereNull('is_overall')->where('subject_id', $subjectId)->where('min_marks', '<=', $marks)->where('max_marks', '>=', $marks)->where('class_id', $classId)->where('exam_id', $examId)->where('session_id', $sessionId)->where('active', 1)->first();
+            if (!empty($grade)) {
+                return $grade->grade_name;
+            }
+        }
+        /** Subject-specific grades */
+        if (!empty($subjectId) && !$isTotal) {
+            $grade = DB::table('subject_grades')->select(['grade_name'])->whereNull('is_overall')->where('subject_id', $subjectId)->where('class_id', $classId)->where('exam_id', $examId)->where('session_id', $sessionId)->where('min_marks', '<=', $marks)->where('max_marks', '>=', $marks)->where('active', 1)->first();
+            if (!empty($grade)) {
+                return $grade->grade_name;
+            }
+        }
+
+        /** Fallback  */
+
+        if ($totalMarks == 5) {
             if ($marks == 5) {
                 return 'A';
             } elseif ($marks == 4) {
@@ -470,7 +495,7 @@ class StdMarksController extends Controller
             } else {
                 return 'D';
             }
-        } elseif ($total == 10) {
+        } elseif ($totalMarks == 10) {
             if ($marks >= 9 && $marks <= 10) {
                 return 'A';
             } elseif ($marks >= 7 && $marks <= 8) {
@@ -480,7 +505,7 @@ class StdMarksController extends Controller
             } else {
                 return 'D';
             }
-        } elseif ($total == 20) {
+        } elseif ($totalMarks == 20) {
             if ($marks >= 17 && $marks <= 20) {
                 return 'A';
             } elseif ($marks >= 13 && $marks <= 16) {
@@ -490,7 +515,7 @@ class StdMarksController extends Controller
             } else {
                 return 'D';
             }
-        } elseif ($total == 25) {
+        } elseif ($totalMarks == 25) {
             if ($marks >= 21 && $marks <= 25) {
                 return 'A';
             } elseif ($marks >= 16 && $marks <= 20) {
@@ -500,7 +525,28 @@ class StdMarksController extends Controller
             } else {
                 return 'D';
             }
-        } elseif ($total == 50) {
+        } elseif ($totalMarks == 30) {
+            if ($marks >= 25 && $marks <= 30) {
+                return 'A';
+            } elseif ($marks >= 19 && $marks <= 24) {
+                return 'B';
+            } elseif ($marks >= 13 && $marks <= 18) {
+                return 'C';
+            } else {
+                return 'D';
+            }
+        } elseif ($totalMarks == 45) {
+            if ($marks >= 38 && $marks <= 45) {
+                return 'A';
+            } elseif ($marks >= 30 && $marks <= 37) {
+                return 'B';
+            } elseif ($marks >= 22 && $marks <= 29) {
+                return 'C';
+            } else {
+                return 'D';
+            }
+        }
+        elseif ($totalMarks == 50) {
             if ($marks >= 41 && $marks <= 50) {
                 return 'A';
             } elseif ($marks >= 31 && $marks <= 40) {
@@ -510,7 +556,7 @@ class StdMarksController extends Controller
             } else {
                 return 'D';
             }
-        } elseif ($total == 70) {
+        } elseif ($totalMarks == 70) {
             if ($marks >= 57 && $marks <= 70) {
                 return 'A';
             } elseif ($marks >= 43 && $marks <= 56) {
@@ -520,7 +566,7 @@ class StdMarksController extends Controller
             } else {
                 return 'D';
             }
-        } elseif ($total == 100) {
+        } elseif ($totalMarks == 100) {
             if ($marks >= 81 && $marks <= 100) {
                 return 'A';
             } elseif ($marks >= 61 && $marks <= 80) {
@@ -530,7 +576,7 @@ class StdMarksController extends Controller
             } else {
                 return 'D';
             }
-        } elseif ($total == 150) {
+        } elseif ($totalMarks == 150) {
             if ($marks >= 136 && $marks <= 150) {
                 return 'A+';
             } elseif ($marks >= 121 && $marks <= 135) {
@@ -540,7 +586,7 @@ class StdMarksController extends Controller
             } else {
                 return 'B';
             }
-        } elseif ($total == 200) {
+        } elseif ($totalMarks == 200) {
             if ($marks >= 161 && $marks <= 200) {
                 return 'A';
             } elseif ($marks >= 121 && $marks <= 160) {
@@ -552,14 +598,53 @@ class StdMarksController extends Controller
             }
         }
 
-        return 'ER';
+        return '';
     }
 
-    private function getPGNurGrade($total, $marks)
+    private function getPGNurGradeSubject($total, $marks, $classId, $sessionId, $subjectId, $examId)
     {
+        // Prevent illegal comparison with NULL or EMPTY
+        if ($marks === null || $marks === '') {
+            $marks = 0;
+        }
+        // Try to get grade from SubjectGrade table
+        $grade = DB::table('subject_grades')->select(['grade_name'])->whereNull('is_overall')->where('subject_id', $subjectId)->where('class_id', $classId)->where('exam_id', $examId)->where('session_id', $sessionId)->where('min_marks', '<=', $marks)->where('max_marks', '>=', $marks)->where('active', 1)->first();
+        if (!empty($grade)) {
+            return $grade->grade_name;
+        }
         if ($total == 0) {
             return 'E';
         }
+
+        $percent_m = $marks * 100 / $total;
+        if ($percent_m >= 86) {
+            return 'A';
+        } elseif ($percent_m >= 71) {
+            return 'B';
+        } elseif ($marks >= 51) {
+            return 'C';
+        } elseif ($marks >= 33) {
+            return 'D';
+        } else {
+            return 'E';
+        }
+    }
+    private function getPGNurGrade($total, $marks, $classId, $sessionId)
+    {
+        // Prevent illegal comparison with NULL or EMPTY
+        if ($marks === null || $marks === '') {
+            $marks = 0;
+        }
+
+        /* Try to get grade from SubjectGrade table */
+        $grade = DB::table('subject_grades')->select(['grade_name'])->whereNull('subject_id')->where('is_overall', 4)->where('class_id', $classId)->whereNull('exam_id')->where('session_id', $sessionId)->where('min_marks', '<=', $marks)->where('max_marks', '>=', $marks)->where('active', 1)->first();
+        if (!empty($grade)) {
+            return $grade->grade_name;
+        }
+        if ($total == 0) {
+            return 'E';
+        }
+
         $percent_m = $marks * 100 / $total;
         if ($percent_m >= 86) {
             return 'A';
@@ -574,183 +659,8 @@ class StdMarksController extends Controller
         }
     }
 
-    // public function getMarkSheetReport(Request $request)
-    // {
-    //     try {
-    //         //code...
-    //         $validator = Validator::make($request->all(), [
-    //             'class' => 'required|exists:class_masters,id,active,1',
-    //             'section' => 'required|exists:section_masters,id,active,1',
-    //             'exam' => 'required|exists:exam_masters,id,active,1',
-    //         ]);
-    //         if ($validator->fails()) {
-    //             return response()->json([
-    //                 'status' => 'error',
-    //                 'message' => $validator->errors()
-    //             ], 400);
-    //         }
 
-    //         $sessionId = $request->session;
-    //         $examId = $request->exam;
-    //         $classId = $request->class;
-    //         $sectionId = $request->section;
-    //         $studentIds = explode(",", $request->std_id);
-    //         $fields = [
-    //             'stu_main_srno.session_id',
-    //             'session_masters.session as session_name',
-    //             'class_masters.class as class_name',
-    //             'section_masters.section as section_name',
-    //             'stu_main_srno.class',
-    //             'stu_main_srno.section',
-    //             'stu_main_srno.srno',
-    //             'stu_main_srno.school',
-    //             'stu_main_srno.rollno',
-    //             'stu_main_srno.ssid',
-    //             'stu_main_srno.active',
-    //             'stu_detail.name',
-    //             'stu_detail.dob',
-    //             'stu_detail.srno',
-    //             'parents_detail.srno',
-    //             'parents_detail.f_name',
-    //             'parents_detail.m_name',
-    //         ];
-    //         $students = StudentMasterController::getStdWithNames(false, $fields)
-    //             ->whereIn('stu_main_srno.srno', $studentIds)
-    //             ->where('stu_main_srno.class', $classId)
-    //             ->where('stu_main_srno.section', $sectionId)
-    //             ->where('stu_main_srno.session_id', $sessionId)
-    //             ->get();
-    //         if ($students->isNotEmpty()) {
-    //             $exam = ExamMasterController::getAllExam(['id', 'exam'], ['id' => $examId]);
-    //             $report = [
-    //                 'student' => []
-    //             ];
-    //             foreach ($students as $key => $st) {
-    //                 # code...
-    //                 $subjects = SubjectMasterController::getAllSubjects(['subject', 'id', 'subject_id', 'by_m_g', 'priority', 'class_id'], '', ['class_id' => $st->class], [], true);
-    //                 $writtenSubjects = $subjects->whereNull('subject_id')->where('priority', 1)->values();
-    //                 $oralSubjects = $subjects->whereNotNull('subject_id')->where('priority', 2)->values();
-    //                 $practicalSubjects = $subjects->whereNotNull('subject_id')->where('priority', 3)->values();
-    //                 $studentSubjects = [];
 
-    //                 $marks = Marks::where('exam_id', $examId)
-    //                     ->where('session_id', $sessionId)
-    //                     ->where('class_id', $st->class)
-    //                     ->where('srno', $st->srno)->where('attendance', 1)
-    //                     ->where('active', 1)->get();
-
-    //                 $marksMaster = MarksMaster::where('exam_id', $examId)
-    //                     ->where('session_id', $sessionId)
-    //                     ->where('class_id', $st->class)
-    //                     ->where('active', 1)->get();
-
-    //                 foreach ($writtenSubjects as $writtenSubject) {
-    //                     $oral = $oralSubjects->where('subject_id', $writtenSubject->id)->where('by_m_g', $writtenSubject->by_m_g)->first();
-    //                     $practical = $practicalSubjects->where('subject_id', $writtenSubject->id)->where('by_m_g', $writtenSubject->by_m_g)->first();
-
-    //                     $writtenMarks = $marks->where('subject_id', $writtenSubject->id)->first();
-    //                     $maxMarksWrittenGrade = $marksMaster->where('subject_id', $writtenSubject->id)->value('max_marks') ?? 0;
-
-    //                     $oralMarks = null;
-    //                     $maxMarksOralGrade = 0;
-    //                     if ($oral) {
-    //                         $oralMarks = $marks->where('subject_id', $oral->id)->first();
-    //                         $maxMarksOralGrade = $marksMaster->where('subject_id', $oral->id)->value('max_marks') ?? 0;
-    //                     }
-
-    //                     $practicalMarks = null;
-    //                     $maxMarksPracticalGrade = 0;
-    //                     if ($practical) {
-    //                         $practicalMarks = $marks->where('subject_id', $practical->id)->first();
-    //                         $maxMarksPracticalGrade = $marksMaster->where('subject_id', $practical->id)->value('max_marks') ?? 0;
-    //                     }
-
-    //                     $writtenValue = $writtenMarks ? $writtenMarks->marks : null;
-    //                     $oralValue = $oralMarks ? $oralMarks->marks : null;
-    //                     $practicalValue = $practicalMarks ? $practicalMarks->marks : null;
-
-    //                     $totalMarks = 0;
-    //                     $totalMaxMarks = $maxMarksWrittenGrade + $maxMarksOralGrade + $maxMarksPracticalGrade;
-
-    //                     if ($writtenValue !== null) $totalMarks += $writtenValue;
-    //                     if ($oralValue !== null) $totalMarks += $oralValue;
-    //                     if ($practicalValue !== null) $totalMarks += $practicalValue;
-
-    //                     if ($writtenSubject->by_m_g == 1) {
-    //                         $studentSubjects[] = [
-    //                             'name' => $writtenSubject->subject,
-    //                             'by_m_g' => $writtenSubject->by_m_g,
-    //                             'written' => $st->school == 1 && $writtenSubject->by_m_g == 2 ? ($writtenValue !== null ? ($maxMarksWrittenGrade !== 0 ? $this->getGrade($maxMarksWrittenGrade, $writtenValue) : '') : '') : $writtenValue,
-    //                             'oral' => $st->school == 1 && $writtenSubject->by_m_g == 2  ? ($oralValue !== null ? ($maxMarksOralGrade !== 0 ? $this->getGrade($maxMarksOralGrade, $oralValue) : '') : '') : $oralValue,
-    //                             'practical' => $st->school == 1  && $writtenSubject->by_m_g == 2  ? ($practicalValue !== null ? ($maxMarksPracticalGrade !== 0 ? $this->getGrade($maxMarksPracticalGrade, $practicalValue) : '') : '') : $practicalValue,
-    //                             'total' => $st->school == 1 && $writtenSubject->by_m_g == 2  ? (($writtenValue !== null || $oralValue !== null || $practicalValue !== null) ? ($totalMaxMarks !== 0 ? $this->getGrade($totalMaxMarks, $totalMarks) : '') : '') : $totalMarks,
-    //                         ];
-    //                     } else {
-    //                         $studentSubjects[] = [
-    //                             'name' => $writtenSubject->subject,
-    //                             'by_m_g' => $writtenSubject->by_m_g,
-    //                             'written' => $writtenValue !== null ? ($maxMarksWrittenGrade !== 0 ? $this->getGrade($maxMarksWrittenGrade, $writtenValue) : '') : '',
-    //                             'oral' => $oralValue !== null ? ($maxMarksOralGrade !== 0 ? $this->getGrade($maxMarksOralGrade, $oralValue) : '') : '',
-    //                             'practical' => $practicalValue !== null ? ($maxMarksPracticalGrade !== 0 ? $this->getGrade($maxMarksPracticalGrade, $practicalValue) : '') : '',
-    //                             'total' => ($writtenValue !== null || $oralValue !== null || $practicalValue !== null) ? ($totalMaxMarks !== 0 ? $this->getGrade($totalMaxMarks, $totalMarks) : '') : '',
-    //                         ];
-    //                     }
-    //                 }
-
-    //                 $grandTotalMarks = array_sum(array_map(function ($item) {
-    //                     if ($item['by_m_g'] == 1) {
-    //                         # code...
-    //                         return $item['total'];
-    //                     } else {
-
-    //                         return 0;
-    //                     }
-    //                 }, $studentSubjects));
-
-    //                 $report['max_marks'][] = [
-    //                     'written' => $max_marks_written,
-    //                     'oral' => $max_marks_oral,
-    //                     'practicle' => $max_marks_practicle,
-    //                     'total' => $max_marks_total,
-    //                 ];
-
-    //                 $report['student'][] = [
-    //                     'session' => $st->session_name,
-    //                     'logo' => config('myconfig.mylogo'),
-    //                     'school' => $st->school == 1 ? 'St. Vivekanand Play House' : 'St. Vivekanand Public Secondary School',
-    //                     'srno' => $st->srno,
-    //                     'name' => $st->name ?? 'N/A',
-    //                     'rollno' => $st->rollno,
-    //                     'dob' => $st->dob ? date('d-M-Y', strtotime($st->dob)) : 'N/A',
-    //                     'father_name' => $st->f_name,
-    //                     'mother_name' => $st->m_name,
-    //                     'class_name' => $st->class_name,
-    //                     'section_name' => $st->section_name,
-    //                     'exam_name' => array_values($exam)[0],
-    //                     'principle_sign' => config('myconfig.mysignature'),
-    //                     'subjects' => $studentSubjects,
-    //                     'grand_total_marks' => $grandTotalMarks,
-    //                 ];
-    //             }
-    //             return response()->json([
-    //                 'status' => 200,
-    //                 'message' => "Student With Marks List",
-    //                 'data' => $report
-    //             ]);
-    //         } else {
-    //             return response()->json([
-    //                 'status' => 202,
-    //                 'message' => "Student Not Found",
-    //                 'data' => []
-    //             ]);
-    //         }
-    //     } catch (\Exception $e) {
-    //         return response()->json([
-    //             'status' => 'error',
-    //             'message' => "Failed to get report"
-    //         ], 500);
-    //     }
-    // }
 
     public function getMarkSheetReport(Request $request)
     {
@@ -842,6 +752,7 @@ class StdMarksController extends Controller
                     $marksMaster = MarksMaster::where('exam_id', $examId)->where('session_id', $sessionId)->where('class_id', $st->class)->where('active', 1)->get();
 
                     foreach ($writtenSubjects as $writtenSubject) {
+                        $isOralPracticalSubjectSExists = false;
                         $oral = $oralSubjects->where('subject_id', $writtenSubject->id)->where('by_m_g', $writtenSubject->by_m_g)->first();
                         $practical = $practicalSubjects->where('subject_id', $writtenSubject->id)->where('by_m_g', $writtenSubject->by_m_g)->first();
 
@@ -853,6 +764,7 @@ class StdMarksController extends Controller
                         if ($oral) {
                             $oralMarks = $marks->where('subject_id', $oral->id)->first();
                             $maxMarksOralGrade = $marksMaster->where('subject_id', $oral->id)->value('max_marks') ?? 0;
+                            $isOralPracticalSubjectSExists = true;
                         }
 
                         $practicalMarks = null;
@@ -860,6 +772,7 @@ class StdMarksController extends Controller
                         if ($practical) {
                             $practicalMarks = $marks->where('subject_id', $practical->id)->first();
                             $maxMarksPracticalGrade = $marksMaster->where('subject_id', $practical->id)->value('max_marks') ?? 0;
+                            $isOralPracticalSubjectSExists = true;
                         }
 
                         /* $writtenValue = $writtenMarks ? $writtenMarks->marks : null;
@@ -891,24 +804,24 @@ class StdMarksController extends Controller
                             $studentSubjects[] = [
                                 'name' => $writtenSubject->subject,
                                 'by_m_g' => $writtenSubject->by_m_g,
-                                'written' => $st->school == 1 && $writtenSubject->by_m_g == 2 ? ($writtenValue !== null ? ($maxMarksWrittenGrade !== 0 ? $this->getGrade($maxMarksWrittenGrade, $writtenValue) : '') : '') : $writtenValue,
-                                'oral' => $st->school == 1 && $writtenSubject->by_m_g == 2 ? ($oralValue !== null ? ($maxMarksOralGrade !== 0 ? $this->getGrade($maxMarksOralGrade, $oralValue) : '') : '') : $oralValue,
-                                'practical' => $st->school == 1 && $writtenSubject->by_m_g == 2 ? ($practicalValue !== null ? ($maxMarksPracticalGrade !== 0 ? $this->getGrade($maxMarksPracticalGrade, $practicalValue) : '') : '') : $practicalValue,
-                                'total' => $st->school == 1 && $writtenSubject->by_m_g == 2 ? (($writtenValue !== null || $oralValue !== null || $practicalValue !== null) ? ($totalMaxMarks !== 0 ? $this->getGrade($totalMaxMarks, $totalMarks) : '') : '') : $totalMarks,
+                                'written' => $st->school == 1 && $writtenSubject->by_m_g == 2 ? ($writtenValue !== null ? ($maxMarksWrittenGrade !== 0 ? $this->getGrade($maxMarksWrittenGrade, $writtenValue, $st->class, $examId, $st->session_id, $writtenSubject->id, false) : '') : '') : $writtenValue,
+                                'oral' => $st->school == 1 && $writtenSubject->by_m_g == 2 ? ($oralValue !== null ? ($maxMarksOralGrade !== 0 ? $this->getGrade($maxMarksOralGrade, $oralValue, $st->class, $examId, $st->session_id, $oral->id, false) : '') : '') : $oralValue,
+                                'practical' => $st->school == 1 && $writtenSubject->by_m_g == 2 ? ($practicalValue !== null ? ($maxMarksPracticalGrade !== 0 ? $this->getGrade($maxMarksPracticalGrade, $practicalValue, $st->class, $examId, $st->session_id, $practical->id, false) : '') : '') : $practicalValue,
+                                'total' => $st->school == 1 && $writtenSubject->by_m_g == 2 ? (($writtenValue !== null || $oralValue !== null || $practicalValue !== null) ? ($totalMaxMarks !== 0 ? $this->getGrade($totalMaxMarks, $totalMarks, $st->class, $examId, $st->session_id, $writtenSubject->id, true, $isOralPracticalSubjectSExists) : '') : '') : $totalMarks,
                             ];
                         } else {
                             $studentSubjects[] = [
                                 'name' => $writtenSubject->subject,
                                 'by_m_g' => $writtenSubject->by_m_g,
-                                'written' => $writtenValue !== null ? ($maxMarksWrittenGrade !== 0 ? $this->getGrade($maxMarksWrittenGrade, $writtenValue) : '') : '',
-                                'oral' => $oralValue !== null ? ($maxMarksOralGrade !== 0 ? $this->getGrade($maxMarksOralGrade, $oralValue) : '') : '',
-                                'practical' => $practicalValue !== null ? ($maxMarksPracticalGrade !== 0 ? $this->getGrade($maxMarksPracticalGrade, $practicalValue) : '') : '',
-                                'total' => ($writtenValue !== null || $oralValue !== null || $practicalValue !== null) ? ($totalMaxMarks !== 0 ? $this->getGrade($totalMaxMarks, $totalMarks) : '') : '',
+                                'written' => $writtenValue !== null ? ($maxMarksWrittenGrade != 0 ? $this->getGrade($maxMarksWrittenGrade, $writtenValue, $st->class, $examId, $st->session_id,$writtenSubject->id, false) : '') : '',
+                                'oral' => $oralValue !== null ? ($maxMarksOralGrade != 0 ? $this->getGrade($maxMarksOralGrade, $oralValue, $st->class, $examId, $st->session_id, $oral->id, false) : '') : '',
+                                'practical' => $practicalValue != null ? ($maxMarksPracticalGrade != 0 ? $this->getGrade($maxMarksPracticalGrade, $practicalValue, $st->class, $examId, $st->session_id, $practical->id, false) : '') : '',
+                                'total' => ($writtenValue != null || $oralValue != null || $practicalValue != null) ? ($totalMaxMarks != 0 ? $this->getGrade($totalMaxMarks, $totalMarks, $st->class, $examId, $st->session_id, $writtenSubject->id, true, $isOralPracticalSubjectSExists) : '') : '',
                             ];
                         }
                     }
                     $grandTotalMarks = array_sum(array_map(function ($item) {
-                        if ($item['by_m_g'] == 1) {
+                        if ($item['by_m_g'] == 1 && is_numeric($item['total'])) {
                             return $item['total'];
                         } else {
 
@@ -957,7 +870,7 @@ class StdMarksController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to get report',
+                'message' => 'Failed to get report: ',
             ], 500);
         }
     }
@@ -1346,7 +1259,8 @@ class StdMarksController extends Controller
                                     'exam_name' => $exam,
                                     'obtained_marks' => $marks->marks ?? 0,
                                     'max_marks' => $marks->max_marks ?? 0,
-                                    'grade' => $this->getPGNurGrade($marks->max_marks, $marks->marks) ?? 'Abst',
+                                    // 'grade' => $this->getPGNurGrade($marks->max_marks, $marks->marks) ?? 'Abst',
+                                    'grade' => $this->getPGNurGradeSubject($marks->max_marks, $marks->marks, $validated['class'], $session->id, $subject->id, $key) ?? 'Abst',
                                     // 'grade' => $this->getGrade($marks->max_marks, $marks->marks) ?? 'Abst',
                                     'status' => $marks->marks ? 'Present' : 'Abst',
                                 ];
@@ -1359,15 +1273,16 @@ class StdMarksController extends Controller
                                     'exam_name' => $exam,
                                     'obtained_marks' => 0,
                                     'max_marks' => 0,
-                                    'grade' => $this->getPGNurGrade(0, 0) ?? 'Abst',
+                                    // 'grade' => $this->getPGNurGrade(0, 0) ?? 'Abst',
+                                    'grade' => $this->getPGNurGradeSubject(0, 0, $validated['class'], $session->id, $subject->id, $key) ?? 'Abst',
                                     'status' => 'Abst',
                                 ];
                             }
                         }
                     }
 
-                    $subjectResult['total_max'] = ($subjectTotalMax == null || $this->getPGNurGrade($subjectTotalMax, $subjectTotalObtained) == null) ? 'Abst' : $this->getPGNurGrade($subjectTotalMax, $subjectTotalObtained);
-                    $subjectResult['total_obtained'] = ($subjectTotalObtained == null || $this->getPGNurGrade($subjectTotalMax, $subjectTotalObtained) == null) ? 'Abst' : $this->getPGNurGrade($subjectTotalMax, $subjectTotalObtained);
+                    $subjectResult['total_max'] = ($subjectTotalMax == null || $this->getPGNurGrade($subjectTotalMax, $subjectTotalObtained, $validated['class'], $session->id) == null) ? 'Abst' : $this->getPGNurGrade($subjectTotalMax, $subjectTotalObtained, $validated['class'], $session->id);
+                    $subjectResult['total_obtained'] = ($subjectTotalObtained == null || $this->getPGNurGrade($subjectTotalMax, $subjectTotalObtained, $validated['class'], $session->id) == null) ? 'Abst' : $this->getPGNurGrade($subjectTotalMax, $subjectTotalObtained, $validated['class'], $session->id);
                     /*  $subjectResult['total_max'] = ($subjectTotalMax == null || $this->getPGNurGrade($subjectTotalMax, $subjectTotalObtained) == null)
                         ? 'Abst'
                         : ($subject->by_m_g == 1 ? $subjectTotalMax : $this->getPGNurGrade($subjectTotalMax, $subjectTotalObtained));
@@ -1383,9 +1298,7 @@ class StdMarksController extends Controller
                 }
 
                 // Calculate attendance
-                $totalAttendanceDays = DB::table('attendance_schedule')
-                    ->where('session_id', $session->id)
-                    ->sum('status');
+                $totalAttendanceDays = DB::table('attendance_schedule')->where('session_id', $session->id)->sum('status');
                 $studentAttendance = 0;
                 if ($totalAttendanceDays > 0 || $totalObtained !== '') {
                     // code...
@@ -1671,16 +1584,11 @@ class StdMarksController extends Controller
                     ->first();
 
                 // Fetch max marks
-                $maxMarks = DB::table('marks_masters')
-                    ->where('class_id', $classId)
-                    ->where('session_id', $sessionId)
-                    ->where('exam_id', $key)
-                    ->where('subject_id', $subject->id)
-                    ->where('active', 1)
-                    ->value('max_marks');
+                $maxMarks = DB::table('marks_masters')->where('class_id', $classId)->where('session_id', $sessionId)->where('exam_id', $key)->where('subject_id', $subject->id)->where('active', 1)->value('max_marks');
                 if ($maxMarks !== null) {
                     $obtainedMarks = $marks ? $marks->marks : 0;
-                    $grade = $this->calculateGrade($obtainedMarks, $maxMarks);
+                    // $grade = $this->calculateGrade($obtainedMarks, $maxMarks);
+                    $grade = $this->calculateGrade($obtainedMarks, $maxMarks, $subject->id, $classId, $sessionId, $key,true);
 
                     $subjectMarks[] = [
                         'exam_id' => $key,
@@ -1704,10 +1612,8 @@ class StdMarksController extends Controller
                 'exam_marks' => $subjectMarks,
                 'total_max_marks' => $totalMaxMarks,
                 'total_obtained_marks' => $totalObtainedMarks,
-                'percentage' => $totalMaxMarks > 0
-                    ? round(($totalObtainedMarks / $totalMaxMarks) * 100, 2)
-                    : 'NaN',
-                'overall_grade' => $this->calculateGrade($totalObtainedMarks, $totalMaxMarks),
+                'percentage' => $totalMaxMarks > 0 ? round(($totalObtainedMarks / $totalMaxMarks) * 100, 2) : 'NaN',
+                'overall_grade' => $this->calculateGrade($totalObtainedMarks, $totalMaxMarks, $subject->id, $classId, $sessionId, null, false),
             ];
         }
 
@@ -1731,15 +1637,27 @@ class StdMarksController extends Controller
         return [
             'total_max_marks' => $totalMaxMarks,
             'total_obtained_marks' => $totalObtainedMarks,
-            'overall_percentage' => $totalMaxMarks > 0
-                ? round(($totalObtainedMarks / $totalMaxMarks) * 100, 2)
-                : null,
+            'overall_percentage' => $totalMaxMarks > 0 ? round(($totalObtainedMarks / $totalMaxMarks) * 100, 2) : null,
             'overall_result' => $this->determineOverallResult($subjectGrades),
         ];
     }
 
-    private function calculateGrade($obtainedMarks, $maxMarks)
+    private function calculateGrade($obtainedMarks, $maxMarks, $subjectId,  $classId, $sessionId, $examId = null, $isExamWise = false)
     {
+        if ($isExamWise) {
+            // Try to get grade from SubjectGrade table
+            $grade = DB::table('subject_grades')->select(['grade_name'])->whereNull('is_overall')->where('subject_id', $subjectId)->where('class_id', $classId)->where('exam_id', $examId)->where('session_id', $sessionId)->where('min_marks', '<=', $obtainedMarks)->where('max_marks', '>=', $obtainedMarks)->where('active', 1)->first();
+            if (!empty($grade)) {
+                return $grade->grade_name;
+            }
+        }
+        if (!$isExamWise) {
+            // Try to get grade from SubjectGrade table
+            $grade = DB::table('subject_grades')->select(['grade_name'])->where('is_overall', 4)->where('subject_id', $subjectId)->where('class_id', $classId)->whereNull('exam_id')->where('session_id', $sessionId)->where('min_marks', '<=', $obtainedMarks)->where('max_marks', '>=', $obtainedMarks)->where('active', 1)->first();
+            if (!empty($grade)) {
+                return $grade->grade_name;
+            }
+        }
         $total = $maxMarks;
         if ($total == 50) {
             if ($obtainedMarks >= 46 && $obtainedMarks <= 50) {
@@ -1762,7 +1680,6 @@ class StdMarksController extends Controller
                 return 'B';
             }
         }
-
         return 'ER';
     }
 
@@ -2058,7 +1975,7 @@ class StdMarksController extends Controller
             ->first();
 
         // If no marks found, return null
-        if (! $mainMarks && ! $oralMarks) {
+        if (!$mainMarks && !$oralMarks) {
             return null;
         }
 
@@ -2067,7 +1984,7 @@ class StdMarksController extends Controller
         $totalMaxMarks = ($mainMarks ? $mainMarks->written_max_marks : 0) + ($oralMarks ? $oralMarks->oral_max_marks : 0);
 
         // Calculate grade based on total marks
-        $grade = $this->getGradeFirstSecond($totalMarks, $totalMaxMarks);
+        $grade = $this->getGradeFirstSecond($totalMarks, $totalMaxMarks, $classId, $examId, $sessionId, $subjectId);
 
         return [
             'written_marks' => $mainMarks && $mainMarks->attendance == 1 ? $mainMarks->written_marks : 'Abs',
@@ -2081,8 +1998,13 @@ class StdMarksController extends Controller
     }
 
     //Grade Function for only Class First And Second Final Marsheet
-    private function getGradeFirstSecond($marks, $max_marks)
+    private function getGradeFirstSecond($marks, $max_marks, $classId, $examId, $sessionId, $subjectId)
     {
+        // Try to get grade from SubjectGrade table
+        $grade = DB::table('subject_grades')->select(['grade_name'])->where('is_overall', 2)->where('subject_id', $subjectId)->where('class_id', $classId)->where('exam_id', $examId)->where('session_id', $sessionId)->where('min_marks', '<=', $marks)->where('max_marks', '>=', $marks)->where('active', 1)->first();
+        if (!empty($grade)) {
+            return $grade->grade_name;
+        }
         $total = $marks * 100.00 / $max_marks;
         if ($total > 80) {
             return 'A';
@@ -2643,7 +2565,7 @@ class StdMarksController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to export report'.$e->getMessage(),
+                'message' => 'Failed to export report',
             ], 500);
         }
     }
@@ -2791,12 +2713,16 @@ class StdMarksController extends Controller
                         $studentSubjects[] = [
                             'name' => $writtenSubject->subject,
                             'by_m_g' => $writtenSubject->by_m_g,
-                            'written' => $writtenValue !== null ? ($maxMarksWrittenGrade !== 0 ? $this->getPgClassGrade($maxMarksWrittenGrade, $writtenValue) : '') : '',
-                            'total' => ($writtenValue !== null) ? ($totalMaxMarks !== 0 ? $this->getPgClassGrade($totalMaxMarks, $totalMarks) : '') : '',
+                            // 'written' => $writtenValue != null ? ($maxMarksWrittenGrade != 0 ? $this->getPgClassGrade($maxMarksWrittenGrade, $writtenValue) : '') : '',
+                            'written' => $writtenValue != null ? ($maxMarksWrittenGrade != 0 ? $this->getPgClassGrade($writtenSubject->id, $classId, $examId, $sessionId, $writtenValue, $maxMarksWrittenGrade) : '') : '',
+                            // 'total' => ($writtenValue != null) ? ($totalMaxMarks != 0 ? $this->getPgClassGrade($totalMaxMarks, $totalMarks) : '') : '',
+                            'total' => ($writtenValue != null) ? ($totalMaxMarks != 0 ? $this->getPgClassGrade($writtenSubject->id, $classId, $examId, $sessionId, $writtenValue, $maxMarksWrittenGrade) : '') : '',
                         ];
                     }
-                    // ✅ Calculate overall grade
-                    $overallGrade = $totalMaxMarksOverall > 0 ? $this->getPgClassGrade($totalMaxMarksOverall, $totalObtained) : '';
+                    /* Calculate overall grade */
+                    // $overallGrade = $totalMaxMarksOverall > 0 ? $this->getPgClassGrade($totalMaxMarksOverall, $totalObtained) : '';
+                    // $overallGrade = $totalMaxMarksOverall > 0 ? $this->getPgClassGrade($totalMaxMarksOverall, $totalObtained) : '';
+                    $overallGrade = $totalMaxMarksOverall > 0 ? $this->getPgClassOverAllGrade($classId, $examId, $sessionId, $totalObtained,$totalMaxMarksOverall) : '';
                     $report['student'][] = [
                         'session' => $st->session_name,
                         'logo' => config('myconfig.mylogo'),
@@ -2838,10 +2764,10 @@ class StdMarksController extends Controller
         }
     }
 
-    private function getPgClassGrade($maxMarks, $obtainedMarks)
+/*     private function getPgClassGrade($maxMarks, $obtainedMarks)
     {
         // Handle absent case
-        if ($obtainedMarks === 'Ab.' || $obtainedMarks === null) {
+        if ($obtainedMarks == 'Ab.' || $obtainedMarks == null) {
             return 'Ab.';
         }
 
@@ -2867,5 +2793,82 @@ class StdMarksController extends Controller
         } else {
             return '';
         }
+    } */
+
+    private function getPgClassGrade($subjectId, $classId, $examId, $sessionId, $obtainedMarks, $maxMarks)
+    {
+        // Handle absent case
+        if ($obtainedMarks == 'Ab.' || $obtainedMarks === null) {
+            return 'Ab.';
+        }
+
+        // Ensure numeric values
+        if (!is_numeric($obtainedMarks) || !is_numeric($maxMarks) || $maxMarks <= 0) {
+            return '';
+        }
+
+        // Try to get grade from SubjectGrade table
+        $grade = DB::table('subject_grades')->select(['grade_name'])->whereNull('is_overall')->where('subject_id', $subjectId)->where('class_id', $classId)->where('exam_id', $examId)->where('session_id', $sessionId)->where('min_marks', '<=', $obtainedMarks)->where('max_marks', '>=', $obtainedMarks)->where('active', 1)->first();
+
+        if (!empty($grade)) {
+            return $grade->grade_name;
+        }
+
+        // Fallback: calculate grade based on percentage
+        $percentage = ($obtainedMarks / $maxMarks) * 100;
+
+        if ($percentage >= 80 && $percentage <= 100) {
+            return 'A';
+        } elseif ($percentage >= 65 && $percentage < 80) {
+            return 'B';
+        } elseif ($percentage >= 50 && $percentage < 65) {
+            return 'C';
+        } elseif ($percentage >= 33 && $percentage < 50) {
+            return 'D';
+        } elseif ($percentage >= 0 && $percentage < 33) {
+            return 'E';
+        } else {
+            return '';
+        }
     }
+
+    private function getPgClassOverAllGrade($classId, $examId, $sessionId, $obtainedMarks, $maxMarks)
+    {
+        // Handle absent case
+        if ($obtainedMarks == 'Ab.' || $obtainedMarks == null) {
+            return 'Ab.';
+        }
+
+        // Ensure numeric values
+        if (!is_numeric($obtainedMarks) || !is_numeric($maxMarks) || $maxMarks <= 0) {
+            return '';
+        }
+
+        // Try to get grade from SubjectGrade table
+        $grade = DB::table('subject_grades')->select(['grade_name'])->whereNull('subject_id')->where('is_overall', 2)->where('class_id', $classId)->where('exam_id', $examId)->where('session_id', $sessionId)->where('min_marks', '<=', $obtainedMarks)->where('max_marks', '>=', $obtainedMarks)->where('active', 1)->first();
+        if (!empty($grade)) {
+            return $grade->grade_name;
+        }
+
+        // Fallback: calculate grade based on percentage
+        $percentage = ($obtainedMarks / $maxMarks) * 100;
+
+        if ($percentage >= 80 && $percentage <= 100) {
+            return 'A';
+        } elseif ($percentage >= 65 && $percentage < 80) {
+            return 'B';
+        } elseif ($percentage >= 50 && $percentage < 65) {
+            return 'C';
+        } elseif ($percentage >= 33 && $percentage < 50) {
+            return 'D';
+        } elseif ($percentage >= 0 && $percentage < 33) {
+            return 'E';
+        } else {
+            return '';
+        }
+    }
+
+
+
+
 }

@@ -3,27 +3,24 @@
 @section('sub-content')
     <div class="container-fluid">
         @if (Session::has('success'))
-            @section('scripts')
+            @push('swal-scripts')
                 <script>
-                    swal("Successful", "{{ Session::get('success') }}", "success").then(() => {
-                        location.reload();
-                    });
+                    swal("Successful", "{{ Session::get('success') }}", "success");
                 </script>
-            @endsection
+            @endpush
         @endif
-
         @if (Session::has('error'))
-            @section('scripts')
+            @push('swal-scripts')
                 <script>
                     swal("Error", "{{ Session::get('error') }}", "error");
                 </script>
-            @endsection
+            @endpush
         @endif
         <div class="row ">
             <div class="col-md-12">
                 <div class="card border-0 bg-white">
            <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between"><h5 class="mb-0 mt-0">{{ __('SR Number Login Zone(Edit Student)') }}</h5>
-                        
+
                         <div class=" flex-column d-flex align-items-end ">
                             <a href="{{ route('admin.editSection.index') }}" class="btn bg-light btn-sm" ><span class="mdi mdi-chevron-left me-2"></span>Back</a>
                             <div class="d-flex align-items-center gap-1 mt-2">
@@ -72,13 +69,8 @@
                                                 <td>{{ $st->class_name }}</td>
                                                 <td>{{ $st->section_name }}</td>
                                                 <td class="text-center">
-                                                    <a href="{{ route('admin.student-master.edit', $st->id) }}"
-                                                        class=" btn-icon editbtnGlobal"
-                                                        id="edit-section-editBtn">
-                                                        <i class="mdi mdi-pencil edit-section-editBtn"
-                                                            data-bs-toggle="tooltip" data-bs-offset="0,4"
-                                                            data-bs-placement="top" title="Edit"
-                                                            id="edit-section-editBtn"></i>
+                                                    <a href="{{ route('admin.student-master.edit', $st->id) }}" class=" btn-icon editbtnGlobal" id="edit-section-editBtn">
+                                                        <i class="mdi mdi-pencil edit-section-editBtn" data-bs-toggle="tooltip" data-bs-offset="0,4" data-bs-placement="top" title="Edit" id="edit-section-editBtn"></i>
                                                     </a>
                                                 </td>
                                             </tr>

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Admin\ClassMaster;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 
 class ClassMasterController extends Controller
@@ -15,10 +16,9 @@ class ClassMasterController extends Controller
      */
     public function index()
     {
-        # code...
         $fields = ['id', 'class', 'sort'];
         if (!empty($fields)) {
-            $data = self::getClasses($fields, 10, true);
+            $data = self::getClasses($fields, 15, true);
             return view('admin.class.index', compact('data'));
         } else {
             return redirect()->back()->with('error', 'Something went wrong, please try again.');
@@ -40,24 +40,41 @@ class ClassMasterController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'class' => 'required|string|unique:class_masters,class,NULL,id,active,1',
-            'sort' => 'required|integer',
+            'class' => 'required|string|max:255|unique:class_masters,class,NULL,id,active,1',
+            'sort' => 'required|integer|min:1',
+        ], [
+            'class.required' => 'Please enter a class name.',
+            'class.string' => 'Class name must be a valid text.',
+            'class.max' => 'Class name cannot exceed 255 characters.',
+            'class.unique' => 'This class already exists. Please enter a different class name.',
 
+            'sort.required' => 'Please enter a sorting order.',
+            'sort.integer' => 'Sorting order must be a number.',
+            'sort.min' => 'Sorting order must be at least 1.',
         ]);
-        $classData = [
-            'class' => $request->class,
-            'sort' => $request->sort,
-            'add_user_id' => Session::get('login_user'),
-            'edit_user_id' => Session::get('login_user'),
-            'active' => 1,
 
-        ];
-        $class = ClassMaster::create($classData);
+        try {
+            $classData = [
+                'class' => trim($request->class),
+                'sort' => $request->sort,
+                'add_user_id' => Session::get('login_user'),
+                'edit_user_id' => Session::get('login_user'),
+                'active' => 1,
+            ];
 
-        if ($class) {
-            return redirect()->route('admin.class-master.index')->with('success', 'Class saved successfully.');
-        } else {
-            return redirect()->back()->with('error', 'Something went wrong, please try again.');
+            $class = ClassMaster::create($classData);
+
+            if ($class) {
+                return redirect()->route('admin.class-master.index')->with('success', 'Class saved successfully.');
+            }
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Unable to save the class. Please try again.');
+
+        } catch (\Exception $e) {
+            Log::error('Class Master Store Error: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Something went wrong, please try again.');
         }
     }
 
@@ -87,11 +104,19 @@ class ClassMasterController extends Controller
      */
     public function update(Request $request, ClassMaster $classMaster)
     {
-        //
         $request->validate([
             'class' => 'required|string|unique:class_masters,class,' . $request->id . ',id,active,1',
-            'sort' => 'required|integer',
+            'sort' => 'required|integer|min:1',
 
+        ], [
+            'class.required' => 'Please enter a class name.',
+            'class.string' => 'Class name must be a valid text.',
+            'class.max' => 'Class name cannot exceed 255 characters.',
+            'class.unique' => 'This class already exists. Please enter a different class name.',
+
+            'sort.required' => 'Please enter a sorting order.',
+            'sort.integer' => 'Sorting order must be a number.',
+            'sort.min' => 'Sorting order must be at least 1.',
         ]);
         $classData = [
             'class' => $request->class,

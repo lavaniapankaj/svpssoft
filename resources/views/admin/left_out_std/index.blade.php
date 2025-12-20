@@ -2,23 +2,18 @@
 @section('sub-content')
     <div class="container-fluid">
         @if (Session::has('success'))
-            @section('scripts')
+            @push('swal-scripts')
                 <script>
-                    swal("Successful", "{{ Session::get('success') }}", "success").then(() => {
-                        location.reload();
-                    });
+                    swal("Successful", "{{ Session::get('success') }}", "success");
                 </script>
-            @endsection
+            @endpush
         @endif
-
         @if (Session::has('error'))
-            @section('scripts')
+            @push('swal-scripts')
                 <script>
-                    swal("Error", "{{ Session::get('error') }}", "error").then(() => {
-                        location.reload();
-                    });
+                    swal("Error", "{{ Session::get('error') }}", "error");
                 </script>
-            @endsection
+            @endpush
         @endif
         <div class="row">
             <div class="col-md-12">
@@ -26,25 +21,19 @@
                     <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between">
                         <h5 class="mb-0 mt-0">{{ 'Activate to the Left Out Student' }}</h5>
                         <a href="{{ route('admin.left-out-std.index') }}" class="btn bg-light btn-sm" ><span class="mdi mdi-chevron-left me-2"></span>Back</a>
-
                     </div>
                     <div class="card-body">
                         <table id="example" class="table table-striped table-bordered">
-
                             <tbody>
                                 <form action="{{ route('admin.left-out-std.index') }}" method="get">
                                     <tr>
                                         <td>Select Session</td>
                                         <td>
-
-                                            <select type="hidden" name="session" id="session_id" value=''
-                                                class="form-control mx-1" required>
+                                            <select type="hidden" name="session" id="session_id" value='' class="form-control mx-1" required>
                                                 <option value="">Select Session</option>
                                                 @if (count($sessions) > 0)
                                                     @foreach ($sessions as $key => $session)
-                                                        <option value="{{ $key }}"
-                                                            {{ request()->get('session') == $key ? 'selected' : '' }}>
-                                                            {{ $session }}</option>
+                                                        <option value="{{ $key }}" {{ request()->get('session') == $key ? 'selected' : '' }}>{{ $session }}</option>
                                                     @endforeach
                                                 @else
                                                     <option value="">No Session Found</option>
@@ -59,37 +48,29 @@
                                                 <option value="">Select Class</option>
                                                 @if (count($classes) > 0)
                                                     @foreach ($classes as $key => $class)
-                                                        <option value="{{ $key }}"
-                                                            {{ request()->get('class') == $key ? 'selected' : '' }}>
-                                                            {{ $class }}</option>
+                                                        <option value="{{ $key }}" {{ request()->get('class') == $key ? 'selected' : '' }}>{{ $class }}</option>
                                                     @endforeach
                                                 @else
                                                     <option value="">No Class Found</option>
                                                 @endif
                                             </select>
-                                            <span class="invalid-feedback form-invalid fw-bold first-class-error"
-                                                role="alert"></span>
+                                            <span class="invalid-feedback form-invalid fw-bold first-class-error" role="alert"></span>
                                         </td>
                                     </tr>
                                     <tr>
                                         <td>Select Section</td>
                                         <td>
-                                            <input type="hidden" id="initialSectionId" name="initialSectionId"
-                                                value="{{ old('section', request()->get('section') !== null ? request()->get('section') : '') }}">
+                                            <input type="hidden" id="initialSectionId" name="initialSectionId" value="{{ old('section', request()->get('section') !== null ? request()->get('section') : '') }}">
                                             <select name="section" id="section_id" class="form-control mx-1" required>
                                                 <option value="">Select Section</option>
                                             </select>
-                                            <span class="invalid-feedback form-invalid fw-bold first-section-error"
-                                                role="alert"></span>
+                                            <span class="invalid-feedback form-invalid fw-bold first-section-error" role="alert"></span>
                                         </td>
                                     </tr>
                                     <tr>
                                         <td colspan="2">
-                                            <button type="submit" class="btn btn-sm btn-primary" id="left-out-std">Show
-                                                Student</button><span><img src="{{ config('myconfig.myloader') }}"
-                                                    alt="Loading..." class="loader" id="loader"
-                                                    style="width: 10%; display: none;"></span>
-
+                                            <button type="submit" class="btn btn-sm btn-primary" id="left-out-std">Show Student</button>
+                                            <span><img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader" id="loader" style="width: 5%; display: none;"></span>
                                         </td>
                                     </tr>
                                 </form>
@@ -98,7 +79,6 @@
                         </table>
 
                         @if (request()->get('session') || request()->get('class') || request()->get('section'))
-
                             <div class="table" id="table-div">
                                 <table id="example" class="table table-striped table-bordered">
                                     <thead>
@@ -122,21 +102,14 @@
                                                 <td>{{ $value->f_name ?? '' }}</td>
                                                 <td>{{ $value->class_name ?? '' }}</td>
                                                 <td>{{ $value->section_name ?? '' }}</td>
-
-
                                                 <td class="text-center">
-
                                                     <form action="{{ route('admin.left-out-std.edit', $value->srno) }}"
                                                         method="POST" style="display:inline;">
                                                         @csrf
-                                                        <button type="submit" class="btn btn-sm btn-icon p-1"
-                                                            data-bs-toggle="tooltip" data-bs-offset="0,4"
-                                                            data-bs-placement="top" data-bs-html="true"
-                                                            title="Active to the Student">
+                                                        <button type="submit" class="btn btn-sm btn-icon p-1" data-bs-toggle="tooltip" data-bs-offset="0,4" data-bs-placement="top" data-bs-html="true" title="Active to the Student">
                                                             <i class="mdi mdi-account-check"></i>
                                                         </button>
                                                     </form>
-
                                                 </td>
                                             </tr>
                                         @endforeach
@@ -156,9 +129,6 @@
                         @else
                             <div class="table">
                         @endif
-
-
-
                     </div>
                 </div>
             </div>
@@ -174,7 +144,6 @@
             $('#session_id, #class_id, #section_id').change(function() {
                 $('#table-div').hide();
             });
-
         });
     </script>
 @endsection

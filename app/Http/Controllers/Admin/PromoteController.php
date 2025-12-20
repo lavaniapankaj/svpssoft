@@ -66,7 +66,6 @@ class PromoteController extends Controller
     public function store(Request $request)
     {
         try {
-            //code...
             // Validate the request data
             $sessionRules = [
                 'sometimes',
@@ -84,12 +83,8 @@ class PromoteController extends Controller
             if ($request->srno || $request->allStd) {
                 $secondClassRules[] = Rule::notIn([$request->class_id]);
             }
-            // dd($request->all());
-
-            // dd($sessionRules);
             $validator = Validator::make($request->all(), [
                 'class_id' => 'required|exists:class_masters,id,active,1',
-                // 'second_class_id' => 'sometimes|required|exists:class_masters,id',
                 'second_class_id' => $secondClassRules,
                 'section_id' => 'required|exists:section_masters,id,active,1',
                 'second_section_id' => 'sometimes|required|exists:section_masters,id,active,1',
@@ -102,8 +97,7 @@ class PromoteController extends Controller
                     'string',
                     'max:255',
                     Rule::unique('stu_main_srno')->where(function ($query) {
-                        return $query->whereNotNull('admission_date')
-                            ->whereNotNull('form_submit_date');
+                        return $query->whereNotNull('admission_date')->whereNotNull('form_submit_date');
                     }),
                 ],
             ], [

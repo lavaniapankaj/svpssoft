@@ -205,7 +205,11 @@ class AdminController extends Controller
                     'stu_main_srno.session_id' => $request->session,
                     'stu_main_srno.class' => $request->class,
                     'stu_main_srno.section' => $request->section,
-                ]
+                ],
+                'whereIn' => [
+                    'stu_main_srno.active' => [1, 2, 3, 4],
+                    'stu_main_srno.ssid' => [4, 5],
+                ],
             ];
             $student =  StudentMasterController::getStd($fields, $where)->paginate(10);
         }
@@ -220,18 +224,11 @@ class AdminController extends Controller
             return redirect()->back()->with('error', 'Something went wrong, please try again.');
         }
 
-        $student = DB::table('stu_main_srno')
-            ->where('srno', $id)
-            ->whereIn('active', [1, 2, 3, 4])
-            ->whereIn('ssid', [4, 5])
-            ->first();
+        $student = DB::table('stu_main_srno')->where('srno', $id)->whereIn('active', [1, 2, 3, 4])->whereIn('ssid', [4, 5])->first();
 
         if (!$student) {
             return redirect()->route('admin.left-out-std.index')->with('error', 'This student is already active.');
         }
-
-        //  $user = Auth::user();
-
         DB::table('stu_main_srno')
             ->where('srno', $id)
             ->whereIn('active', [1, 2, 3, 4])
@@ -240,6 +237,7 @@ class AdminController extends Controller
                 'active' => 1,
                 'ssid' => 1,
                 'edit_user_id' => Session::get('login_user'),
+                'updated_at' => now(),
             ]);
 
         return redirect()->route('admin.left-out-std.index')->with('success', 'Student activated successfully.');

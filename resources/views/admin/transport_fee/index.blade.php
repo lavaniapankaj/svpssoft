@@ -3,30 +3,26 @@
 @section('sub-content')
     <div class="container-fluid">
         @if (Session::has('success'))
-            @section('scripts')
+            @push('swal-scripts')
                 <script>
-                    swal("Successful", "{{ Session::get('success') }}", "success").then(() => {
-                        location.reload();
-                    });
+                    swal("Successful", "{{ Session::get('success') }}", "success");
                 </script>
-            @endsection
+            @endpush
         @endif
 
         @if (Session::has('error'))
-            @section('scripts')
+            @push('swal-scripts')
                 <script>
-                    swal("Error", "{{ Session::get('error') }}", "error").then(() => {
-                        location.reload();
-                    });
+                    swal("Error", "{{ Session::get('error') }}", "error");
                 </script>
-            @endsection
+            @endpush
         @endif
         <div class="row">
             <div class="col-md-12">
                 <div class="card border-0 bg-white">
                     <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between">
                         <h5 class="mb-0 mt-0">{{ __('Transport Fee Master') }}</h5>
-                            
+
                         <div class=" flex-column d-flex align-items-end ">
                             <a href="{{ route('admin.transport-fee-master.create') }}" class="btn btn-success text-white"><span class="mdi mdi-plus-circle-outline me-2"></span>Add</a>
                             <div class="d-flex align-items-center gap-1 mt-2">
@@ -47,17 +43,14 @@
                                     <select name="section_id" id="section_id" class="form-control mx-1" required>
                                         <option value="">Select Section</option>
                                     </select>
-                                    <input type="hidden" id="initialStdId"
-                                        value="{{ old('std_id', request()->get('std_id') !== null ? request()->get('std_id') : '') }}">
+                                    <input type="hidden" id="initialStdId" value="{{ old('std_id', request()->get('std_id') !== null ? request()->get('std_id') : '') }}">
                                     <select name="std_id" id="std_id" class="form-control mx-1" required>
                                         <option value="">Select Student</option>
                                     </select>
-                                    <img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader"
-                                        id="loader" style="display:none; width:10%;">
-                                    
                                     <button id="search" type="submit" class="btn btn-sm btn-dark mx-2 d-flex align-items-center gap-1"><span class="mdi mdi-magnify "></span> Search</button>
                                 </form>
                                 <a href="{{ route('admin.transport-fee-master.index') }}" class="btn btn-dark">Reset</a>
+                                <span><img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader" id="loader" style="display:none; width:5%;"></span>
                             </div>
                         </div>
                     </div>
@@ -72,7 +65,6 @@
                                         <th>IInd Installment</th>
                                         <th>Discount</th>
                                         <th>Total</th>
-
                                     </tr>
                                 </thead>
                                 <tbody class="">
@@ -88,92 +80,134 @@
     </div>
 @endsection
 @section('admin-scripts')
-    <script>
+<script>
+$(document).ready(function () {
+    let classSelect   = $('#class_id');
+    let sectionSelect = $('#section_id');
+    let stdSelect     = $('#std_id');
 
-        $(document).ready(function() {
-            let classSelect = $('#class_id');
-            let sectionSelect = $('#section_id');
-            let sessionSelect = $('#current_session');
-            let stdSelect = $('#std_id');
-            let initialSectionId = $('#initialSectionId').val();
-            let initialStdId = $('#initialStdId').val();
-            getClassSection(classSelect.val(), initialSectionId);
+    let initialSectionId = $('#initialSectionId').val();
+    let initialStdId     = $('#initialStdId').val();
 
-            function fetchStdNameFather(classId, sectionId, sessionId) {
-                if (classId && sectionId && sessionId) {
-                    $.ajax({
-                        url: '{{ route('stdNameFather.get') }}',
-                        type: 'GET',
-                        dataType: 'JSON',
-                        data: {
-                            class_id: classId,
-                            section_id: sectionId,
-                            session_id: sessionId,
-                        },
-                        success: function(data) {
-                            stdSelect.empty();
-                            stdSelect.append('<option value="">Select Student</option>');
-                            $.each(data, function(id, value) {
-                                stdSelect.append('<option value="' + value.srno + '">' +
-                                    ++id + '. ' + value.student_name + '/' + value.f_name +
-                                    '</option>');
-                            });
-                            $('#search').on('click', function(e) {
-                                e.preventDefault();
-                                var selectedStdId = stdSelect.val();
-                                var selectedStudent = data.find(student => student.srno ===
-                                    selectedStdId);
-                                var scheduleHtml = ''
-                                if (selectedStudent) {
-                                    scheduleHtml += `<tr>
-                                    <td>
-                                        ${selectedStudent.trans_1st_inst ?? '-'}
-                                     </td>
-                                    <td>${selectedStudent.trans_2nd_inst  ?? '-'}</td>
-                                    <td>
-                                        ${selectedStudent.trans_discount ?? '-'}
-                                    </td>
-                                    <td>
-                                        ${selectedStudent.trans_total ?? '-'}
-                                    </td>
-                                    </tr>`;
-                                    $('#std-container table tbody').html(scheduleHtml);
+    // ----------------------------------
+    // HELPERS
+    // ----------------------------------
+    function resetTable() {
+        $('#std-container').hide();
+        $('#std-container table tbody').empty();
+    }
 
-                                }
-                                $('#std-container').show();
-                            });
+    function resetStudents() {
+        stdSelect.empty().append('<option value="">Select Student</option>');
+        resetTable();
+    }
 
-                            if (typeof initialStdId !== 'undefined') {
-                                stdSelect.val(initialStdId);
-                            }
-                        },
-                        error: function(xhr) {
-                            console.error('Error fetching student detail:', xhr);
-                        }
-                    });
-                } else {
-                    stdSelect.empty();
-                    stdSelect.append('<option value="">Select Student</option>');
-                }
-            }
+    // ----------------------------------
+    // INITIAL LOAD (class → section)
+    // ----------------------------------
+    getClassSection(classSelect.val(), initialSectionId);
 
-            var selectedClassId = classSelect.val();
-            var selectedSectionId = sectionSelect.val();
-            var selectedSessionId = sessionSelect.val();
-            if (selectedClassId && selectedSectionId && selectedSessionId) {
-                fetchStdNameFather(selectedClassId, selectedSectionId, selectedSessionId);
-            }
-            classSelect.change(()=>{
+    // ----------------------------------
+    // FETCH STUDENTS
+    // ----------------------------------
+    function fetchStdNameFather(classId, sectionId) {
+
+        resetStudents();
+
+        if (!classId || !sectionId) return;
+
+        $.ajax({
+            url: '{{ route('admin.transport-fee-master.getStudents') }}',
+            type: 'GET',
+            dataType: 'json',
+            data: {
+                class_id: classId,
+                section_id: sectionId
+            },
+            success: function (response) {
+
                 stdSelect.empty();
-                stdSelect.append('<option value="">Select Student</option>');
-            });
-            sectionSelect.change(function() {
-                var sectionId = $(this).val();
-                var classId = classSelect.val();
-                var sessionId = sessionSelect.val();
-                fetchStdNameFather(classId, sectionId, sessionId);
-            });
 
+                // NO STUDENT CASE
+                if (response.status === 'error' || !response.data || response.data.length === 0) {
+                    stdSelect.append('<option value="">No Student Found</option>');
+                    return;
+                }
+
+                // STUDENT FOUND
+                stdSelect.append('<option value="">Select Student</option>');
+
+                $.each(response.data, function (i, student) {
+                    stdSelect.append(
+                        `<option value="${student.srno}">
+                            ${student.rollno}. ${student.student_name}/${student.father_name}
+                        </option>`
+                    );
+                });
+
+                if (initialStdId) {
+                    stdSelect.val(initialStdId);
+                }
+
+                // ----------------------------------
+                // SEARCH BUTTON (remove old, add new)
+                // ----------------------------------
+                $('#search').off('click').on('click', function (e) {
+                    e.preventDefault();
+
+                    resetTable();
+
+                    let selectedStdId = stdSelect.val();
+                    if (!selectedStdId) return;
+
+                    let selectedStudent = response.data.find(
+                        s => s.srno == selectedStdId
+                    );
+
+                    if (!selectedStudent) return;
+
+                    let rowHtml = `
+                        <tr>
+                            <td>${selectedStudent.trans_1st_inst ?? '-'}</td>
+                            <td>${selectedStudent.trans_2nd_inst ?? '-'}</td>
+                            <td>${selectedStudent.trans_discount ?? '-'}</td>
+                            <td>${selectedStudent.trans_total ?? '-'}</td>
+                        </tr>
+                    `;
+
+                    $('#std-container table tbody').html(rowHtml);
+                    $('#std-container').show();
+                });
+            },
+            error: function () {
+                resetStudents();
+            }
         });
-    </script>
+    }
+
+    // ----------------------------------
+    // EVENTS
+    // ----------------------------------
+    classSelect.on('change', function () {
+        resetStudents();
+    });
+
+    sectionSelect.on('change', function () {
+        fetchStdNameFather(classSelect.val(), $(this).val());
+    });
+
+    stdSelect.on('change', function () {
+        resetTable();
+    });
+
+    // ----------------------------------
+    // AUTO LOAD (redirect back with input)
+    // ----------------------------------
+    if (classSelect.val() && sectionSelect.val()) {
+        fetchStdNameFather(classSelect.val(), sectionSelect.val());
+    }
+
+});
+</script>
 @endsection
+

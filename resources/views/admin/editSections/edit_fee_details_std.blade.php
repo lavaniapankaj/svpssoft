@@ -20,8 +20,7 @@
                             </div>
                             <div class="row">
                                 <div class="form-group col-md-6">
-                                    <label for="computer-slip" class="mt-2">Academic Fee Slip Number (Computer) <span
-                                            class="text-danger">*</span></label>
+                                    <label for="computer-slip" class="mt-2">Academic Fee Slip Number (Computer) <span class="text-danger">*</span></label>
                                     <input type="text" name="computer_slip" id="computer-slip" class="form-control">
                                     <span class="invalid-feedback form-invalid fw-bold computer-slip-error" role="alert"></span>
                                 </div>
@@ -187,7 +186,6 @@
                                 sectionOptions.append('<option value="">No sections found</option>');
                             }
                         },
-
                         complete: function() {
                             loader.hide();
                         },

@@ -18,16 +18,14 @@ class FeeMasterController extends Controller
      */
     public function index(Request $request)
     {
-        //
         $query =  FeeMaster::query();
         if ($query) {
-            # code...
             $sessions = SessionMasterController::getSessions();
             $classes = ClassMasterController::getClasses();
             if (filled($request->session_id) && filled($request->class_id)) {
                 $query->where('session_id', $request->session_id)->where('class_id', $request->class_id);
             }
-            $data = $query->where('active', 1)->orderBy('created_at', 'DESC')->paginate(10);
+            $data = $query->where('active', 1)->orderBy('created_at', 'DESC')->paginate(15);
             return view('admin.academic_fee.index', compact('data','classes','sessions'));
         } else {
             return redirect()->back()->with('error', 'Something went wrong, please try again.');
@@ -39,7 +37,6 @@ class FeeMasterController extends Controller
      */
     public function create()
     {
-        //
         $sessions = SessionMasterController::getSessions();
         $classes = ClassMasterController::getClasses();
         return view('admin.academic_fee.create', compact('classes','sessions'));
@@ -50,10 +47,8 @@ class FeeMasterController extends Controller
      */
     public function store(Request $request)
     {
-        //
         $request->validate([
-            // 'class_id' => 'required|integer|exists:class_masters,id',
-            'session_id' => 'required|integer|exists:session_masters,id,active,1',
+            'session_id' => 'required|exists:session_masters,id,active,1',
             'admission_fee' => 'required|numeric|min:0',
             'inst_1' => 'required|numeric|min:0',
             'inst_2' => 'required|numeric|min:0',
@@ -61,15 +56,17 @@ class FeeMasterController extends Controller
             'inst_total' => 'required|numeric|min:0',
             'class_id' => [
                 'required',
-                'integer',
                 'exists:class_masters,id,active,1',
                 Rule::unique('fee_masters')->where(function ($query) use ($request) {
                     return $query->where('class_id', $request->class_id)->where('session_id', $request->session_id)->where('active', 1);
                 }),
             ],
         ], [
+            'session_id.required' => 'Select Session.',
+            'session_id.exists' => 'Selected Session is invalid.',
             'class_id.required' => 'Select Class',
-            'session_id.required' => 'Select Session',
+            'class_id.exists' => 'Selected Class is invalid.',
+            'class_id.unique' => 'Fee already exists for the selected class and session.',
             'admission_fee.required' => 'Enter Admission Fee',
             'inst_1.required' => 'Enter First Installment',
             'inst_2.required' => 'Enter Second Installment',
@@ -88,17 +85,13 @@ class FeeMasterController extends Controller
             'ins_discount' => $request->ins_discount ?? 0,
             'inst_total' => $request->inst_total,
             'add_user_id' => Session::get('login_user'),
-            'edit_user_id' => Session::get('login_user'),
             'active' => 1,
 
         ];
         if (!empty($feeData)) {
-            # code...
-
             $fee = FeeMaster::create($feeData);
-
             if ($fee) {
-                return redirect()->route('admin.academic-fee-master.index')->with('success', 'Academic Fee saved successfully.');
+                return redirect()->back()->withInput(['session_id' => $request->session_id])->with('success', 'Academic Fee saved successfully.');
             } else {
                 return redirect()->back()->with('error', 'Something went wrong, please try again.');
             }
@@ -123,15 +116,12 @@ class FeeMasterController extends Controller
      */
     public function edit(FeeMaster $academic_fee_master)
     {
-        //
         if (!empty($academic_fee_master)) {
-            # code...
             $sessions = SessionMasterController::getSessions();
             $classes = ClassMasterController::getClasses();
             $feeMaster = $academic_fee_master;
             return view('admin.academic_fee.edit', compact('feeMaster', 'classes', 'sessions'));
         } else {
-            # code...
             return redirect()->back()->with('error', 'Something went wrong, please try again.');
         }
     }
@@ -141,10 +131,8 @@ class FeeMasterController extends Controller
      */
     public function update(Request $request, FeeMaster $academic_fee_master)
     {
-        //
         $request->validate([
-            // 'class_id' => 'required|integer|exists:class_masters,id',
-            'session_id' => 'required|integer|exists:session_masters,id,active,1',
+            'session_id' => 'required|exists:session_masters,id,active,1',
             'admission_fee' => 'required|numeric|min:0',
             'inst_1' => 'required|numeric|min:0',
             'inst_2' => 'required|numeric|min:0',
@@ -152,15 +140,16 @@ class FeeMasterController extends Controller
             'inst_total' => 'required|numeric|min:0',
             'class_id' => [
                 'required',
-                'integer',
                 'exists:class_masters,id,active,1',
                 Rule::unique('fee_masters')->where(function ($query) use ($request) {
                     return $query->where('class_id', $request->class_id)->where('session_id', $request->session_id)->where('active', 1);
                 })->ignore($request->id),
             ],
         ], [
-            'class_id.required' => 'Select Class',
-            'session_id.required' => 'Select Session',
+            'session_id.required' => 'Select Session.',
+            'session_id.exists' => 'Selected Session is invalid.',
+            'class_id.required' => 'Select Class.',
+            'class_id.exists' => 'Selected Class is invalid.',
             'admission_fee.required' => 'Enter Admission Fee',
             'inst_1.required' => 'Enter First Installment',
             'inst_2.required' => 'Enter Second Installment',
@@ -180,9 +169,7 @@ class FeeMasterController extends Controller
             'inst_total' => $request->inst_total,
             'edit_user_id' => Session::get('login_user'),
         ];
-
         $fee = $academic_fee_master->update($feeData);
-
         if ($fee) {
             return redirect()->route('admin.academic-fee-master.index')->with('success', 'Academic Fee updated successfully.');
         } else {

@@ -1088,7 +1088,7 @@ class FeeEntryController extends Controller
                         : ($row['trans_inst_1'] ?? 0) - $transportInstAmount)
                     : 0;
                 $totalDue = $academicDue + $transportDue;
-                if (($request->reportType === 'complete' || $totalDue > 0) || ($request->reportType === 'firstInstDue' && $totalDue > 0)) {
+                if (($request->reportType === 'complete' && $totalDue > 0) || ($request->reportType === 'firstInstDue' && $totalDue > 0)) {
                     fputcsv($output, [
                         $row['class_name'],
                         $row['section_name'],
@@ -1329,6 +1329,400 @@ class FeeEntryController extends Controller
         ]);
     }
 
+
+
+
+
+    /** Due Fee Report of the students (Date 24-11-2025) */
+    public function dueFeeReportStds(Request $request)
+    {
+        try {
+            $current_session = Session::get('fee_current_session')->id;
+            $class = $request->class;
+            $section = $request->section;
+            $std = $request->srno;
+            $reportType = $request->reportType;
+
+            // Validation
+            if (empty($class) || empty($section) || empty($current_session) || empty($reportType) || empty($std)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Class, Section, Session, Report Type, and Student are required"
+                ], 400);
+            }
+
+            // Define fields for selection
+            $fields = [
+                'stu_main_srno.srno',
+                'stu_main_srno.prev_srno',
+                'stu_main_srno.admission_date',
+                'stu_main_srno.class',
+                'stu_main_srno.section',
+                'stu_main_srno.session_id',
+                'stu_main_srno.transport',
+                'stu_main_srno.trans_1st_inst',
+                'stu_main_srno.trans_2nd_inst',
+                'stu_main_srno.trans_total',
+                'stu_main_srno.ssid',
+                'stu_main_srno.active',
+                'stu_detail.name',
+                'parents_detail.f_name',
+                'parents_detail.f_mobile',
+                'class_masters.class as class_name',
+                'section_masters.section as section_name',
+            ];
+
+            // Build query based on parameters
+            $query = StudentMasterController::getStdWithNames(false, $fields)->where('stu_main_srno.session_id', $current_session);
+
+            // Handle class filter
+            if ($class !== 'all') {
+                $classArray = explode(',', $class);
+                $query->whereIn('stu_main_srno.class', $classArray);
+            }
+
+            // Handle section filter
+            if ($section !== 'all') {
+                $sectionArray = explode(',', $section);
+                $query->whereIn('stu_main_srno.section', $sectionArray);
+            }
+
+            // Handle student filter
+            if ($std !== 'all') {
+                $stdArray = explode(',', $std);
+                $query->whereIn('stu_main_srno.srno', $stdArray);
+            }
+
+            $students = $query->orderBy('stu_main_srno.class')->get();
+
+            if ($students->isEmpty()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "No students found for the given criteria"
+                ], 404);
+            }
+
+            // Process students data
+            $result = collect();
+
+            foreach ($students as $key => $st) {
+                // Get fee details
+                $feeDetailsQuery = FeeDetail::where('srno', $st->srno)
+                    ->where('session_id', $st->session_id)
+                    ->where('active', 1);
+
+                // Check if admission fee should be included
+                $isNewAdmission = ($st->prev_srno == '' || $st->prev_srno == null) && $st->admission_date != '';
+
+                if (!$isNewAdmission) {
+                    $feeDetailsQuery->where('fee_of', '!=', 1);
+                }
+
+                // Get fee master
+                $feeMaster = FeeMaster::where('session_id', $st->session_id)
+                    ->where('class_id', $st->class)
+                    ->where('active', 1)
+                    ->first();
+
+                if (!$feeMaster) {
+                    continue; // Skip if no fee master found
+                }
+
+                // Calculate academic fees
+                $admissionFee = $isNewAdmission ? ($feeMaster->admission_fee ?? 0) : 0;
+                $inst1Amount = $feeMaster->inst_1 ?? 0;
+                $inst2Amount = $feeMaster->inst_2 ?? 0;
+                $instTotal = $feeMaster->inst_total ?? 0;
+                $payableAmount = $instTotal + $admissionFee;
+
+
+                // Get admission fee paid
+                $admissionFeePaid = FeeDetail::where('srno', $st->srno)
+                    ->where('session_id', $st->session_id)
+                    ->where('fee_of', 1)
+                    ->where('academic_trans', 1)
+                    ->where('active', 1)
+                    ->sum('amount');
+
+                // Calculate installment-wise payments
+                $installmentDetails = $this->calInstFees($st, $st, 1);
+                $firstInstPaid = 0;
+                $secondInstPaid = 0;
+                $mercyPaid = 0;
+                $completeFeePaid = 0;
+
+                if (isset($installmentDetails['first_inst']) && is_array($installmentDetails['first_inst'])) {
+                    $firstInstPaid = array_sum(array_column($installmentDetails['first_inst'], 'amount'));
+                }
+
+                if (isset($installmentDetails['second_inst']) && is_array($installmentDetails['second_inst'])) {
+                    $secondInstPaid = array_sum(array_column($installmentDetails['second_inst'], 'amount'));
+                }
+
+                if (isset($installmentDetails['mercy']) && is_array($installmentDetails['mercy'])) {
+                    $mercyPaid = array_sum(array_column($installmentDetails['mercy'], 'amount'));
+                }
+
+                if (isset($installmentDetails['complete_inst']) && is_array($installmentDetails['complete_inst'])) {
+                    $completeFeePaid = array_sum(array_column($installmentDetails['complete_inst'], 'amount'));
+                }
+
+                // Total academic paid
+                $totalAcademicPaid = $feeDetailsQuery->where('academic_trans', 1)->sum('amount');
+
+                // Calculate transport fees
+                $transInst1 = $st->trans_1st_inst ?? 0;
+                $transInst2 = $st->trans_2nd_inst ?? 0;
+                $transTotal = $st->trans_total ?? 0;
+                $transMercy = 0;
+                $transComplete = 0;
+
+                $transInstallmentDetails = $this->calInstFees($st, $st, 2);
+                $transFirstInstPaid = 0;
+                $transSecondInstPaid = 0;
+
+                if (isset($transInstallmentDetails['first_inst']) && is_array($transInstallmentDetails['first_inst'])) {
+                    $transFirstInstPaid = array_sum(array_column($transInstallmentDetails['first_inst'], 'amount'));
+                }
+
+                if (isset($transInstallmentDetails['second_inst']) && is_array($transInstallmentDetails['second_inst'])) {
+                    $transSecondInstPaid = array_sum(array_column($transInstallmentDetails['second_inst'], 'amount'));
+                }
+
+                if (isset($transInstallmentDetails['mercy']) && is_array($transInstallmentDetails['mercy'])) {
+                    $transMercy = array_sum(array_column($transInstallmentDetails['mercy'], 'amount'));
+                }
+
+                if (isset($transInstallmentDetails['complete_inst']) && is_array($transInstallmentDetails['complete_inst'])) {
+                    $transComplete = array_sum(array_column($transInstallmentDetails['complete_inst'], 'amount'));
+                }
+
+                $transTotalPaid = FeeDetail::where('srno', $st->srno)
+                    ->where('session_id', $st->session_id)
+                    ->where('academic_trans', 2)
+                    ->where('active', 1)
+                    ->sum('amount');
+
+                // Calculate dues based on report type
+                $academicDue = 0;
+                $transportDue = 0;
+                $shouldIncludeStudent = false;
+
+                switch ($reportType) {
+                    case 'complete':
+                        // Complete fee due - exclude if paid fully
+                        $academicDue = $payableAmount - $totalAcademicPaid;
+                        $transportDue = ($st->transport == 1) ? ($transTotal - $transTotalPaid) : 0;
+                        $shouldIncludeStudent = ($academicDue > 0 || $transportDue > 0);
+                        break;
+
+                   case 'firstInstDue':
+
+                    $firstInstPayable = $inst1Amount + $admissionFee;
+                    $payableAmount = $firstInstPayable;
+                    $firstInstOnlyPaid = $firstInstPaid + $admissionFeePaid;
+                    $totalFirstInstCoverage = $firstInstOnlyPaid + $mercyPaid + $completeFeePaid;
+
+                    // Academic due
+                    $academicDue = $totalFirstInstCoverage -  $firstInstPayable;
+
+                    // Transport
+                    $transFirstOnlyPaid = $transFirstInstPaid;
+                    $totalTransFirstCoverage = $transFirstOnlyPaid + $transMercy + $transComplete;
+                    $transportDue = ($st->transport == 1) ? ($transInst1 - $totalTransFirstCoverage) : 0;
+
+                    // Should include only if due exists
+                    $shouldIncludeStudent = ($academicDue > 0 || $transportDue > 0);
+
+                    break;
+
+                    case 'secondInstDue':
+
+                    $secondInstPayable = $inst2Amount;
+                    $payableAmount = $secondInstPayable;
+                    $secondInstOnlyPaid = $secondInstPaid;
+                    $totalSecondInstCoverage = $secondInstOnlyPaid + $mercyPaid + $completeFeePaid;
+
+                    // Academic due
+                    $academicDue =  $totalSecondInstCoverage - $secondInstPayable;
+
+                    // Transport
+                    $transSecondOnlyPaid = $transSecondInstPaid;
+                    $totalTransSecondCoverage = $transSecondOnlyPaid + $transMercy + $transComplete;
+                    $transportDue = ($st->transport == 1) ? ($transInst2 - $totalTransSecondCoverage) : 0;
+
+                    // Should include only if due exists
+                    $shouldIncludeStudent = ($academicDue > 0 || $transportDue > 0);
+
+                    break;
+
+                    default:
+                        // Default to complete
+                        $academicDue = $payableAmount - $totalAcademicPaid;
+                        $transportDue = ($st->transport == 1) ? ($transTotal - $transTotalPaid) : 0;
+                        $shouldIncludeStudent = ($academicDue > 0 || $transportDue > 0);
+                }
+
+                $totalDue = $academicDue + $transportDue;
+
+                // Skip if student shouldn't be included or has no dues
+                if (!$shouldIncludeStudent || $totalDue <= 0) {
+                    continue;
+                }
+
+                // Add to result
+                $result[] = [
+                    'student' => $st,
+                    'student_srno' => $st->srno,
+                    'section' => $st->section,
+                    'class' => $st->class,
+                    'session_id' => $st->session_id,
+                    'student_name' => $st->name,
+                    'father_name' => $st->f_name,
+                    'class_name' => $st->class_name,
+                    'section_name' => $st->section_name,
+                    'academic_payable_amount' => $payableAmount,
+                    'academic_paid_amount' => $totalAcademicPaid,
+                    'academic_due_amount' => $academicDue > 0 ? $academicDue : 0,
+                    'transport_payable_amount' => $st->transport == 1 ? $transTotal : 0,
+                    'transport_paid_amount' => $st->transport == 1 ? $transTotalPaid : 0,
+                    'transport_due_amount' => $st->transport == 1 ? ($transportDue > 0 ? $transportDue : 0) : 0,
+                    'total_due' => $totalDue > 0 ? $totalDue : 0,
+                    // Debug info
+                   /*  'debug_info' => [
+                        'first_inst_paid' => $firstInstPaid,
+                        'second_inst_paid' => $secondInstPaid,
+                        'mercy_paid' => $mercyPaid,
+                        'complete_fee_paid' => $completeFeePaid,
+                        'report_type' => $reportType,
+                    ] */
+                ];
+            }
+
+            // Handle pagination
+            if (!empty($request->page)) {
+                $page = (int) $request->page;
+                $perPage = 10;
+                $total = $result->count();
+                $sliced = $result->slice(($page - 1) * $perPage, $perPage)->values();
+
+                $paginator = new LengthAwarePaginator(
+                    $sliced,
+                    $total,
+                    $perPage,
+                    $page,
+                    ['path' => $request->url(), 'query' => $request->query()]
+                );
+
+                return response()->json([
+                    'status' => 'success',
+                    'data' => $paginator->items(),
+                    'pagination' => [
+                        'total' => $paginator->total(),
+                        'per_page' => $paginator->perPage(),
+                        'current_page' => $paginator->currentPage(),
+                        'last_page' => $paginator->lastPage(),
+                        'from' => $paginator->firstItem(),
+                        'to' => $paginator->lastItem(),
+                    ]
+                ]);
+            }
+
+            // Return full list without pagination
+            return response()->json([
+                'status' => 'success',
+                'data' => $result,
+                'pagination' => [],
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Due Fee Report Error: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => "Failed to get Students: " . $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+
+    // export report
+    public function stexportDueFeeReport(Request $request)
+    {
+        try {
+            $response = $this->dueFeeReportStds($request);
+            if ($response->getStatusCode() !== 200) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Failed to generate report: ' . $response->getContent()
+                ], 500);
+            }
+            $decodedResponse = json_decode($response->getContent(), true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return response()->json(['status' => 'error', 'message' => 'Invalid JSON response: ' . json_last_error_msg()], 500);
+            }
+            $reportData = $decodedResponse['data'] ?? null;
+            // return $reportData;
+            if (!$reportData) {
+                return response()->json(['status' => 'error', 'message' => 'No data found'], 404);
+            }
+            $fileName = 'due_fee_report.csv';
+            $csvContent = '';
+            $output = fopen('php://memory', 'w');
+            if ($output === false) {
+                throw new \Exception('Failed to open output stream.');
+            }
+            // Set the CSV column headers
+            $headers = ['Class', 'Section', 'Name', "Father's Name", 'Payable(Ac.)', 'Paid(Ac.)', 'Due(Ac.)', 'Payable(Tr.)', 'Paid(Tr.)', 'Due(Tr.)', 'Total Due'];
+            fputcsv($output, $headers);
+            foreach ($reportData as $row) {
+                fputcsv($output, [
+                    $row['class_name'],
+                    $row['section_name'],
+                    $row['student_name'],
+                    $row['father_name'],
+                    $row['academic_payable_amount'],
+                    $row['academic_paid_amount'],
+                    $row['academic_due_amount'],
+                    $row['transport_payable_amount'],
+                    $row['transport_paid_amount'],
+                    $row['transport_due_amount'],
+                    $row['total_due']
+                ]);
+            }
+            // Rewind the memory to the start
+            rewind($output);
+            // Capture the content into a string
+            $csvContent = stream_get_contents($output);
+            fclose($output);
+            return response($csvContent, 200)->header('Content-Type', 'text/csv')
+                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => "Failed to export report"
+            ], 500);
+        }
+    }
+
+
+
+    public function checkDueFeeData(Request $request)
+    {
+        $response = $this->dueFeeReportStds($request);
+
+        if ($response->getStatusCode() !== 200) {
+            return response()->json(['status' => 'error'], 404);
+        }
+
+        $decoded = json_decode($response->getContent(), true);
+
+        if (empty($decoded['data'])) {
+            return response()->json(['status' => 'error', 'message' => 'No data found'], 404);
+        }
+
+        return response()->json(['status' => 'success'], 200);
+    }
 
 
 }

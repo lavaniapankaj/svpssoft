@@ -71,6 +71,7 @@ Route::group(['middleware' => 'auth'], function () {
     Route::get('states', [StateMasterController::class, 'getStatesAjax'])->name('states.get');
     Route::get('districts', [DistrictMasterController::class, 'getDistricts'])->name('districts.get');
     Route::get('subjects', [SubjectMasterController::class, 'getSubjectsAjax'])->name('subjects.get');
+    Route::get('/main-subjects', [SubjectGroupMasterController::class, 'getSubjectsWithoutGroupAjax'])->name('main.subjects.get'); /* Main subjects */
     Route::get('exams', [ExamMasterController::class, 'getExamAjax'])->name('exams.get');
     Route::get('/std-name-father', [StudentMasterController::class, 'getStdNameFather'])->name('stdNameFather.get');
 
@@ -233,9 +234,20 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth', 'i
             'srno' => $srno
         ]);
     })->name('individual.stdreports');
+    Route::get('getMarks', [MarksMasterController::class, 'getSubjectMarksGrade'])->name('subjectMarks');
+
+    Route::get('over-all-grade', [MarksMasterController::class, 'overAllGradeIndex'])->name('overAllGrade.index'); /** Global */
+    Route::get('global-grade', [MarksMasterController::class, 'getGlobalOverAllMarksGrade'])->name('get.globalOverAllMarksGrade'); /** Global */
+    Route::post('global-grade/store', [MarksMasterController::class, 'storeOverAllMarksGradeWithoutExam'])->name('globalOverAllMarksGrade.store'); /** Global */
+    Route::get('global-subject-wise-grade', [MarksMasterController::class, 'getGlobalSubjectWiseOverallGrade'])->name('global.subjectWiseOverallGrade.get'); /** Global */
+
+    Route::get('get-subject-wise-grade', [MarksMasterController::class, 'getSubjectWiseOverallGrade'])->name('subjectWiseOverallGrade.get');
+    Route::get('subject-wise-grade', [MarksMasterController::class, 'subjectWiseOverallGradeIndex'])->name('subjectWiseOverallGradeIndex');
+    Route::get('get-grade', [MarksMasterController::class, 'getOverAllMarksGrade'])->name('overAllGrade.get');
+    Route::post('over-all-grade-store', [MarksMasterController::class, 'storeOverAllMarksGrade'])->name('overAllGrade.store');
 
     Route::resource('academic-fee-master', FeeMasterController::class)->except(['destroy']);
-    Route::resource('transport-fee-master', TransportFeeMasterController::class)->except(['destroy']);
+    /* Route::resource('transport-fee-master', TransportFeeMasterController::class)->except(['destroy']); */
     Route::resource('exam-master', ExamMasterController::class)->except(['destroy']);
     Route::resource('marks-master', MarksMasterController::class)->except(['destroy']);
     Route::resource('promote-std', PromoteController::class)->except(['destroy']);
@@ -246,6 +258,14 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth', 'i
     Route::resource('subject-group-master', SubjectGroupMasterController::class)->except(['destroy']);
     Route::resource('state-master', StateMasterController::class)->except(['destroy']);
     Route::resource('district-master', DistrictMasterController::class)->except(['destroy']);
+
+    Route::controller(TransportFeeMasterController::class)->group(function () {
+        Route::get('transport-fee-master/', 'index')->name('transport-fee-master.index');
+        Route::get('transport-fee-master/create', 'create')->name('transport-fee-master.create');
+        Route::post('transport-fee-master/store', 'store')->name('transport-fee-master.store');
+        Route::get('transport-fee-master/get-students', 'getStudents')->name('transport-fee-master.getStudents');
+    });
+
     /*Route::resources([
         'academic-fee-master' => FeeMasterController::class,
         'transport-fee-master' => TransportFeeMasterController::class,
@@ -478,6 +498,9 @@ Route::group(['prefix' => 'fee', 'as' => 'fee.', 'middleware' => ['auth', 'is_va
         Route::get('due-fee-report-sms', 'dueFeeReportSMS')->name('due-fee-report-sms');
         Route::post('due-fee-report-send-sms', 'sendSMSSt')->name('due-fee-report-send-sms');
 
+       Route::post('std-due-fee-report', 'dueFeeReportStds')->name('std-due-fee-report');
+       Route::get('std-due-fee-report/excel', 'stexportDueFeeReport')->name('std-due-fee-report-excel');
+       Route::get('check/excel/data', 'checkDueFeeData')->name('check-due-fee-data');
 
 
 

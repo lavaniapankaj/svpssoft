@@ -3,21 +3,18 @@
 @section('sub-content')
     <div class="container-fluid">
         @if (Session::has('success'))
-            @section('scripts')
+            @push('swal-scripts')
                 <script>
-                    swal("Successful", "{{ Session::get('success') }}", "success").then(() => {
-                                    location.reload();
-                                });
+                    swal("Successful", "{{ Session::get('success') }}", "success");
                 </script>
-            @endsection
+            @endpush
         @endif
-
         @if (Session::has('error'))
-            @section('scripts')
+            @push('swal-scripts')
                 <script>
                     swal("Error", "{{ Session::get('error') }}", "error");
                 </script>
-            @endsection
+            @endpush
         @endif
         <div class="row">
             <div class="col-md-12">
@@ -47,23 +44,21 @@
                                                 {{ $value->exam}}
                                             </td>
                                             <td class="text-center">
-                                                    <div class="d-flex gap-2 align-items-center">
-                                                <a href="{{ route('admin.exam-master.edit', $value->id) }}"
-                                                    class=" btn-icon editbtnGlobal">
-                                                    <i class="mdi mdi-pencil" data-bs-toggle="tooltip" data-bs-offset="0,4"
-                                                        data-bs-placement="top" title="Edit"></i>
-                                                </a>
+                                                <div class="d-flex gap-2 align-items-center">
+                                                    <a href="{{ route('admin.exam-master.edit', $value->id) }}" class=" btn-icon editbtnGlobal">
+                                                        <i class="mdi mdi-pencil" data-bs-toggle="tooltip" data-bs-offset="0,4"  data-bs-placement="top" title="Edit"></i>
+                                                    </a>
 
-                                                {{-- <form action="{{ route('admin.subject-master.softDelete', $value->id) }}"
-                                                    method="POST" style="display:inline;">
-                                                    @csrf
-                                                    <button type="submit" class=" btn-icon  delete-form-btn deletebtnGlobal"
-                                                        data-bs-toggle="tooltip" data-bs-offset="0,4"
-                                                        data-bs-placement="top" data-bs-html="true" title="Delete">
-                                                        <i class="mdi mdi-delete"></i>
-                                                    </button>
-                                                </form> --}}
-                                            </div>
+                                                    {{-- <form action="{{ route('admin.subject-master.softDelete', $value->id) }}"
+                                                        method="POST" style="display:inline;">
+                                                        @csrf
+                                                        <button type="submit" class=" btn-icon  delete-form-btn deletebtnGlobal"
+                                                            data-bs-toggle="tooltip" data-bs-offset="0,4"
+                                                            data-bs-placement="top" data-bs-html="true" title="Delete">
+                                                            <i class="mdi mdi-delete"></i>
+                                                        </button>
+                                                    </form> --}}
+                                                </div>
                                             </td>
                                         </tr>
                                     @endforeach
@@ -73,12 +68,7 @@
                                     </tr>
                                 @endif
                             </table>
-
-                            {{-- @if (request()->get('class_id'))
-                                {{ $data->appends(['class_id' => request()->get('class_id')])->links() }}
-                            @else --}}
-                                {{ $data->links() }}
-                            {{-- @endif --}}
+                            {{ $data->links() }}
                        </div>
 
                     </div>

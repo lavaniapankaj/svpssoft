@@ -20,6 +20,25 @@
     height: auto;
     margin-bottom: 10px;
 }
+.mianbtn.defbtn {
+    padding: 9px 15px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    line-height: 1em;
+    border-radius: 5px;
+    text-align: center;
+
+}
+.mianbtn.defbtn  {
+    background-color: #CC7351;
+    color: #fff;
+}
+.mianbtn.activebtn, .mianbtn.activebtn:hover, .mianbtn.defbtn:hover {
+    background-color: #a85d41;
+    color: #fff;
+}
+
 
 
 

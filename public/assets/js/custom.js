@@ -56,67 +56,69 @@ document.addEventListener('DOMContentLoaded', function () {
 var loader = $('.loader');
 //get class and section
 function getClassSection(initialClassId, initialSectionId = '', classSelect = '', sectionSelect = '') {
-    var classSelected = classSelect;
-    var sectionSelected = sectionSelect;
-    var initialClassesId = $('#initialClassId').val();
-    var initialSectionId = initialSectionId;
-    var initialClassId = initialClassId;
-    if (classSelect == '' || sectionSelect == '') {
-        classSelected = $('#class_id');
-        sectionSelected = $('#section_id');
+    var classSelected = classSelect || $('#class_id');
+    var sectionSelected = sectionSelect || $('#section_id');
+    var loader = $('#loader');
+
+    // Store the initial section ID - will be cleared on class change
+    var storedInitialSectionId = initialSectionId;
+
+    function fetchSections(classId, shouldSelectInitial = false) {
+        if (!classId) {
+            sectionSelected.empty().append('<option value="">Select Section</option>');
+            return;
+        }
+
+        if (loader.length) loader.show();
+        sectionSelected.prop('disabled', true);
+
+        $.ajax({
+            url: siteUrl + '/sections',
+            type: 'GET',
+            dataType: 'JSON',
+            data: { class_id: classId },
+            success: function(data) {
+                sectionSelected.empty();
+
+                if (data.status === "success" && data.data && Object.keys(data.data).length > 0) {
+                    sectionSelected.append('<option value="">Select Section</option>');
+                    $.each(data.data, function(id, name) {
+                        sectionSelected.append('<option value="' + id + '">' + name + '</option>');
+                    });
+
+                    // Only set initial section if flag is true and we have an initial value
+                    if (shouldSelectInitial && storedInitialSectionId) {
+                        sectionSelected.val(storedInitialSectionId);
+                    }
+                } else if (data.status === "error") {
+                    sectionSelected.append('<option value="">No sections available</option>');
+                } else {
+                    sectionSelected.append('<option value="">No sections available</option>');
+                }
+            },
+            error: function(xhr) {
+                sectionSelected.empty().append('<option value="">No sections available</option>');
+                console.error('Error fetching sections:', xhr.responseJSON?.message || xhr.statusText);
+            },
+            complete: function() {
+                if (loader.length) loader.hide();
+                sectionSelected.prop('disabled', false);
+            }
+        });
     }
 
-    var classId = initialClassesId;
-    fetchSections(classId);
-    function fetchSections(classId) {
-        if (classId) {
-            $.ajax({
-                url: siteUrl + '/sections',
-                type: 'GET',
-                dataType: 'JSON',
-                data: {
-                    class_id: classId
-                },
-                success: function (data) {
-                    sectionSelected.empty(); // Clear the dropdown
-                    if (data.status === "success" && data.data && Object.keys(data.data).length > 0) {
-                        sectionSelected.append('<option value="">Select Section</option>');
-                        $.each(data.data, function (id, name) {
-                            sectionSelected.append('<option value="' + id + '">' + name + '</option>');
-                        });
-                    } else if (data.status === "error") {
-                        // Handle error message from server
-                        sectionSelected.append('<option value="">No sections available</option>');
-                    } else {
-                        sectionSelected.append('<option value="">No sections available</option>');
-                    }
-                    // Set initial section if provided
-                    if (initialSectionId) {
-                        sectionSelected.val(initialSectionId);
-                    }
-                },
-                complete: function () {
-                    loader.hide();
-                },
-                error: function (data) {
-                    sectionSelected.empty();
-                    sectionSelected.append('<option value="">No sections available</option>');
-                    console.error('Error fetching sections:', data.responseJSON?.message || data.statusText);
-                }
-            });
-        } else {
-            sectionSelected.empty();
-            sectionSelected.append('<option value="">Select Section</option>');
-        }
-    }
+    // Initialize sections on page load
     var selectedClassId = classSelected.val();
     if (selectedClassId) {
-        fetchSections(selectedClassId);
+        fetchSections(selectedClassId, true);
     }
-    classSelected.change(function () {
+
+    // Handle class change event
+    classSelected.off('change.getClassSection').on('change.getClassSection', function() {
         var classId = $(this).val();
-        loader.show();
-        fetchSections(classId);
+        // Clear the stored initial section when class changes
+        storedInitialSectionId = '';
+        fetchSections(classId, false);
     });
 }
 // get session

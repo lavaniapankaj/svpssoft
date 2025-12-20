@@ -99,8 +99,9 @@
 @section('fee-scripts')
     <script>
         $(document).ready(function() {
-            dueReportSection();
-            $('#complete-fee-table').hide();
+            // dueReportSection();
+            newDueReportSection();
+            // $('#complete-fee-table').hide();
 
             let stdId = $('#back_std_id');
             function getExcelReport(std = stdId.val()) {
@@ -110,9 +111,27 @@
                 let sectionId = $('#back_section_id').val();
                 let st = std.val();
                 let report = $('#report').val();
-                const exportUrl = "{{ route('fee.due-fee-report-excel') }}?session=" +
-                    session + "&srno=" + st + "&reportType=" + report + "&class=" + classId + "&section=" + sectionId;
-                window.location.href = exportUrl;
+                const exportUrl = "{{ route('fee.std-due-fee-report-excel') }}?session="
+                    + session + "&srno=" + st + "&reportType=" + report + "&class=" + classId + "&section=" + sectionId;
+
+                const checkUrl = "{{ route('fee.check-due-fee-data') }}?session="
+                    + session + "&srno=" + st + "&reportType=" + report + "&class=" + classId + "&section=" + sectionId;
+
+                // First check data availability
+                $.ajax({
+                    url: checkUrl,
+                    type: 'GET',
+                    dataType: 'JSON',
+                    success: function (data) {
+                        if (data.status === 'success') {
+                            // Data exists → trigger download
+                            window.location.href = exportUrl;
+                        }
+                    },
+                    error: function (data) {
+                        alert("No data found for export.");
+                    }
+                });
 
             }
             let currentPage = 1;

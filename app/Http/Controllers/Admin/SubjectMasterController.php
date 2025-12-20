@@ -25,9 +25,8 @@ class SubjectMasterController extends Controller
         $where = isset($request->class_id) ? ['class_id' => $request->class_id] : [];
         $orderBy = ['created_at' => 'DESC'];
         if (!empty($fields) && !empty($whereAttb)) {
-            # code...
             $classes = ClassMasterController::getClasses();
-            $data = self::getAllSubjects($fields, $whereAttb,  $where, $orderBy, false, 10, true);
+            $data = self::getAllSubjects($fields, $whereAttb,  $where, $orderBy, false, 15, true);
             return view('admin.subject.index', ['data' => $data, 'classes' => $classes]);
         } else {
             return redirect()->back()->with('error', 'Something went wrong, please try again.');
@@ -54,12 +53,24 @@ class SubjectMasterController extends Controller
             'subject' => [
                 'required',
                 'string',
+                'max:255',
                 Rule::unique('subject_masters')->where(function ($query) use ($request) {
                     return $query->where('class_id', $request->class_id)->where('active', 1);
                 }),
             ],
             'class_id' => 'required|exists:class_masters,id,active,1',
-            'by_m_g' => 'required',
+            'by_m_g' => 'required|in:1,2',
+        ],[
+            'subject.required' => 'Please enter the subject name.',
+            'subject.string'   => 'The subject name must contain valid text.',
+            'subject.max'      => 'The subject name may not exceed 255 characters.',
+            'subject.unique'   => 'This subject already exists for the selected class.',
+
+            'class_id.required' => 'Please select a class.',
+            'class_id.exists'   => 'The selected class is invalid or inactive.',
+
+            'by_m_g.required'   => 'Please select it.',
+            'by_m_g.in'         => 'The selected value is invalid.',
         ]);
         $user = Auth::user();
 
@@ -96,7 +107,6 @@ class SubjectMasterController extends Controller
     public function edit(SubjectMaster $subjectMaster)
     {
         if (!empty($subjectMaster)) {
-            # code...
             $classes = ClassMasterController::getClasses();
             return view('admin.subject.edit', compact('subjectMaster', 'classes'));
         } else {
@@ -110,17 +120,26 @@ class SubjectMasterController extends Controller
      */
     public function update(Request $request, SubjectMaster $subjectMaster)
     {
-        //
         $request->validate([
             'subject' => [
                 'required',
                 'string',
+                'max:255',
                 Rule::unique('subject_masters')->where(function ($query) use ($request) {
                     return $query->where('class_id', $request->class_id)->where('active', 1);
                 })->ignore($request->id),
             ],
             'class_id' => 'required|exists:class_masters,id,active,1',
-            'by_m_g' => 'required',
+            'by_m_g' => 'required|in:1,2',
+        ], [
+            'subject.required' => 'Please enter the subject name.',
+            'subject.string'   => 'The subject name must contain valid text.',
+            'subject.max'      => 'The subject name may not exceed 255 characters.',
+            'subject.unique'   => 'This subject already exists for the selected class.',
+            'class_id.required' => 'Please select a class.',
+            'class_id.exists'   => 'The selected class is invalid or inactive.',
+            'by_m_g.required'   => 'Please select it.',
+            'by_m_g.in'         => 'The selected value is invalid.',
         ]);
         $user = Auth::user();
 
@@ -207,8 +226,6 @@ class SubjectMasterController extends Controller
                     'message' => $validator->errors()
                 ], 400);
             }
-            //code...
-
             if (filled($request->class_id)) {
                 $whereAttb = isset($request->subject) ? 'subject_id' : '';
                 $where = isset($request->class_id) ? ['class_id' => $request->class_id] : [];

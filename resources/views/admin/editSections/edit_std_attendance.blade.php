@@ -4,35 +4,29 @@
     <div class="row">
         <div class="col-md-12">
             <div class="card border-0 bg-white">
-           <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between"><h5 class="mb-0 mt-0">{{ 'Edit Attendance Entry' }}</h5>
+                <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between"><h5 class="mb-0 mt-0">{{ 'Edit Attendance Entry' }}</h5>
                     <a href="{{ route('admin.editSection.index') }}" class="btn bg-light btn-sm" ><span class="mdi mdi-chevron-left me-2"></span>Back</a>
-
                 </div>
                 <div class="card-body">
                     <form id="class-section-form">
                         <div class="row">
                             <div class="form-group col-md-12">
-                                <label for="a_date" class="mt-2">Enter Date <span
-                                        class="text-danger">*</span></label>
-                                <input type="date" name="a_date" id="a_date"
-                                    class="form-control @error('a_date') is-invalid @enderror" required>
+                                <label for="a_date" class="mt-2">Enter Date <span class="text-danger">*</span></label>
+                                <input type="date" name="a_date" id="a_date" class="form-control @error('a_date') is-invalid @enderror" required>
                                 @error('a_date')
-                                <span class="invalid-feedback form-invalid fw-bold"
-                                    role="alert">{{ $message }}</span>
+                                    <span class="invalid-feedback form-invalid fw-bold" role="alert">{{ $message }}</span>
                                 @enderror
                             </div>
                         </div>
                         <div class="row">
                             <div class="form-group col-md-6">
                                 <label for="class_id" class="mt-2">Class <span class="text-danger">*</span></label>
-                                <input type="hidden" id="initialClassId"
-                                    value="{{ old('initialClassId', request()->get('class_id') !== null ? request()->get('class_id') : '') }}">
-                                <select name="class" id="class_id"
-                                    class="form-control @error('class') is-invalid @enderror" required>
+                                <input type="hidden" id="initialClassId" value="{{ old('initialClassId', request()->get('class_id') !== null ? request()->get('class_id') : '') }}">
+                                <select name="class" id="class_id" class="form-control @error('class') is-invalid @enderror" required>
                                     <option value="">Select Class</option>
                                     @if (count($classes) > 0)
                                         @foreach ($classes as $key => $class)
-                                            <option value="{{ $key }}" {{ old('class ') == $key ? 'selected' : ''}}>{{ $class }}</option>
+                                            <option value="{{ $key }}" {{ old('class') == $key ? 'selected' : ''}}>{{ $class }}</option>
                                         @endforeach
                                     @else
                                         <option value="">No Class Found</option>
@@ -42,37 +36,23 @@
                                 <span class="invalid-feedback form-invalid fw-bold"
                                     role="alert">{{ $message }}</span>
                                 @enderror
-                                <img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader"
-                                    id="loader" style="display:none; width:10%;">
                             </div>
-
-
                             <div class="form-group col-md-6">
-                                <label for="section_id" class="mt-2">Section <span
-                                        class="text-danger">*</span></label>
-                                <input type="hidden" id="initialSectionId"
-                                    value="{{ old('section') }}">
-                                <select name="section" id="section_id"
-                                    class="form-control @error('section') is-invalid @enderror" required>
+                                <label for="section_id" class="mt-2">Section <span class="text-danger">*</span></label>
+                                <input type="hidden" id="initialSectionId" value="{{ old('section') }}">
+                                <select name="section" id="section_id" class="form-control @error('section') is-invalid @enderror" required>
                                     <option value="">Select Section</option>
-
                                 </select>
                                 @error('section')
-                                <span class="invalid-feedback form-invalid fw-bold"
-                                    role="alert">{{ $message }}</span>
+                                <span class="invalid-feedback form-invalid fw-bold" role="alert">{{ $message }}</span>
                                 @enderror
                             </div>
                         </div>
-
-
                         <div class="mt-3">
-                            <button type="button" id="show-details" class="btn btn-primary">
-                                Show Details</button>
+                            <button type="button" id="show-details" class="btn btn-primary">Show Details</button>
+                            <span><img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader" id="loader" style="display:none; width:5%;"></span>
                         </div>
-
                     </form>
-
-
                     <div id="std-container" class="mt-4">
                         <form action="" method="POST" id="std-form">
                             @csrf
@@ -149,50 +129,45 @@
             if ($('#class-section-form').valid()) {
                 const classId = $('#class_id').val();
                 const sectionId = $('#section_id').val();
-                const sessionId = $('#current_session').val();
+                // const sessionId = $('#current_session').val();
                 const date = $('#a_date').val();
 
                 $('#hidden_class').val(classId);
                 $('#hidden_section').val(sectionId);
                 $('#hidden_a_date').val(date);
 
-                if (classId && sectionId && sessionId) {
+                if (classId && sectionId) {
                     $('#std-form').show();
                     $.ajax({
-                        url: '{{ route('stdNameFather.get') }}',
+                        // url: '{{ route('stdNameFather.get') }}',
+                        url: '{{ route('getStdForDropDown') }}',
                         type: 'GET',
                         dataType: 'JSON',
                         data: {
                             class_id: classId,
                             section_id: sectionId,
-                            session_id: sessionId,
                         },
                         success: function(students) {
                             let stdHtml = '';
-                            $.each(students, function(index, std) {
-                                stdHtml += `<tr>
-                                    <td>${std.rollno}</td>
-                                    <td>
-                                        <input type="hidden" name="students[${index}][srno]"
-                                               value="${std.srno}"
-                                               class="std-srno"
-                                               data-index="${index}">
-                                        ${std.student_name}
-                                    </td>
-                                    <td>${std.f_name}</td>
-                                    <td>
-                                        <input type="checkbox"
-                                               name="students[${index}][status]"
-                                               value="1"
-                                               class="status-checkbox"
-                                               data-index="${index}"
-                                               checked>
-                                    </td>
-                                </tr>`;
-                            });
-
+                            if (students.data && students.data.length > 0) {
+                                $.each(students.data, function(index, std) {
+                                    stdHtml += `<tr>
+                                        <td>${std.rollno}</td>
+                                        <td>
+                                            <input type="hidden" name="students[${index}][srno]" value="${std.srno}" class="std-srno" data-index="${index}">
+                                            ${std.student_name}
+                                        </td>
+                                        <td>${std.father_name}</td>
+                                        <td>
+                                            <input type="checkbox" name="students[${index}][status]" value="1" class="status-checkbox" data-index="${index}" checked>
+                                        </td>
+                                    </tr>`;
+                                });
+                                $('#section-updateBtn').show();
+                            }
                             if (stdHtml === '') {
                                 stdHtml = '<tr><td colspan="4">No Student found</td></tr>';
+                                $('#section-updateBtn').hide();
                             }
                             $('#std-container table tbody').html(stdHtml);
                         },
@@ -220,8 +195,6 @@
                             text: data.message,
                             icon: 'success',
                             confirmButtonColor: 'rgb(122 190 255)',
-                        }).then(() => {
-                            // location.reload();
                         });
                     } else {
                         Swal.fire({
