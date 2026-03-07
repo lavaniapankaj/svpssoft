@@ -11,10 +11,10 @@ use App\Models\Fee\FeeDetail;
 use App\Models\Student\Attendance;
 use App\Models\Student\StudentMaster;
 use Carbon\Carbon;
-use Illuminate\Contracts\Session\Session;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -23,40 +23,43 @@ class ReportController extends Controller
     //
     public function index()
     {
-        //
         return view('admin.reports.index');
     }
 
     public function newAdmissionReport()
     {
-        //
         return view('admin.reports.new_admission.new_admission_report');
     }
 
     public function newAdmissionReportByDateView()
     {
         $sessions = SessionMasterController::getSessions(['id', 'session']);
-        return view('admin.reports.new_admission.new_admission_report_by_date', compact('sessions'));
+        $classes = ClassMasterController::getClasses();
+        return view('admin.reports.new_admission.new_admission_report_by_date', compact('sessions', 'classes'));
     }
     public function newAdmissionReportByCategoryView()
     {
         $sessions = SessionMasterController::getSessions(['id', 'session']);
-        return view('admin.reports.new_admission.new_admission_report_by_category', compact('sessions'));
+        $classes = ClassMasterController::getClasses();
+        return view('admin.reports.new_admission.new_admission_report_by_category', compact('sessions', 'classes'));
     }
     public function newAdmissionReportByReligionView()
     {
         $sessions = SessionMasterController::getSessions(['id', 'session']);
-        return view('admin.reports.new_admission.new_admission_report_by_religion', compact('sessions'));
+        $classes = ClassMasterController::getClasses();
+        return view('admin.reports.new_admission.new_admission_report_by_religion', compact('sessions', 'classes'));
     }
     public function newAdmissionReportByAgeProofView()
     {
         $sessions = SessionMasterController::getSessions(['id', 'session']);
-        return view('admin.reports.new_admission.new_admission_report_by_age_proof', compact('sessions'));
+        $classes = ClassMasterController::getClasses();
+        return view('admin.reports.new_admission.new_admission_report_by_age_proof', compact('sessions', 'classes'));
     }
     public function newAdmissionReportBetwwenDatesView()
     {
         $sessions = SessionMasterController::getSessions(['id', 'session']);
-        return view('admin.reports.new_admission.new_admission_report_between_dates', compact('sessions'));
+        $classes = ClassMasterController::getClasses();
+        return view('admin.reports.new_admission.new_admission_report_between_dates', compact('sessions', 'classes'));
     }
 
     public function stdregisterView()
@@ -68,12 +71,14 @@ class ReportController extends Controller
 
     public function reportAgeWiseView()
     {
-        return view('admin.reports.age_wise_report');
+        $classes = ClassMasterController::getClasses();
+        return view('admin.reports.age_wise_report', compact('classes'));
     }
 
     public function transportWiseReportView()
     {
-        return view('admin.reports.transport_details_report');
+        $classes = ClassMasterController::getClasses();
+        return view('admin.reports.transport_details_report', compact('classes'));
     }
 
     public function tcIssueView()
@@ -84,86 +89,137 @@ class ReportController extends Controller
     public function newAdmissionReportByDate(Request $request)
     {
         try {
-            $request->validate([
+            // ── Validation ────────────────────────────────────────────────
+            $validator = Validator::make($request->all(), [
                 'session_id' => 'required|exists:session_masters,id,active,1',
-                'class' => 'required|exists:class_masters,id,active,1',
+                'class'      => [
+                    'required',
+                    function ($attribute, $value, $fail) {
+                        if ($value !== 'all' && !DB::table('class_masters')->where('id', $value)->where('active', 1)->exists()) {
+                            $fail('The selected class is invalid.');
+                        }
+                    },
+                ],
+            ], [
+                'session_id.required' => 'Session is required.',
+                'session_id.exists'   => 'The selected session is invalid.',
+                'class.required'      => 'Class is required.',
+                'class.exists'        => 'The selected class is invalid.'
             ]);
 
+            if ($validator->fails()) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => $validator->errors()
+                ], 200);
+            }
 
+            $sessionId     = (int) $request->session_id;
+            $classId       = $request->class;
+            $admissionDate = $request->by_date ?: null;
+            $ageProofIds   = array_map('intval', explode(',', $request->age_proof));
 
-            $admissionDate = $request->by_date;
-            $ageProofId = explode(',', $request->age_proof);
-            // $studentsQuery = StudentMaster::query()
-            $studentsQuery = StudentMaster::where('session_id', $request->session_id)
-                ->whereIn('age_proof', $ageProofId)
+            // ── Fetch active classes (one query) ──────────────────────────
+            $classQuery = DB::table('class_masters')->where('active', 1)->orderBy('id');
+
+            if ($classId !== 'all') {
+                $classQuery->where('id', (int) $classId);
+            }
+
+            $classes = $classQuery->get(['id', 'class']);
+
+            if ($classes->isEmpty()) {
+                return response()->json(['status' => 'success', 'data' => []], 200);
+            }
+
+            $classIds = $classes->pluck('id')->all();
+
+            // ── Base student query ────────────────────────────────────────
+            // Single aggregation query — no PHP-side collection loops
+            $baseQuery = DB::table('stu_main_srno')
+                ->select(
+                    'class',                                         // class FK = class_masters.id
+                    'gender',
+                    DB::raw('COUNT(*) as total')
+                )
+                ->where('session_id', $sessionId)
+                ->whereIn('age_proof', $ageProofIds)
                 ->whereIn('ssid', [1, 2])
                 ->where('active', 1)
-                ->whereNotNull('admission_date');
-            // ->whereIn('class', [2, 3]);
+                ->whereNotNull('admission_date')
+                ->whereIn('class', $classIds)
+                ->groupBy('class', 'gender');
 
-            // if ($admissionDate) {
-            //     $studentsQuery->whereDate('admission_date', $admissionDate);
-            // }
+            if ($admissionDate) {
+                // Two aggregations in one query using conditional SUM
+                $rows = DB::table('stu_main_srno')
+                    ->select(
+                        'class',
+                        'gender',
+                        DB::raw('SUM(CASE WHEN admission_date <= ? THEN 1 ELSE 0 END) as before_count'),
+                        DB::raw('SUM(CASE WHEN admission_date >  ? THEN 1 ELSE 0 END) as after_count')
+                    )
+                    ->addBinding([$admissionDate, $admissionDate], 'select')
+                    ->where('session_id', $sessionId)
+                    ->whereIn('age_proof', $ageProofIds)
+                    ->whereIn('ssid', [1, 2])
+                    ->where('active', 1)
+                    ->whereNotNull('admission_date')
+                    ->whereIn('class', $classIds)
+                    ->groupBy('class', 'gender')
+                    ->get()
+                    ->groupBy('class');     // key = class id
 
-            $studentsGrouped = $studentsQuery->get()->groupBy('class');
+                $report = $classes->map(function ($class) use ($rows) {
+                    $genderRows = $rows->get($class->id, collect());
 
-            // Retrieve all active classes
-            $classID = explode(',', $request->class);
-            // $allClasses = ClassMaster::whereIn('id', $classID)->orderBy('sort', 'ASC')->where('active', 1)->get();
-            $allClasses = ClassMasterController::getClasses(['id', 'class'], null, false, ['id' => $classID], 'whereIn', true);
-
-            $report = $allClasses->map(function ($class) use ($studentsGrouped, $admissionDate) {
-                $classId = $class->id;
-                $className = $class->class;
-
-                // Get students for this class
-                $students = $studentsGrouped->get($classId, collect());
-
-                $boys = $students->where('gender', 1)->count();
-                $girls = $students->where('gender', 2)->count();
-                $totalStudents = $boys + $girls;
-
-                if ($admissionDate) {
-                    $boysBefore = $students->where('gender', 1)->where('admission_date', '<=', $admissionDate)->count();
-                    $girlsBefore = $students->where('gender', 2)->where('admission_date', '<=', $admissionDate)->count();
-                    $totalBefore = $boysBefore + $girlsBefore;
-
-                    $boysAfter = $students->where('gender', 1)->where('admission_date', '>', $admissionDate)->count();
-                    $girlsAfter = $students->where('gender', 2)->where('admission_date', '>', $admissionDate)->count();
-                    $totalAfter = $boysAfter + $girlsAfter;
+                    $boysBefore  = (int) optional($genderRows->firstWhere('gender', 1))->before_count;
+                    $girlsBefore = (int) optional($genderRows->firstWhere('gender', 2))->before_count;
+                    $boysAfter   = (int) optional($genderRows->firstWhere('gender', 1))->after_count;
+                    $girlsAfter  = (int) optional($genderRows->firstWhere('gender', 2))->after_count;
 
                     return [
-                        'class' => $className,
+                        'class'  => $class->class,
                         'before' => [
-                            'boys' => $boysBefore,
+                            'boys'  => $boysBefore,
                             'girls' => $girlsBefore,
-                            'total' => $totalBefore,
+                            'total' => $boysBefore + $girlsBefore,
                         ],
-                        'after' => [
-                            'boys' => $boysAfter,
+                        'after'  => [
+                            'boys'  => $boysAfter,
                             'girls' => $girlsAfter,
-                            'total' => $totalAfter,
+                            'total' => $boysAfter + $girlsAfter,
                         ],
                     ];
-                }
+                });
+            } else {
+                $rows = $baseQuery->get()->groupBy('class');    // key = class id
 
-                return [
-                    'class' => $className,
-                    'boys' => $boys,
-                    'girls' => $girls,
-                    'total' => $totalStudents,
-                ];
-            });
+                $report = $classes->map(function ($class) use ($rows) {
+                    $genderRows = $rows->get($class->id, collect());
+
+                    $boys  = (int) optional($genderRows->firstWhere('gender', 1))->total;
+                    $girls = (int) optional($genderRows->firstWhere('gender', 2))->total;
+
+                    return [
+                        'class' => $class->class,
+                        'boys'  => $boys,
+                        'girls' => $girls,
+                        'total' => $boys + $girls,
+                    ];
+                });
+            }
 
             return response()->json([
                 'status' => 'success',
-                'data' => $report,
+                'data'   => $report->values(),
             ], 200);
+
         } catch (\Exception $e) {
             return response()->json([
-                'status' => 'error',
-                'message' => "Failed to get new admission report: "
-            ], 500);
+                'status'  => 'error',
+                'message' => 'Failed to get new admission report.'. $e->getMessage(),
+            ], 200);
         }
     }
 
@@ -247,10 +303,30 @@ class ReportController extends Controller
     public function newAdmissionReportByCategory(Request $request)
     {
         try {
-            $request->validate([
+            // ── Validation ────────────────────────────────────────────────
+            $validator = Validator::make($request->all(), [
                 'session_id' => 'required|exists:session_masters,id,active,1',
-
+                'class'      => [
+                    'required',
+                    function ($attribute, $value, $fail) {
+                        if ($value !== 'all' && !DB::table('class_masters')->where('id', $value)->where('active', 1)->exists()) {
+                            $fail('The selected class is invalid.');
+                        }
+                    },
+                ],
+            ], [
+                'session_id.required' => 'Session is required.',
+                'session_id.exists'   => 'The selected session is invalid.',
+                'class.required'      => 'Class is required.',
             ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => $validator->errors(),
+                ], 200);
+            }
+
             $allCategories = [
                 1 => 'General',
                 2 => 'OBC',
@@ -259,70 +335,96 @@ class ReportController extends Controller
                 5 => 'BC',
             ];
 
-            $studentsQuery = StudentMaster::query()
-                ->where('session_id', $request->session_id)
-                ->whereIn('ssid', [1, 2])
-                ->where('active', 1);
-            // ->whereIn('class', [2, 5]);
+            $sessionId    = (int) $request->session_id;
+            $classId      = $request->class;
+            $newAdmission = $request->new_admission;
 
-            if ($request->new_admission) {
-                $studentsQuery->whereNotNull('admission_date');
+            // ── Fetch active classes (one query) ──────────────────────────
+            $classQuery = DB::table('class_masters')
+                ->where('active', 1)
+                ->orderBy('id');
+
+            if ($classId !== 'all') {
+                $classQuery->where('id', (int) $classId);
             }
 
-            $studentsGrouped = $studentsQuery->get()->groupBy('class');
+            $classes = $classQuery->get(['id', 'class']);
 
-            // Retrieve all active classes
-            $classID = explode(',', $request->class);
-            // $allClasses = ClassMaster::whereIn('id', $classID)->where('active', 1)->orderBy('sort', 'ASC')->get();
-            $allClasses = ClassMasterController::getClasses(['id', 'class'], null, false, ['id' => $classID], 'whereIn', true);
+            if ($classes->isEmpty()) {
+                return response()->json(['status' => 'success', 'data' => []], 200);
+            }
 
-            $report = $allClasses->map(function ($class) use ($studentsGrouped, $allCategories) {
-                $classId = $class->id;
-                $className = $class->class;
+            $classIds = $classes->pluck('id')->all();
 
-                // Get students for this class or set to empty collection
-                $students = $studentsGrouped->get($classId, collect());
+            // ── Single aggregation query — no N+1, no PHP-side loops ──────
+            // JOIN stu_main_srno → stu_detail to get category_id in one shot,
+            // then GROUP BY class + category_id + gender for counts.
+            $aggregateQuery = DB::table('stu_main_srno as sm')
+                ->join('stu_detail as sd', function ($join) {
+                    $join->on('sd.srno', '=', 'sm.srno')
+                         ->where('sd.active', 1);
+                })
+                ->select(
+                    'sm.class',
+                    'sd.category_id',
+                    'sm.gender',
+                    DB::raw('COUNT(*) as total')
+                )
+                ->where('sm.session_id', $sessionId)
+                ->whereIn('sm.ssid', [1, 2])
+                ->where('sm.active', 1)
+                ->whereIn('sm.class', $classIds)
+                ->whereIn('sd.category_id', array_keys($allCategories));
 
-                // Group students by category
-                $categoryCounts = $students->groupBy(function ($student) {
-                    return DB::table('stu_detail')->where('srno', $student->srno)->where('active', 1)->value('category_id');
-                });
+            if ($newAdmission) {
+                $aggregateQuery->whereNotNull('sm.admission_date');
+            }
 
-                $result = [
-                    'class' => $className,
-                    'categories' => []
-                ];
+            // Result keyed as [class_id][category_id][gender] = count
+            $grouped = $aggregateQuery
+                ->groupBy('sm.class', 'sd.category_id', 'sm.gender')
+                ->get()
+                ->groupBy('class');
 
-                // Loop through all defined categories
+            // ── Build report from pre-aggregated data ─────────────────────
+            $report = $classes->map(function ($class) use ($grouped, $allCategories) {
+                $classRows = $grouped->get($class->id, collect());
+
+                // Further group by category for O(1) lookups
+                $byCategory = $classRows->groupBy('category_id');
+
+                $categories = [];
                 foreach ($allCategories as $categoryId => $categoryName) {
-                    // Get students for this category or set to empty collection
-                    $categoryStudents = $categoryCounts->get($categoryId, collect());
+                    $categoryRows = $byCategory->get($categoryId, collect());
 
-                    $boys = $categoryStudents->where('gender', 1)->count();
-                    $girls = $categoryStudents->where('gender', 2)->count();
-                    $totalStudents = $boys + $girls;
+                    $boys  = (int) optional($categoryRows->firstWhere('gender', 1))->total;
+                    $girls = (int) optional($categoryRows->firstWhere('gender', 2))->total;
 
-                    $result['categories'][] = [
-                        'category_id' => $categoryId,
+                    $categories[] = [
+                        'category_id'   => $categoryId,
                         'category_name' => $categoryName,
-                        'boys' => $boys,
-                        'girls' => $girls,
-                        'totalStudents' => $totalStudents,
+                        'boys'          => $boys,
+                        'girls'         => $girls,
+                        'totalStudents' => $boys + $girls,
                     ];
                 }
 
-                return $result;
+                return [
+                    'class'      => $class->class,
+                    'categories' => $categories,
+                ];
             })->values();
 
             return response()->json([
                 'status' => 'success',
-                'data' => $report,
+                'data'   => $report,
             ], 200);
+
         } catch (\Exception $e) {
             return response()->json([
-                'status' => 'error',
-                'message' => "Failed to get new admission report: "
-            ], 500);
+                'status'  => 'error',
+                'message' => 'Failed to get category report.',
+            ], 200);
         }
     }
 
@@ -424,85 +526,127 @@ class ReportController extends Controller
         }
     }
 
-
     public function newAdmissionReportByReligion(Request $request)
     {
         try {
-            $request->validate([
+            // ── Validation ────────────────────────────────────────────────
+            $validator = Validator::make($request->all(), [
                 'session_id' => 'required|exists:session_masters,id,active,1',
-
+                'class'      => [
+                    'required',
+                    function ($attribute, $value, $fail) {
+                        if ($value !== 'all' && !DB::table('class_masters')->where('id', $value)->where('active', 1)->exists()) {
+                            $fail('The selected class is invalid.');
+                        }
+                    },
+                ],
+            ], [
+                'session_id.required' => 'Session is required.',
+                'session_id.exists'   => 'The selected session is invalid.',
+                'class.required'      => 'Class is required.',
             ]);
 
-            $allReligion = [
+            if ($validator->fails()) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => $validator->errors(),
+                ], 200);
+            }
+
+            $allReligions = [
                 1 => 'Hindu',
                 2 => 'Muslim',
                 3 => 'Christian',
                 4 => 'Sikh',
             ];
-            $studentsQuery = StudentMaster::query()
-                ->where('session_id', $request->session_id)
-                ->where('ssid', [1, 2])
-                ->where('active', 1);
-            // ->whereIn('class', [2, 5]);
 
-            if ($request->new_admission) {
-                $studentsQuery->whereNotNull('admission_date');
+            $sessionId    = (int) $request->session_id;
+            $classId      = $request->class;
+            $newAdmission = $request->new_admission;
+
+            // ── Fetch active classes (one query) ──────────────────────────
+            $classQuery = DB::table('class_masters')
+                ->where('active', 1)
+                ->orderBy('id');
+
+            if ($classId !== 'all') {
+                $classQuery->where('id', (int) $classId);
             }
-            $studentsGrouped = $studentsQuery->get()->groupBy('class');
 
-            // Retrieve all active classes
-            $classID = explode(',', $request->class);
-            // $allClasses = ClassMaster::whereIn('id', $classID)->where('active', 1)->orderBy('sort', 'ASC')->get();
-            $allClasses = ClassMasterController::getClasses(['id', 'class'], null, false, ['id' => $classID], 'whereIn', true);
+            $classes = $classQuery->get(['id', 'class']);
 
-            $report = $allClasses->map(function ($class) use ($studentsGrouped, $allReligion) {
-                $classId = $class->id;
-                $className = $class->class;
+            if ($classes->isEmpty()) {
+                return response()->json(['status' => 'success', 'data' => []], 200);
+            }
 
-                // Get students for this class or set to empty collection
-                $students = $studentsGrouped->get($classId, collect());
+            $classIds = $classes->pluck('id')->all();
 
-                // Group students by religion
-                $religionCounts = $students->groupBy('religion');
+            // ── Single aggregation query — religion is a column on stu_main_srno ──
+            // No JOIN needed unlike category — religion is stored directly on the student row.
+            $aggregateQuery = DB::table('stu_main_srno')
+                ->select(
+                    'class',
+                    'religion',
+                    'gender',
+                    DB::raw('COUNT(*) as total')
+                )
+                ->where('session_id', $sessionId)
+                ->whereIn('ssid', [1, 2])
+                ->where('active', 1)
+                ->whereIn('class', $classIds)
+                ->whereIn('religion', array_keys($allReligions));
 
-                $result = [
-                    'class' => $className,
-                    'religions' => []
-                ];
+            if ($newAdmission) {
+                $aggregateQuery->whereNotNull('admission_date');
+            }
 
-                // Loop through all defined categories
-                foreach ($allReligion as $religionId => $religionName) {
-                    // Get students for this category or set to empty collection
-                    $religionStudents = $religionCounts->get($religionId, collect());
+            // Result keyed as [class_id][religion_id][gender] = count
+            $grouped = $aggregateQuery
+                ->groupBy('class', 'religion', 'gender')
+                ->get()
+                ->groupBy('class');
 
-                    $boys = $religionStudents->where('gender', 1)->count();
-                    $girls = $religionStudents->where('gender', 2)->count();
-                    $totalStudents = $boys + $girls;
+            // ── Build report from pre-aggregated data ─────────────────────
+            $report = $classes->map(function ($class) use ($grouped, $allReligions) {
+                $classRows = $grouped->get($class->id, collect());
 
-                    $result['religions'][] = [
-                        'religion_id' => $religionId,
+                // Further group by religion for O(1) lookups
+                $byReligion = $classRows->groupBy('religion');
+
+                $religions = [];
+                foreach ($allReligions as $religionId => $religionName) {
+                    $religionRows = $byReligion->get($religionId, collect());
+
+                    $boys  = (int) optional($religionRows->firstWhere('gender', 1))->total;
+                    $girls = (int) optional($religionRows->firstWhere('gender', 2))->total;
+
+                    $religions[] = [
+                        'religion_id'   => $religionId,
                         'religion_name' => $religionName,
-                        'boys' => $boys,
-                        'girls' => $girls,
-                        'totalStudents' => $totalStudents,
+                        'boys'          => $boys,
+                        'girls'         => $girls,
+                        'totalStudents' => $boys + $girls,
                     ];
                 }
 
-                return $result;
+                return [
+                    'class'     => $class->class,
+                    'religions' => $religions,
+                ];
             })->values();
 
             return response()->json([
                 'status' => 'success',
-                'data' => $report,
+                'data'   => $report,
             ], 200);
+
         } catch (\Exception $e) {
             return response()->json([
-                'status' => 'error',
-                'message' => "Failed to get new admission report: "
-            ], 500);
+                'status'  => 'error',
+                'message' => 'Failed to get religion report.',
+            ], 200);
         }
     }
-
 
     /**
      * export report by religion-wise
@@ -596,83 +740,128 @@ class ReportController extends Controller
             ], 500);
         }
     }
+
     public function newAdmissionReportByAgeProof(Request $request)
     {
         try {
-            $request->validate([
+            // ── Validation ────────────────────────────────────────────────
+            $validator = Validator::make($request->all(), [
                 'session_id' => 'required|exists:session_masters,id,active,1',
-
+                'class'      => [
+                    'required',
+                    function ($attribute, $value, $fail) {
+                        if ($value !== 'all' && !DB::table('class_masters')->where('id', $value)->where('active', 1)->exists()) {
+                            $fail('The selected class is invalid.');
+                        }
+                    },
+                ],
+            ], [
+                'session_id.required' => 'Session is required.',
+                'session_id.exists'   => 'The selected session is invalid.',
+                'class.required'      => 'Class is required.',
             ]);
 
-            $allAgeProof = [
+            if ($validator->fails()) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => $validator->errors(),
+                ], 200);
+            }
+
+            $allAgeProofs = [
                 1 => 'By TC',
                 2 => 'By Birth Cert.',
                 3 => 'By Affidavit',
                 4 => 'By Aadhar Card',
                 0 => 'Without Proof',
             ];
-            $classID = explode(',', $request->class);
-            $studentsQuery = StudentMaster::query()
-                ->where('session_id', $request->session_id)
-                ->where('ssid', [1, 2])
+
+            $sessionId    = (int) $request->session_id;
+            $classId      = $request->class;
+            $newAdmission = $request->new_admission;
+
+            // ── Fetch active classes (one query) ──────────────────────────
+            $classQuery = DB::table('class_masters')
                 ->where('active', 1)
-                ->whereIn('class', $classID);
+                ->orderBy('id');
 
-            if ($request->new_admission) {
-                $studentsQuery->whereNotNull('admission_date');
+            if ($classId !== 'all') {
+                $classQuery->where('id', (int) $classId);
             }
-            $studentsGrouped = $studentsQuery->get()->groupBy('class');
 
-            // Retrieve all active classes
-            $classID = explode(',', $request->class);
-            // $allClasses = ClassMaster::whereIn('id', $classID)->where('active', 1)->orderBy('sort', 'ASC')->get();
-            $allClasses = ClassMasterController::getClasses(['id', 'class'], null, false, ['id' => $classID], 'whereIn', true);
+            $classes = $classQuery->get(['id', 'class']);
 
-            $report = $allClasses->map(function ($class) use ($studentsGrouped, $allAgeProof) {
-                $classId = $class->id;
-                $className = $class->class;
+            if ($classes->isEmpty()) {
+                return response()->json(['status' => 'success', 'data' => []], 200);
+            }
 
-                // Get students for this class or set to empty collection
-                $students = $studentsGrouped->get($classId, collect());
+            $classIds = $classes->pluck('id')->all();
 
-                // Group students by religion
-                $ageProofCounts = $students->groupBy('age_proof');
+            // ── Single aggregation query — no PHP-side loops ──────────────
+            // age_proof is a direct column on stu_main_srno (0–4),
+            // so no JOIN needed — same pattern as religion report.
+            // Note: age_proof = 0 means "Without Proof" (NULL or 0).
+            $aggregateQuery = DB::table('stu_main_srno')
+                ->select(
+                    'class',
+                    DB::raw('COALESCE(age_proof, 0) as age_proof'),  // treat NULL as 0 = Without Proof
+                    'gender',
+                    DB::raw('COUNT(*) as total')
+                )
+                ->where('session_id', $sessionId)
+                ->whereIn('ssid', [1, 2])           // fix: original used ->where('ssid', [1,2]) which generates WHERE ssid = Array
+                ->where('active', 1)
+                ->whereIn('class', $classIds);
 
-                $result = [
-                    'class' => $className,
-                    'ageProofs' => []
-                ];
+            if ($newAdmission) {
+                $aggregateQuery->whereNotNull('admission_date');
+            }
 
-                // Loop through all defined categories
-                foreach ($allAgeProof as $ageProofId => $ageProofName) {
-                    // Get students for this category or set to empty collection
-                    $ageProofStudents = $ageProofCounts->get($ageProofId, collect());
+            // Result keyed as [class_id][age_proof_id][gender] = count
+            $grouped = $aggregateQuery
+                ->groupBy('class', DB::raw('COALESCE(age_proof, 0)'), 'gender')
+                ->get()
+                ->groupBy('class');
 
-                    $boys = $ageProofStudents->where('gender', 1)->count();
-                    $girls = $ageProofStudents->where('gender', 2)->count();
-                    $totalStudents = $boys + $girls;
+            // ── Build report from pre-aggregated data ─────────────────────
+            $report = $classes->map(function ($class) use ($grouped, $allAgeProofs) {
+                $classRows = $grouped->get($class->id, collect());
 
-                    $result['ageProofs'][] = [
-                        'age_proof_id' => $ageProofId,
+                // Further group by age_proof for O(1) lookups
+                $byAgeProof = $classRows->groupBy('age_proof');
+
+                $ageProofs = [];
+                foreach ($allAgeProofs as $ageProofId => $ageProofName) {
+                    $ageProofRows = $byAgeProof->get($ageProofId, collect());
+
+                    $boys  = (int) optional($ageProofRows->firstWhere('gender', 1))->total;
+                    $girls = (int) optional($ageProofRows->firstWhere('gender', 2))->total;
+
+                    $ageProofs[] = [
+                        'age_proof_id'   => $ageProofId,
                         'age_proof_name' => $ageProofName,
-                        'boys' => $boys,
-                        'girls' => $girls,
-                        'totalStudents' => $totalStudents,
+                        'boys'           => $boys,
+                        'girls'          => $girls,
+                        'totalStudents'  => $boys + $girls,
                     ];
                 }
 
-                return $result;
+                return [
+                    'class'     => $class->class,
+                    'ageProofs' => $ageProofs,
+                ];
             })->values();
 
             return response()->json([
                 'status' => 'success',
-                'data' => $report,
+                'data'   => $report,
             ], 200);
+
         } catch (\Exception $e) {
             return response()->json([
-                'status' => 'error',
-                'message' => "Failed to get new admission report: "
-            ], 500);
+                'status'  => 'error',
+                'message' => 'Failed to get age proof report.',
+            ], 200);
         }
     }
 
@@ -777,61 +966,109 @@ class ReportController extends Controller
     public function newAdmissionReportByBetweenDates(Request $request)
     {
         try {
-            //code...
-            $request->validate([
+            // ── Validation ────────────────────────────────────────────────
+            $validator = Validator::make($request->all(), [
                 'session_id' => 'required|exists:session_masters,id,active,1',
-
+                'class'      => [
+                    'required',
+                    function ($attribute, $value, $fail) {
+                        if ($value !== 'all' && !DB::table('class_masters')->where('id', $value)->where('active', 1)->exists()) {
+                            $fail('The selected class is invalid.');
+                        }
+                    },
+                ],
+                'startDate'  => ['nullable', 'date', 'before_or_equal:endDate'],
+                'endDate'    => ['nullable', 'date', 'after_or_equal:startDate'],
+            ], [
+                'session_id.required'      => 'Session is required.',
+                'session_id.exists'        => 'The selected session is invalid.',
+                'class.required'           => 'Class is required.',
+                'startDate.date'           => 'Start date must be a valid date.',
+                'startDate.before_or_equal'=> 'Start date must not be greater than end date.',
+                'endDate.date'             => 'End date must be a valid date.',
+                'endDate.after_or_equal'   => 'End date must not be less than start date.',
             ]);
-            $admissionStartDate = $request->startDate;
-            $admissionEndDate = $request->endDate;
 
-            $studentsQuery = StudentMaster::query()
-                ->where('session_id', $request->session_id)
-                ->whereIn('ssid', [1, 2])
-                ->where('active', 1)
-                ->whereNotNull('admission_date');
-            // ->whereIn('class', [2, 3]);
-
-            if ($admissionStartDate && $admissionEndDate) {
-                $studentsQuery->whereBetween('admission_date', [$admissionStartDate, $admissionEndDate]);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => $validator->errors(),
+                ], 200);
             }
 
-            $studentsGrouped = $studentsQuery->get()->groupBy('class');
+            $sessionId  = (int) $request->session_id;
+            $classId    = $request->class;
+            $startDate  = $request->startDate ?: null;
+            $endDate    = $request->endDate   ?: null;
 
-            // Retrieve all active classes
-            $classID = explode(',', $request->class);
-            // $allClasses = ClassMaster::whereIn('id', $classID)->where('active', 1)->orderBy('sort', 'ASC')->get();
-            $allClasses = ClassMasterController::getClasses(['id', 'class'], null, false, ['id' => $classID], 'whereIn', true);
+            // ── Fetch active classes (one query) ──────────────────────────
+            $classQuery = DB::table('class_masters')
+                ->where('active', 1)
+                ->orderBy('id');
 
-            $report = $allClasses->map(function ($class) use ($studentsGrouped) {
-                $classId = $class->id;
-                $className = $class->class;
+            if ($classId !== 'all') {
+                $classQuery->where('id', (int) $classId);
+            }
 
-                // Get students for this class
-                $students = $studentsGrouped->get($classId, collect());
+            $classes = $classQuery->get(['id', 'class']);
 
-                $boys = $students->where('gender', 1)->count();
-                $girls = $students->where('gender', 2)->count();
-                $totalStudents = $boys + $girls;
+            if ($classes->isEmpty()) {
+                return response()->json(['status' => 'success', 'data' => []], 200);
+            }
 
+            $classIds = $classes->pluck('id')->all();
+
+            // ── Single aggregation query ───────────────────────────────────
+            $aggregateQuery = DB::table('stu_main_srno')
+                ->select(
+                    'class',
+                    'gender',
+                    DB::raw('COUNT(*) as total')
+                )
+                ->where('session_id', $sessionId)
+                ->whereIn('ssid', [1, 2])
+                ->where('active', 1)
+                ->whereNotNull('admission_date')
+                ->whereIn('class', $classIds);
+
+            if ($startDate && $endDate) {
+                $aggregateQuery->whereBetween('admission_date', [$startDate, $endDate]);
+            } elseif ($startDate) {
+                $aggregateQuery->where('admission_date', '>=', $startDate);
+            } elseif ($endDate) {
+                $aggregateQuery->where('admission_date', '<=', $endDate);
+            }
+
+            $grouped = $aggregateQuery
+                ->groupBy('class', 'gender')
+                ->get()
+                ->groupBy('class');
+
+            // ── Build report from pre-aggregated data ─────────────────────
+            $report = $classes->map(function ($class) use ($grouped) {
+                $classRows = $grouped->get($class->id, collect());
+
+                $boys  = (int) optional($classRows->firstWhere('gender', 1))->total;
+                $girls = (int) optional($classRows->firstWhere('gender', 2))->total;
 
                 return [
-                    'class' => $className,
-                    'boys' => $boys,
+                    'class' => $class->class,
+                    'boys'  => $boys,
                     'girls' => $girls,
-                    'total' => $totalStudents,
+                    'total' => $boys + $girls,
                 ];
-            });
+            })->values();
 
             return response()->json([
                 'status' => 'success',
-                'data' => $report,
+                'data'   => $report,
             ], 200);
+
         } catch (\Exception $e) {
             return response()->json([
-                'status' => 'error',
-                'message' => "Failed to get new admission report: "
-            ], 500);
+                'status'  => 'error',
+                'message' => 'Failed to get admission report.',
+            ], 200);
         }
     }
 
@@ -902,106 +1139,121 @@ class ReportController extends Controller
         }
     }
 
-
-
     public function reportAgeWise(Request $request)
     {
         try {
+            $current_session = Session::get('current_session');
+
             $validator = Validator::make($request->all(), [
-                'session_id' => 'required|exists:session_masters,id,active,1',
-                'date' => 'required|date',
+                'class' => 'required',
+                'date'  => 'required|date',
             ]);
 
             if ($validator->fails()) {
                 return response()->json([
-                    'status' => 'error',
+                    'status'  => 'error',
                     'message' => $validator->errors()
                 ], 400);
             }
 
-            $classID = explode(',', $request->class);
+            $classID   = $request->class;
+            $sessionId = $current_session->id;
+            $calcDate  = Carbon::parse($request->date);
 
-            // Retrieve all active classes
-            $allClasses = ClassMasterController::getClasses(['id', 'class'], null, false, ['id' => $classID], 'whereIn', true);
+            // ─── Load classes ─────────────────────────────────────────────
+            // Pass null when "all" is selected so no class filter is applied
+            $allClasses = ClassMasterController::getClasses(
+                ['id', 'class'],
+                null,
+                false,
+                $classID !== 'all' ? ['id' => $classID] : [],   // ← empty = no filter
+                'whereIn',
+                true
+            );
 
-            $report = $allClasses->map(function ($class) use ($request) {
-                // Get students for THIS CLASS ONLY
-                $students = StudentMaster::where('session_id', $request->session_id)
-                    ->where('class', $class->id) // Filter by specific class
+            // ─── Pre-load all DOBs in one query (eliminates N+1) ──────────
+            // Collect every srno we'll need across all classes first
+            $allSrnos = StudentMaster::where('session_id', $sessionId)
+                ->when($classID !== 'all', fn($q) => $q->where('class', $classID))
+                ->whereIn('ssid', [1, 2, 4, 5])
+                ->where('active', 1)
+                ->pluck('gender', 'srno');   // [ srno => gender ]
+
+            $dobMap = DB::table('stu_detail')
+                ->whereIn('srno', $allSrnos->keys())
+                ->where('active', 1)
+                ->pluck('dob', 'srno');      // [ srno => dob ]
+
+            // ─── Build report per class ────────────────────────────────────
+            $report = $allClasses->map(function ($class) use (
+                $sessionId, $calcDate, $dobMap, $allSrnos
+            ) {
+                // Students belonging to this class only
+                $students = StudentMaster::where('session_id', $sessionId)
+                    ->where('class', $class->id)
                     ->whereIn('ssid', [1, 2, 4, 5])
-                    // ->where('ssid', 1)
                     ->where('active', 1)
-                    ->get();
-                // dd($students);
+                    ->pluck('gender', 'srno');
 
                 $ageGroups = [
-                    'lessThanFive' => ['boys' => 0, 'girls' => 0],
-                    'equalToFive' => ['boys' => 0, 'girls' => 0],
-                    'equalToSix' => ['boys' => 0, 'girls' => 0],
-                    'equalToSeven' => ['boys' => 0, 'girls' => 0],
-                    'equalToEight' => ['boys' => 0, 'girls' => 0],
-                    'equalToNine' => ['boys' => 0, 'girls' => 0],
-                    'equalToTen' => ['boys' => 0, 'girls' => 0],
-                    'equalToEleven' => ['boys' => 0, 'girls' => 0],
-                    'equalToTwelve' => ['boys' => 0, 'girls' => 0],
+                    'lessThanFive'    => ['boys' => 0, 'girls' => 0],
+                    'equalToFive'     => ['boys' => 0, 'girls' => 0],
+                    'equalToSix'      => ['boys' => 0, 'girls' => 0],
+                    'equalToSeven'    => ['boys' => 0, 'girls' => 0],
+                    'equalToEight'    => ['boys' => 0, 'girls' => 0],
+                    'equalToNine'     => ['boys' => 0, 'girls' => 0],
+                    'equalToTen'      => ['boys' => 0, 'girls' => 0],
+                    'equalToEleven'   => ['boys' => 0, 'girls' => 0],
+                    'equalToTwelve'   => ['boys' => 0, 'girls' => 0],
                     'equalToThirteen' => ['boys' => 0, 'girls' => 0],
                     'equalToFourteen' => ['boys' => 0, 'girls' => 0],
-                    'equalToFifteen' => ['boys' => 0, 'girls' => 0],
-                    'equalToSixteen' => ['boys' => 0, 'girls' => 0],
-                    'aboveToSixteen' => ['boys' => 0, 'girls' => 0],
+                    'equalToFifteen'  => ['boys' => 0, 'girls' => 0],
+                    'equalToSixteen'  => ['boys' => 0, 'girls' => 0],
+                    'aboveToSixteen'  => ['boys' => 0, 'girls' => 0],
                 ];
 
-                foreach ($students as $student) {
-                    $dob = DB::table('stu_detail')
-                        ->where('srno', $student->srno)
-                        ->where('active', 1)
-                        ->value('dob');
+                foreach ($students as $srno => $gender) {
+                    $dob = $dobMap->get($srno);
+                    if (!$dob) continue;
 
-                    if ($dob) {
-                        $date = Carbon::parse($request->date);
-                        $dob = Carbon::parse($dob);
+                    $age = (int) Carbon::parse($dob)->diffInYears($calcDate);
 
-                        // Calculate the age
-                        $age = (int) $dob->diffInYears($date);
-                        // dd($age);
+                    $ageGroup = match (true) {
+                        $age < 5    => 'lessThanFive',
+                        $age === 5  => 'equalToFive',
+                        $age === 6  => 'equalToSix',
+                        $age === 7  => 'equalToSeven',
+                        $age === 8  => 'equalToEight',
+                        $age === 9  => 'equalToNine',
+                        $age === 10 => 'equalToTen',
+                        $age === 11 => 'equalToEleven',
+                        $age === 12 => 'equalToTwelve',
+                        $age === 13 => 'equalToThirteen',
+                        $age === 14 => 'equalToFourteen',
+                        $age === 15 => 'equalToFifteen',
+                        $age === 16 => 'equalToSixteen',
+                        default     => 'aboveToSixteen',
+                    };
 
-                        $ageGroup = match (true) {
-                            $age < 5 => 'lessThanFive',
-                            $age === 5 => 'equalToFive',
-                            $age === 6 => 'equalToSix',
-                            $age === 7 => 'equalToSeven',
-                            $age === 8 => 'equalToEight',
-                            $age === 9 => 'equalToNine',
-                            $age === 10 => 'equalToTen',
-                            $age === 11 => 'equalToEleven',
-                            $age === 12 => 'equalToTwelve',
-                            $age === 13 => 'equalToThirteen',
-                            $age === 14 => 'equalToFourteen',
-                            $age === 15 => 'equalToFifteen',
-                            $age === 16 => 'equalToSixteen',
-                            default => 'aboveToSixteen',
-                        };
-
-                        $gender = $student->gender == 1 ? 'boys' : 'girls';
-                        $ageGroups[$ageGroup][$gender]++;
-                    }
+                    $genderKey = $gender == 1 ? 'boys' : 'girls';
+                    $ageGroups[$ageGroup][$genderKey]++;
                 }
 
                 return [
-                    'class' => $class->class,
+                    'class'     => $class->class,
                     'ageGroups' => $ageGroups,
                 ];
             });
 
-            // Return the report as JSON
             return response()->json([
                 'status' => 'success',
-                'data' => $report,
+                'data'   => $report,
             ], 200);
+
         } catch (\Exception $e) {
             return response()->json([
-                'status' => 'error',
-                'message' => "Failed to get age-wise report: "
+                'status'  => 'error',
+                'message' => 'Failed to get age-wise report: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -1104,11 +1356,24 @@ class ReportController extends Controller
     public function reportAgeWiseWithDetails(Request $request)
     {
         try {
-            //code...
-            $request->validate([
-                'session_id' => 'required',
+            $current_session = Session::get('current_session');
+
+            $validator = Validator::make($request->all(), [
+                'class' => 'required',
+                'date'  => 'required|date',
             ]);
-            $classID = explode(',', $request->class);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => $validator->errors()
+                ], 400);
+            }
+
+            $classID   = $request->class;
+            $sessionId = $current_session->id;
+            $calcDate  = Carbon::parse($request->date);
+
             $fields = [
                 'stu_main_srno.srno',
                 'stu_main_srno.session_id',
@@ -1124,42 +1389,64 @@ class ReportController extends Controller
                 'class_masters.class as class_name',
                 'section_masters.section as section_name',
             ];
-            $studentsQuery = StudentMasterController::getStdWithNames(false, $fields)
-                ->where('stu_main_srno.session_id', $request->session_id)
-                ->whereIn('stu_main_srno.class', $classID)->get();
-            // dd($studentsQuery);
-            // $studentsQuery = StudentMaster::query()
-            //     ->where('session_id', $request->session_id)
-            //     ->whereIn('class', $classID)
-            //     // ->where('ssid', 1)
-            //     ->whereIn('ssid', [1,2,4,5])
-            //     ->where('active', 1)->get(['srno', 'class', 'section']);
+                $query =  DB::table('stu_main_srno')
+                        ->select($fields)
+                        ->leftJoin('stu_detail', 'stu_main_srno.srno', '=', 'stu_detail.srno')
+                        ->leftJoin('parents_detail', 'stu_main_srno.srno', '=', 'parents_detail.srno')
+                        ->leftJoin('class_masters', 'stu_main_srno.class', '=', 'class_masters.id')
+                        ->leftJoin('section_masters', 'stu_main_srno.section', '=', 'section_masters.id')
+                        ->where('stu_main_srno.session_id', $sessionId)
+                        ->whereIn('stu_main_srno.ssid', [1, 2, 4, 5])
+                        ->where('stu_main_srno.active', 1);
 
-            $report = $studentsQuery->map(function ($student) use ($request) {
-                // $dob = DB::table('stu_detail')->where('srno', $student->srno)->where('active', 1)->value('dob');
-                $dob = $student->dob;
-                $age = (int) Carbon::parse($dob)->diffInYears(Carbon::parse($request->date));
-                // dd($age);
+
+            if ($classID !== 'all') {
+                $query->where('stu_main_srno.class', $classID);
+            }
+            // ─── Shared transform: map DB row → report array ──────────────
+            $transform = function ($student) use ($calcDate) {
+                $age = $student->dob
+                    ? (int) Carbon::parse($student->dob)->diffInYears($calcDate)
+                    : null;
+
                 return [
-                    'class' => $student->class_name ?? '',
+                    'class'   => $student->class_name   ?? '',
                     'section' => $student->section_name ?? '',
-                    'srno' => $student->srno ?? '',
-                    'name' => $student->name ?? '',
-                    'f_name' => $student->f_name  ?? '',
-                    'm_name' => $student->m_name ?? '',
-                    'dob' => $dob ?? '',
-                    'age' => $age ?? '',
-                    'mobile' => $student->f_mobile ?? '',
+                    'srno'    => $student->srno          ?? '',
+                    'name'    => $student->name          ?? '',
+                    'f_name'  => $student->f_name        ?? '',
+                    'm_name'  => $student->m_name        ?? '',
+                    'dob'     => $student->dob           ?? '',
+                    'age'     => $age,
+                    'mobile'  => $student->f_mobile      ?? '',
                 ];
-            });
+            };
+
+            // ─── Paginated mode (AJAX table) ───────────────────────────────
+            // Triggered when ?page= is present in the request
+            if ($request->filled('page')) {
+                    $paginated = $query->paginate(50);
+
+                    $paginated->getCollection()->transform($transform);
+
+                return response()->json([
+                    'status' => 'success',
+                    'data'   => $paginated,
+                ], 200);
+            }
+
+            // ─── Full get mode (export / all records) ─────────────────────
+            $data = $query->get()->map($transform);
+
             return response()->json([
                 'status' => 'success',
-                'data' => $request->page ? $report->paginate(10) : $report,
+                'data'   => $data,
             ], 200);
+
         } catch (\Exception $e) {
             return response()->json([
-                'status' => 'error',
-                'message' => "Failed to get age-wise report: "
+                'status'  => 'error',
+                'message' => 'Failed to get age-wise report: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -1291,12 +1578,10 @@ class ReportController extends Controller
     public function reportTransportWise(Request $request)
     {
         try {
-            //code...
             $validator = Validator::make($request->all(), [
-                'session_id' => 'required|exists:session_masters,id,active,1',
-                'class' => 'exists:class_masters,id,active,1',
-                'section' => 'exists:section_masters,id,active,1',
-
+                'class' => 'required',
+                'section' => 'required',
+                'transport' => 'required'
             ]);
             if ($validator->fails()) {
                 return response()->json([
@@ -1304,22 +1589,44 @@ class ReportController extends Controller
                     'message' => $validator->errors()
                 ], 400);
             }
-            // $baseQuery = $this->getStudentDetails();
-            // $baseQuery = StudentMasterController::getStdWithNames(false, []);
-            $classId = explode(',', $request->class);
-            $sectionId = explode(',', $request->section);
-            $transport = explode(',', $request->transport);
-
+            $classId = $request->class;
+            $sectionId = $request->section;
+            $transport = $request->transport;
+            $transportValues = array_map('intval', explode(',', $transport));
             if (filled($classId) && filled($sectionId) && filled($transport)) {
-                # code...
-                $data = StudentMasterController::getStdWithNames(false, [])->whereIn('stu_main_srno.class', $classId)
-                    ->whereIn('stu_main_srno.section', $sectionId)
-                    ->whereIn('stu_main_srno.transport', $transport)->whereIn('stu_main_srno.ssid', [1, 2])->where('stu_main_srno.session_id', $request->session_id);
-                // ->whereIn('stu_main_srno.transport', $transport)->where('session_id', $request->session_id)->where('stu_main_srno.ssid', 1);
+                $fields = [
+                            'stu_main_srno.srno',
+                            'stu_main_srno.rollno',
+                            'class_masters.class as class_name',
+                            'section_masters.section as section_name',
+                            'stu_detail.name as student_name',
+                            'stu_detail.dob',
+                            'stu_detail.address',
+                            'parents_detail.f_name',
+                            'parents_detail.f_mobile',
+                            'stu_main_srno.ssid'
+                        ];
+                $query =  DB::table('stu_main_srno')
+                        ->select($fields)
+                        ->leftJoin('stu_detail', 'stu_main_srno.srno', '=', 'stu_detail.srno')
+                        ->leftJoin('parents_detail', 'stu_main_srno.srno', '=', 'parents_detail.srno')
+                        ->leftJoin('class_masters', 'stu_main_srno.class', '=', 'class_masters.id')
+                        ->leftJoin('section_masters', 'stu_main_srno.section', '=', 'section_masters.id')
+                        ->whereIn('stu_main_srno.transport', $transportValues)
+                        ->where('stu_main_srno.active', 1)
+                        ->where('stu_main_srno.ssid', 1);
 
+
+                if ($classId != 'all') {
+                    $query->where('stu_main_srno.class', $classId);
+                }
+                if ($sectionId != 'all') {
+                    $query->where('stu_main_srno.section', $sectionId);
+                }
+            $data = $query->orderBy('class_masters.sort', 'asc')->orderBy('section_masters.id', 'asc')->orderBy('stu_main_srno.rollno', 'asc');
                 return response()->json([
                     'status' => 'success',
-                    'data' => $request->page ? $data->paginate(10) : $data->get(),
+                    'data' => $request->page ? $data->paginate(50) : $data->get(),
                 ], 200);
             }
         } catch (\Exception $e) {
@@ -1402,8 +1709,6 @@ class ReportController extends Controller
     public function reportSrRegisterWise(Request $request)
     {
         try {
-            //code...
-
             $validator = Validator::make($request->all(), [
                 'session_id' => 'required|exists:session_masters,id,active,1',
 
@@ -1440,7 +1745,7 @@ class ReportController extends Controller
                 $data = $baseQuery->where('stu_main_srno.session_id', $request->session_id)->whereIn('stu_main_srno.ssid', $stdType);
                 return response()->json([
                     'status' => 'success',
-                    'data' => $request->page ? $data->paginate(25) : $data->get(),
+                    'data' => $request->page ? $data->paginate(50) : $data->get(),
                 ], 200);
             }
         } catch (\Exception $e) {
@@ -1458,8 +1763,6 @@ class ReportController extends Controller
     public function stPreviousDetails(Request $request)
     {
         try {
-            //code...
-
             $validator = Validator::make($request->all(), [
                 'srno' => 'required|exists:stu_main_srno,srno',
 
@@ -1490,9 +1793,6 @@ class ReportController extends Controller
             ], 500);
         }
     }
-
-
-
 
     /**
      * tc Student Details
@@ -1775,14 +2075,12 @@ class ReportController extends Controller
         }
     }
 
-
     /**
      * TC Student Previous Details
      */
     public function tcStPreviousDetails(Request $request)
     {
         try {
-            // Validate input
             $validator = Validator::make($request->all(), [
                 'srno' => 'required|string',
             ]);
@@ -1790,7 +2088,7 @@ class ReportController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => $validator->errors()
-                ], 400);
+                ], 200);
             }
 
             $tables = [];
@@ -1802,21 +2100,14 @@ class ReportController extends Controller
             ])->first();
 
             if (!$student) {
-                # code...
-                // return response()->json([
-                //    'status' => 'error',
-                //    'message' => 'No student found for given SRNO and session.'
-                // ], 404);
                 return response()->json([
                     'status' => 'success',
                     'tables' => $tables
                 ]);
             }
             $studentDetails = DB::table('stu_detail')
-                // ->where('srno', $srno)
                 ->where('srno', $student->srno)
                 ->where('active', 1)
-                // ->where('active', '!=', 1)
                 ->select(
                     'srno',
                     'name',
@@ -1859,9 +2150,7 @@ class ReportController extends Controller
             // Parent Details Table
             $parentDetails = DB::table('parents_detail')
                 ->where('srno', $student->srno)
-                // ->where('srno', $srno)
                 ->where('active', 1)
-                // ->where('active', '!=', 1)
                 ->select(
                     'f_name',
                     'm_name',
@@ -1947,10 +2236,7 @@ class ReportController extends Controller
                             4 => 'Sikh',
                             default => ''
                         },
-                        'admission_date' => $row->admission_date ?
-                            Carbon::parse($row->admission_date)->format('d-M-Y') : ($row->form_submit_date ?
-                                Carbon::parse($row->form_submit_date)->format('d-M-Y') :
-                                '')
+                        'admission_date' => $row->admission_date ? Carbon::parse($row->admission_date)->format('d-M-Y') : ($row->form_submit_date ? Carbon::parse($row->form_submit_date)->format('d-M-Y') : '')
                     ];
                 });
 
@@ -1971,7 +2257,7 @@ class ReportController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => "Failed to get student previous details: "
-            ], 500);
+            ], 200);
         }
     }
     /**
@@ -2007,11 +2293,11 @@ class ReportController extends Controller
                     $student = $student->last();
 
                     // Get the `uid` and `active` values for further processing
-                    $studentId = $student->active;
+                    $active = $student->active;
                     $activeStatus = $student->ssid;
 
                     // Set appropriate message based on the `uid` and `active` status
-                    if ($studentId == 1) {
+                    if ($active == 1) {
                         switch ($activeStatus) {
                             case 1:
                                 $response['message'] = "Student Studying Currently. No any action taken yet.";
@@ -2029,11 +2315,11 @@ class ReportController extends Controller
                                 $response['message'] = "Set as 'Left Out', but TC NOT Issued Yet";
                                 break;
                         }
-                    } elseif ($studentId == 2) {
+                    } elseif ($active == 2) {
                         $response['message'] = "Last Class Passed TC Issued.";
-                    } elseif ($studentId == 3) {
+                    } elseif ($active == 3) {
                         $response['message'] = "Studying Currently But Last Class Passed TC Issued.";
-                    } elseif ($studentId == 4) {
+                    } elseif ($active == 4) {
                         $response['message'] = "Studying TC Issued.";
                     }
                 }
@@ -2376,7 +2662,6 @@ class ReportController extends Controller
      */
     public function rteStudentReportView()
     {
-
         return view('admin.reports.rte_std_report');
     }
 
@@ -2386,70 +2671,72 @@ class ReportController extends Controller
     public function rteStudentReport(Request $request)
     {
         try {
-            // Validate input
             $validator = Validator::make($request->all(), [
-                'class' => 'required|exists:class_masters,id,active,1',
+                'session' => 'required|exists:session_masters,id,active,1',
+                'class'   => 'nullable|exists:class_masters,id,active,1',
             ]);
+
             if ($validator->fails()) {
                 return response()->json([
-                    'status' => 'error',
-                    'message' => $validator->errors()
+                    'status'  => 'error',
+                    'message' => $validator->errors(),
                 ], 400);
             }
 
-            // Parse the class input (comma-separated values)
-            $class = explode(',', $request->class);
+            $sessionId = $request->session;
 
-            // Build the query
+            // ── Parse class safely (empty string → no filter = all classes) ───────
+            $classIds = array_filter(array_map('trim', explode(',', $request->class ?? '')));
+
             $fields = [
                 'stu_main_srno.srno',
                 'stu_main_srno.class',
-                'class_masters.sort',
                 'stu_main_srno.ssid',
                 'stu_main_srno.active',
                 'stu_main_srno.session_id',
+                'class_masters.sort',
                 'stu_detail.name',
                 'parents_detail.f_name',
             ];
-            $studentQuery =  StudentMasterController::getStdWithNames(false, $fields)->where('stu_main_srno.session_id', $request->session)
-                ->where('stu_main_srno.srno', 'like', '%RTE%')->orWhere('stu_main_srno.is_rtest', 1)
-                ->whereIn('stu_main_srno.class', $class)->orderBy('class_masters.sort', 'asc');
-            // $studentQuery = StudentMaster::whereIn('class', $class)
-            //     ->where('session_id', $request->session)
-            //     ->where('srno', 'like', '%RTE%')
-            //     // ->where('ssid', 1);
-            //     ->whereIn('ssid', [1,2,4,5]);
 
-            // Paginate or get all students based on the request
-            $students = isset($request->page) ? $studentQuery->paginate(10) : $studentQuery->get();
+            // ── Build query ───────────────────────────────────────────────────────
+            $query = StudentMasterController::getStdWithNames(false, $fields)
+                ->where('stu_main_srno.session_id', $sessionId)
+                ->where(function ($q) {
+                    //  Wrapped in closure so session_id/class scope is preserved
+                    $q->where('stu_main_srno.srno', 'like', '%RTE%')
+                    ->orWhere('stu_main_srno.is_rtest', 1);
+                })
+                ->orderBy('class_masters.sort', 'asc');
 
-            $report = [];
-            foreach ($students as $student) {
-                $report[] = [
-                    'srno' => $student->srno,
-                    'name' => $student->name,
-                    'f_name' => $student->f_name,
-                ];
+            if (!empty($classIds)) {
+                $query->whereIn('stu_main_srno.class', $classIds);
             }
 
+            // ── Paginate or get all ───────────────────────────────────────────────
+            $students = $request->page
+                ? $query->paginate(50)
+                : $query->get();
 
-            // Return the full report
+            // ── Return paginated object directly (blade expects data.data) ────────
             return response()->json([
                 'status' => 'success',
-                'data' => $report,
-                'pagination' => isset($request->page) ?
-                    [
-                        'total' => $students->total(),
-                        'per_page' => $students->perPage(),
-                        'current_page' => $students->currentPage(),
-                        'last_page' => $students->lastPage(),
-                        'from' => $students->firstItem(),
-                        'to' => $students->lastItem(),
-                    ] : [],
+                'data'   => $request->page ? $students : [
+                    'data'         => $students,
+                    'current_page' => 1,
+                    'per_page'     => $students->count(),
+                    'total'        => $students->count(),
+                    'last_page'    => 1,
+                    'from'         => 1,
+                    'to'           => $students->count(),
+                ],
             ], 200);
+
         } catch (\Exception $e) {
-            // Catch any unexpected errors
-            return response()->json(['error' => 'An error occurred. Please try again.'], 500);
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'An error occurred: ' . $e->getMessage(),
+            ], 500);
         }
     }
 
@@ -2459,62 +2746,70 @@ class ReportController extends Controller
     public function rteStudentReportExcel(Request $request)
     {
         try {
-            // Call the newAdmissionReportByCategory function to get the report data
+            // Always fetch full data (no pagination for export)
+            $request->merge(['page' => null]);
+
             $response = $this->rteStudentReport($request);
 
-            // Check if the response is successful and contains data
             if ($response->getStatusCode() !== 200) {
                 return response()->json([
-                    'status' => 'error',
-                    'message' => 'Failed to generate report: ' . $response->getContent()
+                    'status'  => 'error',
+                    'message' => 'Failed to generate report'
                 ], 500);
             }
 
-            // Get the report data from the response
-            $reportData = json_decode($response->getContent(), true)['data'];
+            $decodedResponse = json_decode($response->getContent(), true);
 
-            // Set the file name for the exported CSV file
-            $fileName = 'RTE_st_report.csv';
-
-
-            $output = fopen('php://memory', 'w');
-            if ($output === false) {
-                throw new \Exception('Failed to open output stream.');
+            if (!isset($decodedResponse['data']['data'])) {
+                throw new \Exception('Invalid report structure');
             }
 
-            // Set the CSV column headers
-            $headers = ['S.No.', 'SRNO', 'Name', 'Gurdian Name', 'Category(WS/DG)', 'Sign. of Certifier	', 'Remark'];
-            fputcsv($output, $headers);
+            $reportData = $decodedResponse['data']['data'];
 
-            // Write the report data to the CSV file
+            $fileName = 'RTE_st_report_' . date('Y_m_d_H_i_s') . '.csv';
+
+            $output = fopen('php://memory', 'w');
+
+            if ($output === false) {
+                throw new \Exception('Failed to open memory stream.');
+            }
+
+            // CSV Headers
+            fputcsv($output, [
+                'S.No.',
+                'SRNO',
+                'Name',
+                'Guardian Name',
+                'Category (WS/DG)',
+                'Sign. of Certifier',
+                'Remark'
+            ]);
+
             foreach ($reportData as $index => $row) {
                 fputcsv($output, [
                     $index + 1,
-                    $row['srno'],
-                    $row['name'],
-                    $row['f_name'],
-                    '-',
-                    '-',
-                    '-',
+                    $row['srno'] ?? '',
+                    $row['name'] ?? '',
+                    $row['f_name'] ?? '',
+                    '',
+                    '',
+                    '',
                 ]);
             }
-            // Rewind the memory stream to the beginning
+
             rewind($output);
-
-            // Get the contents of the memory stream (CSV content)
             $csvContent = stream_get_contents($output);
-
-            // Close the memory stream
             fclose($output);
 
-            // Return the CSV content as a response
             return response($csvContent, 200)
                 ->header('Content-Type', 'text/csv')
                 ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
+
         } catch (\Exception $e) {
+
             return response()->json([
-                'status' => 'error',
-                'message' => "Failed to export report"
+                'status'  => 'error',
+                'message' => 'Failed to export report: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -2524,7 +2819,6 @@ class ReportController extends Controller
      */
     public function srRegisterView()
     {
-
         return view('admin.reports.sr_register_full_details');
     }
 
@@ -2600,7 +2894,7 @@ class ReportController extends Controller
             }
 
             // Paginate or get all students based on the request
-            $students = isset($request->page) ? $studentQuery->paginate(25) : $studentQuery->get();
+            $students = isset($request->page) ? $studentQuery->paginate(50) : $studentQuery->get();
 
 
             // Return the full report
@@ -2711,121 +3005,147 @@ class ReportController extends Controller
     public function feeReportAdmin(Request $request)
     {
         try {
-            // Validate input
             $rules = [
-                'session' => 'required|exists:session_masters,id,active,1',
-                'feeType' => 'required',
+                'session'    => 'required|exists:session_masters,id,active,1',
+                'feeType'    => 'required',
                 'reportType' => 'required',
             ];
+
             if (isset($request->startDate) || isset($request->endDate)) {
-                # code...
                 $rules['startDate'] = [
                     'required',
                     function ($attribute, $value, $fail) use ($request) {
                         if (isset($request->endDate) && $value > $request->endDate) {
-                            $fail('Start Date must be less then or equal to End Date.');
+                            $fail('Start Date must be less than or equal to End Date.');
                         }
                     },
                     'exists:fee_details,pay_date',
                 ];
-                $rules['endDate'] =
-                    [
-                        'required_if:startDate, true',
-                        function ($attribute, $value, $fail) use ($request) {
-                            if (isset($request->startDate) && $value < $request->startDate) {
-                                $fail('Start Date must be greater then or equal to Start Date.');
-                            }
-                        },
-                        // 'exists:fee_details,pay_date',
-                    ];
+                $rules['endDate'] = [
+                    'required_if:startDate,true',
+                    function ($attribute, $value, $fail) use ($request) {
+                        if (isset($request->startDate) && $value < $request->startDate) {
+                            $fail('End Date must be greater than or equal to Start Date.');
+                        }
+                    },
+                ];
             }
+
             $validator = Validator::make($request->all(), $rules);
             if ($validator->fails()) {
                 return response()->json([
-                    'status' => 'error',
-                    'message' => $validator->errors()
+                    'status'  => 'error',
+                    'message' => $validator->errors(),
                 ], 400);
             }
 
-            $startDate = $request->startDate;
-            $endDate = $request->endDate;
-            $reportType = $request->reportType;
-            $session = $request->session;
-            $academic_trans = $request->feeType == 1 ? 1 : 2;
+            $startDate     = $request->startDate;
+            $endDate       = $request->endDate;
+            $reportType    = $request->reportType;
+            $sessionId     = $request->session;
+            $academicTrans = $request->feeType == 1 ? 1 : 2;
 
-            // Build the query
-            $feeDetails = FeeDetail::where('session_id', $session)
-                ->where('academic_trans', $academic_trans)
-                ->where('paid_mercy', 1)
-                ->where('active', 1)->orderBy('srno', 'asc')->orderBy('ref_slip_no', 'asc');
+            // ── Base fee query ────────────────────────────────────────────────────
+            $feeQuery = FeeDetail::where('session_id',     $sessionId)
+                ->where('academic_trans', $academicTrans)
+                ->where('paid_mercy',     1)
+                ->where('active',         1)
+                ->orderBy('srno',        'asc')
+                ->orderBy('ref_slip_no', 'asc');
 
-            // Apply date filters if provided
             if ($startDate && $endDate) {
-                $feeDetails->whereBetween('pay_date', [$startDate, $endDate]);
+                $feeQuery->whereBetween('pay_date', [$startDate, $endDate]);
             }
 
+            // ── Report Type 1: Summary only ───────────────────────────────────────
+            if ($reportType == 1) {
+                $summaryAmount = (clone $feeQuery)->sum('amount');
+                return response()->json([
+                    'status'     => 'success',
+                    'data'       => [
+                        ['summeryAmount' => $summaryAmount > 0 ? $summaryAmount : 'No any Fee Entry Found.'],
+                    ],
+                    'pagination' => [],
+                ], 200);
+            }
+
+            // ── Report Type 2: Detailed ───────────────────────────────────────────
+
+            // ── 1. Fetch fee details (paginated or full) in ONE query ─────────────
+            $feeDetailsResult = isset($request->page)
+                ? (clone $feeQuery)->paginate(50)
+                : (clone $feeQuery)->get();
+
+            // ── 2. Grand total in ONE query ───────────────────────────────────────
+            $grandTotal = (clone $feeQuery)->sum('amount');
+
+            if ($feeDetailsResult->isEmpty()) {
+                return response()->json([
+                    'status'     => 'success',
+                    'data'       => ['grandTotal' => 0],
+                    'pagination' => [],
+                ], 200);
+            }
+
+            // ── 3. Fetch ALL student details in ONE query ─────────────────────────
+            $studentSrnos = $feeDetailsResult->pluck('srno')->unique()->toArray();
+
+            $studentsMap = DB::table('stu_main_srno')
+                ->leftJoin('stu_detail',      'stu_main_srno.srno', '=', 'stu_detail.srno')
+                ->leftJoin('parents_detail',  'stu_main_srno.srno', '=', 'parents_detail.srno')
+                ->leftJoin('class_masters',   'stu_main_srno.class', '=', 'class_masters.id')
+                ->leftJoin('session_masters', 'stu_main_srno.session_id', '=', 'session_masters.id')
+                ->where('stu_main_srno.session_id', $sessionId)
+                ->where('stu_main_srno.active',     1)
+                ->whereIn('stu_main_srno.srno',     $studentSrnos)
+                ->select(
+                    'stu_main_srno.srno',
+                    'stu_main_srno.school',
+                    'class_masters.class as class_name',
+                    'stu_main_srno.section as section_name',
+                    'stu_detail.name as student_name',
+                    'parents_detail.f_name'
+                )
+                ->get()
+                ->groupBy('srno'); // [srno => collection]
+
+            // ── 4. Build report in memory (zero extra queries) ────────────────────
             $report = [];
 
-            if ($reportType == 1) {
-                $summeryAmount = $feeDetails->sum('amount');
-                $report[] = [
-                    'summeryAmount' => $summeryAmount > 0 ? $summeryAmount : 'No any Fee Entry Found.',
-                ];
-            } else {
-                // $baseQuery = $this->getStudentDetails();
-                $baseQuery = StudentMasterController::getStdWithNames(false, []);
+            foreach ($feeDetailsResult as $feeDetail) {
+                $matchingStudents = $studentsMap->get($feeDetail->srno, collect([]));
 
-                $feeDetailsQuery = isset($request->page) ?
-                    $feeDetails->paginate(10) :
-                    $feeDetails->get();
-
-                $studentSrnos = $feeDetailsQuery->pluck('srno')->unique();
-
-                $studentsData = $baseQuery->whereIn('stu_main_srno.srno', $studentSrnos)
-                    // ->where('ssid', 1)
-                    ->where('session_id', $session)
-                    ->get(['stu_main_srno.srno', 'class_name', 'section_name', 'student_name', 'f_name', 'school'])
-                    ->groupBy('srno');
-
-                // Map fee details to students
-                foreach ($feeDetailsQuery as $feeDetail) {
-                    $matchingStudents = $studentsData->get($feeDetail->srno, collect([]));
-
-                    foreach ($matchingStudents as $student) {
-                        $report[] = [
-                            'school' => $student->school,
-                            'name' => $student->student_name,
-                            'f_name' => $student->f_name,
-                            'class_name' => $student->class_name,
-                            'section_name' => $student->section_name,
-                            'feeDetails' => $feeDetail,
-                        ];
-                    }
+                foreach ($matchingStudents as $student) {
+                    $report[] = [
+                        'school'       => $student->school,
+                        'name'         => $student->student_name,
+                        'f_name'       => $student->f_name,
+                        'class_name'   => $student->class_name,
+                        'section_name' => $student->section_name,
+                        'feeDetails'   => $feeDetail,
+                    ];
                 }
-
-                // Calculate total amount
-                $report['grandTotal'] = $feeDetails->sum('amount');
             }
 
-            // Return the full report
+            $report['grandTotal'] = $grandTotal;
+
             return response()->json([
-                'status' => 'success',
-                'data' => $report,
-                'pagination' => isset($request->page) && $reportType == 2 ?
-                    [
-                        'total' => $feeDetailsQuery->total(),
-                        'per_page' => $feeDetailsQuery->perPage(),
-                        'current_page' => $feeDetailsQuery->currentPage(),
-                        'last_page' => $feeDetailsQuery->lastPage(),
-                        'from' => $feeDetailsQuery->firstItem(),
-                        'to' => $feeDetailsQuery->lastItem(),
-                    ] : [],
+                'status'     => 'success',
+                'data'       => $report,
+                'pagination' => isset($request->page) ? [
+                    'total'        => $feeDetailsResult->total(),
+                    'per_page'     => $feeDetailsResult->perPage(),
+                    'current_page' => $feeDetailsResult->currentPage(),
+                    'last_page'    => $feeDetailsResult->lastPage(),
+                    'from'         => $feeDetailsResult->firstItem(),
+                    'to'           => $feeDetailsResult->lastItem(),
+                ] : [],
             ], 200);
+
         } catch (\Exception $e) {
-            // Catch any unexpected errors
             return response()->json([
-                'error' => 'An error occurred. Please try again.',
-                'message' => $e->getMessage()
+                'error'   => 'An error occurred. Please try again.',
+                'message' => $e->getMessage(),
             ], 500);
         }
     }
@@ -2836,121 +3156,119 @@ class ReportController extends Controller
     public function feeReportAdminExcel(Request $request)
     {
         try {
-            // Call the newAdmissionReportByCategory function to get the report data
+            // ── Force no pagination for Excel export ──────────────────────────────
+            $request->request->remove('page');
+
             $response = $this->feeReportAdmin($request);
 
-            // Check if the response is successful and contains data
             if ($response->getStatusCode() !== 200) {
                 return response()->json([
-                    'status' => 'error',
-                    'message' => 'Failed to generate report: ' . $response->getContent()
+                    'status'  => 'error',
+                    'message' => 'Failed to generate report: ' . $response->getContent(),
                 ], 500);
             }
 
-            // Get the report data from the response
-            $reportData = json_decode($response->getContent(), true)['data'];
+            $reportData = json_decode($response->getContent(), true)['data'] ?? [];
 
-            // Set the file name for the exported CSV file
-            $fileName = 'fee_admin_full_report.csv';
+            if (empty($reportData)) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'No data found.',
+                ], 404);
+            }
 
+            // ── Split into junior/senior in ONE pass ──────────────────────────────
+            $juniorStudents = [];
+            $seniorStudents = [];
+            $juniorTotal    = 0;
+            $seniorTotal    = 0;
 
+            foreach ($reportData as $key => $row) {
+                if ($key === 'grandTotal') continue;
+
+                if ($row['school'] == 1) {
+                    $juniorStudents[] = $row;
+                    $juniorTotal     += floatval($row['feeDetails']['amount'] ?? 0);
+                } else {
+                    $seniorStudents[] = $row;
+                    $seniorTotal     += floatval($row['feeDetails']['amount'] ?? 0);
+                }
+            }
+
+            // ── Write CSV ─────────────────────────────────────────────────────────
             $output = fopen('php://memory', 'w');
             if ($output === false) {
                 throw new \Exception('Failed to open output stream.');
             }
 
-            // Set the CSV column headers
-            $headers = ['S.No.', 'Pay Date', 'Ref. Slip No.', 'C. Slip No.', 'SRNO', 'Class', 'Section', 'Name', "Father's Name", 'Amount (Rs.)'];
-            fputcsv($output, $headers);
+            fputcsv($output, [
+                'S.No.', 'Pay Date', 'Ref. Slip No.', 'C. Slip No.',
+                'SRNO', 'Class', 'Section', 'Name', "Father's Name", 'Amount (Rs.)',
+            ]);
 
-            // Separate students into junior and senior sections
-            $juniorStudents = [];
-            $seniorStudents = [];
-            $juniorTotal = 0;
-            $seniorTotal = 0;
-
-            // Group students
-            foreach ($reportData as $key => $row) {
-                if ($key === 'grandTotal') continue;
-                $studentData = $row;
-                if ($studentData['school'] == 1) {
-                    array_push($juniorStudents, $studentData);
-                    $juniorTotal += floatval($studentData['feeDetails']['amount'] ?? 0);
-                } else {
-                    array_push($seniorStudents, $studentData);
-                    $seniorTotal += floatval($studentData['feeDetails']['amount'] ?? 0);
-                }
-            }
             $counter = 1;
 
-            // Write Junior Section
-            if (count($juniorStudents) > 0) {
+            // Junior Section
+            if (!empty($juniorStudents)) {
                 fputcsv($output, []);
                 fputcsv($output, ['Junior Section']);
-
-                foreach ($juniorStudents as $studentData) {
+                foreach ($juniorStudents as $row) {
                     fputcsv($output, [
                         $counter++,
-                        $studentData['feeDetails']['pay_date'] ?? '-',
-                        $studentData['feeDetails']['ref_slip_no'] ?? '-',
-                        $studentData['feeDetails']['recp_no'] ?? '-',
-                        $studentData['feeDetails']['srno'] ?? '-',
-                        $studentData['class_name'] ?? '-',
-                        $studentData['section_name'] ?? '-',
-                        $studentData['name'] ?? '-',
-                        $studentData['f_name'] ?? '-',
-                        $studentData['feeDetails']['amount'] ?? 0
+                        $row['feeDetails']['pay_date']    ?? '-',
+                        $row['feeDetails']['ref_slip_no'] ?? '-',
+                        $row['feeDetails']['recp_no']     ?? '-',
+                        $row['feeDetails']['srno']        ?? '-',
+                        $row['class_name']                ?? '-',
+                        $row['section_name']              ?? '-',
+                        $row['name']                      ?? '-',
+                        $row['f_name']                    ?? '-',
+                        $row['feeDetails']['amount']      ?? 0,
                     ]);
                 }
-
-                // Add Junior Section Total
                 fputcsv($output, ['', '', '', '', '', '', '', '', 'Junior Section Total:', $juniorTotal]);
             }
 
-            // Write Senior Section
-            if (count($seniorStudents) > 0) {
+            // Senior Section
+            if (!empty($seniorStudents)) {
+                fputcsv($output, []);
                 fputcsv($output, ['Senior Section']);
-
-                foreach ($seniorStudents as $index => $studentData) {
+                foreach ($seniorStudents as $row) {
                     fputcsv($output, [
                         $counter++,
-                        $studentData['feeDetails']['pay_date'] ?? '-',
-                        $studentData['feeDetails']['ref_slip_no'] ?? '-',
-                        $studentData['feeDetails']['recp_no'] ?? '-',
-                        $studentData['feeDetails']['srno'] ?? '-',
-                        $studentData['class_name'] ?? '-',
-                        $studentData['section_name'] ?? '-',
-                        $studentData['name'] ?? '-',
-                        $studentData['f_name'] ?? '-',
-                        $studentData['feeDetails']['amount'] ?? 0
+                        $row['feeDetails']['pay_date']    ?? '-',
+                        $row['feeDetails']['ref_slip_no'] ?? '-',
+                        $row['feeDetails']['recp_no']     ?? '-',
+                        $row['feeDetails']['srno']        ?? '-',
+                        $row['class_name']                ?? '-',
+                        $row['section_name']              ?? '-',
+                        $row['name']                      ?? '-',
+                        $row['f_name']                    ?? '-',
+                        $row['feeDetails']['amount']      ?? 0,
                     ]);
                 }
-
-                // Add Senior Section Total
                 fputcsv($output, ['', '', '', '', '', '', '', '', 'Senior Section Total:', $seniorTotal]);
             }
 
-            // Add Grand Total
+            // Grand Total
             if (isset($reportData['grandTotal'])) {
                 fputcsv($output, ['', '', '', '', '', '', '', '', 'Grand Total:', $reportData['grandTotal']]);
             }
-            // Rewind the memory stream to the beginning
+
             rewind($output);
-
-            // Get the contents of the memory stream (CSV content)
             $csvContent = stream_get_contents($output);
-
-            // Close the memory stream
             fclose($output);
 
-            // Return the CSV content as a response
+            $fileName = 'fee_admin_report_' . now()->format('Y_m_d_His') . '.csv';
+
             return response($csvContent, 200)
-                ->header('Content-Type', 'text/csv')
+                ->header('Content-Type',        'text/csv')
                 ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
+
         } catch (\Exception $e) {
             return response()->json([
-                'status' => 'error',
-                'message' => "Failed to export report: "
+                'status'  => 'error',
+                'message' => 'Failed to export report: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -2971,248 +3289,268 @@ class ReportController extends Controller
     public function feeReportMercyAdmin(Request $request)
     {
         try {
-            // Validate input
             $rules = [
-                'session' => 'required|exists:session_masters,id,active,1',
-                'feeType' => 'required',
+                'session'    => 'required|exists:session_masters,id,active,1',
+                'feeType'    => 'required',
                 'reportType' => 'required',
             ];
+
             if (isset($request->startDate) || isset($request->endDate)) {
-                # code...
                 $rules['startDate'] = [
                     'required',
                     function ($attribute, $value, $fail) use ($request) {
                         if (isset($request->endDate) && $value > $request->endDate) {
-                            $fail('Start Date must be less then or equal to End Date.');
+                            $fail('Start Date must be less than or equal to End Date.');
                         }
                     },
                     'exists:fee_details,pay_date',
                 ];
-                $rules['endDate'] =
-                    [
-                        'required_if:startDate, true',
-                        function ($attribute, $value, $fail) use ($request) {
-                            if (isset($request->startDate) && $value < $request->startDate) {
-                                $fail('Start Date must be greater then or equal to Start Date.');
-                            }
-                        },
-                        // 'exists:fee_details,pay_date',
-                    ];
+                $rules['endDate'] = [
+                    'required_if:startDate,true',
+                    function ($attribute, $value, $fail) use ($request) {
+                        if (isset($request->startDate) && $value < $request->startDate) {
+                            $fail('End Date must be greater than or equal to Start Date.');
+                        }
+                    },
+                ];
             }
+
             $validator = Validator::make($request->all(), $rules);
             if ($validator->fails()) {
                 return response()->json([
-                    'status' => 'error',
-                    'message' => $validator->errors()
+                    'status'  => 'error',
+                    'message' => $validator->errors(),
                 ], 400);
             }
 
-            $startDate = $request->startDate;
-            $endDate = $request->endDate;
-            $reportType = $request->reportType;
-            $session = $request->session;
-            $academic_trans = $request->feeType == 1 ? 1 : 2;
+            $startDate      = $request->startDate;
+            $endDate        = $request->endDate;
+            $reportType     = $request->reportType;
+            $sessionId      = $request->session;
+            $academicTrans  = $request->feeType == 1 ? 1 : 2;
 
-            // Build the query
-            $feeDetails = FeeDetail::where('session_id', $session)
-                ->where('academic_trans', $academic_trans)
-                ->where('paid_mercy', 2)
-                ->where('active', 1)->orderBy('srno', 'asc')->orderBy('ref_slip_no', 'asc');
+            // ── Base fee query ────────────────────────────────────────────────────
+            $feeQuery = FeeDetail::where('session_id',     $sessionId)
+                ->where('academic_trans', $academicTrans)
+                ->where('paid_mercy',     2)
+                ->where('active',         1)
+                ->orderBy('srno',        'asc')
+                ->orderBy('ref_slip_no', 'asc');
 
-            // Apply date filters if provided
             if ($startDate && $endDate) {
-                $feeDetails->whereBetween('pay_date', [$startDate, $endDate]);
+                $feeQuery->whereBetween('pay_date', [$startDate, $endDate]);
             }
 
+            // ── Report Type 1: Summary only ───────────────────────────────────────
+            if ($reportType == 1) {
+                $summaryAmount = (clone $feeQuery)->sum('amount');
+                return response()->json([
+                    'status' => 'success',
+                    'data'   => [
+                        ['summeryAmount' => $summaryAmount > 0 ? $summaryAmount : 'No any Fee Entry Found.'],
+                    ],
+                    'pagination' => [],
+                ], 200);
+            }
+
+            // ── Report Type 2: Detailed ───────────────────────────────────────────
+
+            // ── 1. Fetch fee details (paginated or full) in ONE query ─────────────
+            $feeDetailsResult = isset($request->page)
+                ? (clone $feeQuery)->paginate(50)
+                : (clone $feeQuery)->get();
+
+            // ── 2. Get grand total in ONE query (no re-fetch) ─────────────────────
+            $grandTotal = (clone $feeQuery)->sum('amount');
+
+            if ($feeDetailsResult->isEmpty()) {
+                return response()->json([
+                    'status'     => 'success',
+                    'data'       => ['grandTotal' => 0],
+                    'pagination' => [],
+                ], 200);
+            }
+
+            // ── 3. Fetch ALL student details in ONE query ─────────────────────────
+            $studentSrnos = $feeDetailsResult->pluck('srno')->unique()->toArray();
+
+            $studentsMap = DB::table('stu_main_srno')
+                ->leftJoin('stu_detail',      'stu_main_srno.srno', '=', 'stu_detail.srno')
+                ->leftJoin('parents_detail',  'stu_main_srno.srno', '=', 'parents_detail.srno')
+                ->leftJoin('class_masters',   'stu_main_srno.class', '=', 'class_masters.id')
+                ->leftJoin('session_masters', 'stu_main_srno.session_id', '=', 'session_masters.id')
+                ->where('stu_main_srno.session_id', $sessionId)
+                ->where('stu_main_srno.active',     1)
+                ->whereIn('stu_main_srno.srno',     $studentSrnos)
+                ->select(
+                    'stu_main_srno.srno',
+                    'stu_main_srno.school',
+                    'class_masters.class as class_name',
+                    'stu_main_srno.section as section_name',
+                    'stu_detail.name as student_name',
+                    'parents_detail.f_name'
+                )
+                ->get()
+                ->groupBy('srno'); // [srno => collection of student rows]
+
+            // ── 4. Build report in memory (zero extra queries) ────────────────────
             $report = [];
 
-            if ($reportType == 1) {
-                $summeryAmount = $feeDetails->sum('amount');
-                $report[] = [
-                    'summeryAmount' => $summeryAmount > 0 ? $summeryAmount : 'No any Fee Entry Found.',
-                ];
-            } else {
-                // $baseQuery = $this->getStudentDetails();
-                $baseQuery = StudentMasterController::getStdWithNames(false, []);
+            foreach ($feeDetailsResult as $feeDetail) {
+                $matchingStudents = $studentsMap->get($feeDetail->srno, collect([]));
 
-                $feeDetailsQuery = isset($request->page) ?
-                    $feeDetails->paginate(10) :
-                    $feeDetails->get();
-
-                $studentSrnos = $feeDetailsQuery->pluck('srno')->unique();
-
-                $studentsData = $baseQuery->whereIn('stu_main_srno.srno', $studentSrnos)
-                    // ->where('ssid', 1)
-                    // ->whereIn('ssid', [1,2,4,5])
-                    ->where('session_id', $session)
-                    ->get(['stu_main_srno.srno', 'class_name', 'section_name', 'student_name', 'f_name', 'school'])
-                    ->groupBy('srno');
-
-                // Map fee details to students
-                foreach ($feeDetailsQuery as $feeDetail) {
-                    $matchingStudents = $studentsData->get($feeDetail->srno, collect([]));
-
-                    foreach ($matchingStudents as $student) {
-                        $report[] = [
-                            'school' => $student->school,
-                            'name' => $student->student_name,
-                            'f_name' => $student->f_name,
-                            'class_name' => $student->class_name,
-                            'section_name' => $student->section_name,
-                            'feeDetails' => $feeDetail,
-                        ];
-                    }
+                foreach ($matchingStudents as $student) {
+                    $report[] = [
+                        'school'       => $student->school,
+                        'name'         => $student->student_name,
+                        'f_name'       => $student->f_name,
+                        'class_name'   => $student->class_name,
+                        'section_name' => $student->section_name,
+                        'feeDetails'   => $feeDetail,
+                    ];
                 }
-
-                // Calculate total amount
-                $report['grandTotal'] = $feeDetails->sum('amount');
             }
 
-            // Return the full report
+            $report['grandTotal'] = $grandTotal;
+
             return response()->json([
-                'status' => 'success',
-                'data' => $report,
-                'pagination' => isset($request->page) && $reportType == 2 ?
-                    [
-                        'total' => $feeDetailsQuery->total(),
-                        'per_page' => $feeDetailsQuery->perPage(),
-                        'current_page' => $feeDetailsQuery->currentPage(),
-                        'last_page' => $feeDetailsQuery->lastPage(),
-                        'from' => $feeDetailsQuery->firstItem(),
-                        'to' => $feeDetailsQuery->lastItem(),
-                    ] : [],
+                'status'     => 'success',
+                'data'       => $report,
+                'pagination' => isset($request->page) ? [
+                    'total'        => $feeDetailsResult->total(),
+                    'per_page'     => $feeDetailsResult->perPage(),
+                    'current_page' => $feeDetailsResult->currentPage(),
+                    'last_page'    => $feeDetailsResult->lastPage(),
+                    'from'         => $feeDetailsResult->firstItem(),
+                    'to'           => $feeDetailsResult->lastItem(),
+                ] : [],
             ], 200);
+
         } catch (\Exception $e) {
-            // Catch any unexpected errors
             return response()->json([
-                'error' => 'An error occurred. Please try again.',
-                'message' => $e->getMessage()
+                'error'   => 'An error occurred. Please try again.',
+                'message' => $e->getMessage(),
             ], 500);
         }
     }
 
     /**
-     *fee Report Admin Excel
+     * fee Report Admin Excel
      */
     public function feeReportMercyAdminExcel(Request $request)
     {
         try {
-            // Call the newAdmissionReportByCategory function to get the report data
+            // ── Force no pagination for Excel export ──────────────────────────────
+            $request->request->remove('page');
+
             $response = $this->feeReportMercyAdmin($request);
 
-            // Check if the response is successful and contains data
             if ($response->getStatusCode() !== 200) {
                 return response()->json([
-                    'status' => 'error',
-                    'message' => 'Failed to generate report: ' . $response->getContent()
+                    'status'  => 'error',
+                    'message' => 'Failed to generate report: ' . $response->getContent(),
                 ], 500);
             }
 
-            // Get the report data from the response
-            $reportData = json_decode($response->getContent(), true)['data'];
+            $reportData = json_decode($response->getContent(), true)['data'] ?? [];
 
-            // Set the file name for the exported CSV file
-            $fileName = 'mercy_fee_report.csv';
+            if (empty($reportData)) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'No data found.',
+                ], 404);
+            }
 
-            // Open the output stream for writing to the CSV file
-            // $output = fopen('php://output', 'w');
-            // Open the output stream for writing to the CSV file
+            // ── Split into junior/senior in ONE pass ──────────────────────────────
+            $juniorStudents = [];
+            $seniorStudents = [];
+            $juniorTotal    = 0;
+            $seniorTotal    = 0;
+
+            foreach ($reportData as $key => $row) {
+                if ($key === 'grandTotal') continue;
+
+                if ($row['school'] == 1) {
+                    $juniorStudents[] = $row;
+                    $juniorTotal     += floatval($row['feeDetails']['amount'] ?? 0);
+                } else {
+                    $seniorStudents[] = $row;
+                    $seniorTotal     += floatval($row['feeDetails']['amount'] ?? 0);
+                }
+            }
+
+            // ── Write CSV ─────────────────────────────────────────────────────────
             $output = fopen('php://memory', 'w');
             if ($output === false) {
                 throw new \Exception('Failed to open output stream.');
             }
 
-            // Set the CSV column headers
-            $headers = ['S.No.', 'Pay Date', 'Ref. Slip No.', 'C. Slip No.', 'SRNO', 'Class', 'Section', 'Name', "Father's Name", 'Amount (Rs.)'];
-            fputcsv($output, $headers);
+            fputcsv($output, [
+                'S.No.', 'Pay Date', 'Ref. Slip No.', 'C. Slip No.',
+                'SRNO', 'Class', 'Section', 'Name', "Father's Name", 'Amount (Rs.)',
+            ]);
 
-            // Separate students into junior and senior sections
-            $juniorStudents = [];
-            $seniorStudents = [];
-            $juniorTotal = 0;
-            $seniorTotal = 0;
-
-            // Group students
-            foreach ($reportData as $key => $row) {
-                if ($key === 'grandTotal') continue;
-                $studentData = $row;
-                if ($studentData['school'] == 1) {
-                    array_push($juniorStudents, $studentData);
-                    $juniorTotal += floatval($studentData['feeDetails']['amount'] ?? 0);
-                } else {
-                    array_push($seniorStudents, $studentData);
-                    $seniorTotal += floatval($studentData['feeDetails']['amount'] ?? 0);
-                }
-            }
-
-            // Write Junior Section
             $counter = 1;
-            if (count($juniorStudents) > 0) {
-                fputcsv($output, ['Junior Section']);
 
-                foreach ($juniorStudents as $studentData) {
+            // Junior Section
+            if (!empty($juniorStudents)) {
+                fputcsv($output, ['Junior Section']);
+                foreach ($juniorStudents as $row) {
                     fputcsv($output, [
                         $counter++,
-                        $studentData['feeDetails']['pay_date'] ?? '-',
-                        $studentData['feeDetails']['ref_slip_no'] ?? '-',
-                        $studentData['feeDetails']['recp_no'] ?? '-',
-                        $studentData['feeDetails']['srno'] ?? '-',
-                        $studentData['class_name'] ?? '-',
-                        $studentData['section_name'] ?? '-',
-                        $studentData['name'] ?? '-',
-                        $studentData['f_name'] ?? '-',
-                        $studentData['feeDetails']['amount'] ?? 0
+                        $row['feeDetails']['pay_date']    ?? '-',
+                        $row['feeDetails']['ref_slip_no'] ?? '-',
+                        $row['feeDetails']['recp_no']     ?? '-',
+                        $row['feeDetails']['srno']        ?? '-',
+                        $row['class_name']                ?? '-',
+                        $row['section_name']              ?? '-',
+                        $row['name']                      ?? '-',
+                        $row['f_name']                    ?? '-',
+                        $row['feeDetails']['amount']      ?? 0,
                     ]);
                 }
-
-                // Add Junior Section Total
                 fputcsv($output, ['', '', '', '', '', '', '', '', 'Junior Section Total:', $juniorTotal]);
             }
 
-            // Write Senior Section
-            if (count($seniorStudents) > 0) {
+            // Senior Section
+            if (!empty($seniorStudents)) {
                 fputcsv($output, ['Senior Section']);
-
-                foreach ($seniorStudents as $index => $studentData) {
+                foreach ($seniorStudents as $row) {
                     fputcsv($output, [
                         $counter++,
-                        $studentData['feeDetails']['pay_date'] ?? '-',
-                        $studentData['feeDetails']['ref_slip_no'] ?? '-',
-                        $studentData['feeDetails']['recp_no'] ?? '-',
-                        $studentData['feeDetails']['srno'] ?? '-',
-                        $studentData['class_name'] ?? '-',
-                        $studentData['section_name'] ?? '-',
-                        $studentData['name'] ?? '-',
-                        $studentData['f_name'] ?? '-',
-                        $studentData['feeDetails']['amount'] ?? 0
+                        $row['feeDetails']['pay_date']    ?? '-',
+                        $row['feeDetails']['ref_slip_no'] ?? '-',
+                        $row['feeDetails']['recp_no']     ?? '-',
+                        $row['feeDetails']['srno']        ?? '-',
+                        $row['class_name']                ?? '-',
+                        $row['section_name']              ?? '-',
+                        $row['name']                      ?? '-',
+                        $row['f_name']                    ?? '-',
+                        $row['feeDetails']['amount']      ?? 0,
                     ]);
                 }
-
-                // Add Senior Section Total
                 fputcsv($output, ['', '', '', '', '', '', '', '', 'Senior Section Total:', $seniorTotal]);
             }
 
-            // Add Grand Total
+            // Grand Total
             if (isset($reportData['grandTotal'])) {
                 fputcsv($output, ['', '', '', '', '', '', '', '', 'Grand Total:', $reportData['grandTotal']]);
             }
-            // Rewind the memory stream to the beginning
+
             rewind($output);
-
-            // Get the contents of the memory stream (CSV content)
             $csvContent = stream_get_contents($output);
-
-            // Close the memory stream
             fclose($output);
 
-            // Return the CSV content as a response
+            $fileName = 'mercy_fee_report_' . now()->format('Y_m_d_His') . '.csv';
+
             return response($csvContent, 200)
-                ->header('Content-Type', 'text/csv')
+                ->header('Content-Type',        'text/csv')
                 ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
+
         } catch (\Exception $e) {
             return response()->json([
-                'status' => 'error',
-                'message' => "Failed to export report: "
+                'status'  => 'error',
+                'message' => 'Failed to export report.' ,
             ], 500);
         }
     }
@@ -3233,99 +3571,120 @@ class ReportController extends Controller
     public function missFieldsReport(Request $request)
     {
         try {
-            //code...
             $validator = Validator::make($request->all(), [
                 'session' => 'required|exists:session_masters,id,active,1',
-                'field' => 'required',
-
+                'field'   => 'required|in:1,2,3,4',
             ]);
+
             if ($validator->fails()) {
                 return response()->json([
-                    'status' => 'error',
-                    'message' => $validator->errors()
+                    'status'  => 'error',
+                    'message' => $validator->errors(),
                 ], 400);
             }
-            // $baseQuery = $this->getStudentDetails();
-            $classId = explode(',', $request->class);
-            $sectionId = explode(',', $request->section);
-            $field = $request->field;
-            $session = $request->session;
 
-            if (filled($classId) && filled($sectionId) && filled($field)) {
-                $fields = [
-                    'stu_main_srno.id',
-                    'stu_main_srno.srno',
-                    'stu_main_srno.school',
-                    'stu_main_srno.class',
-                    'stu_main_srno.section',
-                    'stu_main_srno.prev_srno',
-                    'stu_main_srno.admission_date',
-                    'stu_main_srno.rollno',
-                    'stu_main_srno.age_proof',
-                    'stu_main_srno.session_id',
-                    'stu_main_srno.ssid',
-                    'stu_main_srno.active',
-                    'class_masters.class as class_name',
-                    'section_masters.section as section_name',
-                    'stu_detail.name as student_name',
-                    'stu_detail.dob',
-                    'stu_detail.address',
-                    'parents_detail.f_name',
-                    'parents_detail.f_mobile',
-                    'parents_detail.m_mobile',
-                ];
-                $baseQuery = StudentMasterController::getStdWithNames(false, $fields)
-                    ->whereIn('stu_main_srno.class', $classId)
-                    ->whereIn('stu_main_srno.section', $sectionId)
-                    ->where('stu_main_srno.session_id', $session)
-                    ->orderBy('stu_main_srno.class', 'asc')->orderBy('stu_main_srno.section', 'asc');
+            $sessionId = $request->session;
+            $field     = $request->field;
 
-                if ($field == 1) {
-                    # code...
-                    $students = $baseQuery
-                        ->where(function ($query) {
-                            $query->whereNull('stu_detail.dob')
-                                ->orWhere('stu_detail.dob', '')->orWhere('stu_detail.dob', '1981-01-01');
-                        });
+            // ── Parse class/section safely (empty string → no filter) ─────────────
+            $classIds   = array_filter(array_map('trim', explode(',', $request->class   ?? '')));
+            $sectionIds = array_filter(array_map('trim', explode(',', $request->section ?? '')));
+
+            $fields = [
+                'stu_main_srno.id',
+                'stu_main_srno.srno',
+                'stu_main_srno.school',
+                'stu_main_srno.class',
+                'stu_main_srno.section',
+                'stu_main_srno.prev_srno',
+                'stu_main_srno.admission_date',
+                'stu_main_srno.rollno',
+                'stu_main_srno.age_proof',
+                'stu_main_srno.session_id',
+                'stu_main_srno.ssid',
+                'stu_main_srno.active',
+                'class_masters.class as class_name',
+                'section_masters.section as section_name',
+                'stu_detail.name as student_name',
+                'stu_detail.dob',
+                'stu_detail.address',
+                'parents_detail.f_name',
+                'parents_detail.f_mobile',
+                'parents_detail.m_mobile',
+            ];
+
+            // ── Base query ────────────────────────────────────────────────────────
+            $baseQuery = StudentMasterController::getStdWithNames(false, $fields)
+                ->where('stu_main_srno.session_id', $sessionId)
+                ->orderBy('stu_main_srno.class',   'asc')
+                ->orderBy('stu_main_srno.section', 'asc');
+
+            if (!empty($classIds)) {
+                $baseQuery->whereIn('stu_main_srno.class', $classIds);
+            }
+
+            if (!empty($sectionIds)) {
+                $baseQuery->whereIn('stu_main_srno.section', $sectionIds);
+            }
+
+            // ── Apply field-specific filter ───────────────────────────────────────
+            switch ($field) {
+                case 1: // Date of Birth
+                    $baseQuery->where(function ($q) {
+                        $q->whereNull('stu_detail.dob')
+                        ->orWhere('stu_detail.dob', '')
+                        ->orWhere('stu_detail.dob', '1981-01-01');
+                    });
                     $heading = 'Date of Birth not available.';
-                } elseif ($field == 2) {
-                    # code...
-                    $students = $baseQuery->where(function ($query) {
-                        $query->whereNull('stu_main_srno.admission_date')
-                            ->orWhere('stu_main_srno.admission_date', '');
-                    })->whereNotIn('stu_main_srno.srno', function ($query) {
-                        $query->select('stu_main_srno.srno')
-                            ->from('stu_main_srno')
-                            ->whereNotNull('admission_date');
+                    break;
+
+                case 2: // Admission Date
+                    $baseQuery->where(function ($q) {
+                        $q->whereNull('stu_main_srno.admission_date')
+                        ->orWhere('stu_main_srno.admission_date', '');
                     });
                     $heading = 'Admission Date not available.';
-                } elseif ($field == 3) {
-                    # code...
-                    $students = $baseQuery
-                        ->where(function ($query) {
-                            $query->where('parents_detail.f_mobile', '')
-                                ->orWhereNull('parents_detail.f_mobile');
-                        });
+                    break;
+
+                case 3: // Mobile No.
+                    $baseQuery->where(function ($q) {
+                        $q->whereNull('parents_detail.f_mobile')
+                        ->orWhere('parents_detail.f_mobile', '');
+                    });
                     $heading = 'Mobile No. not available.';
-                } elseif ($field == 4) {
-                    # code...
-                    $students = $baseQuery
-                        ->where(function ($query) {
-                            $query->whereNull('stu_main_srno.age_proof')
-                                ->orWhere('stu_main_srno.age_proof', '0');
-                        });
+                    break;
+
+                case 4: // Age Proof
+                    $baseQuery->where(function ($q) {
+                        $q->whereNull('stu_main_srno.age_proof')
+                        ->orWhere('stu_main_srno.age_proof', '0')
+                        ->orWhere('stu_main_srno.age_proof', 0);
+                    });
                     $heading = 'Age Proof not available.';
-                }
-                return response()->json([
-                    'status' => 'success',
-                    'data' => $request->page ? $students->paginate(10) : $students->get(),
-                    'heading' => $heading
-                ], 200);
+                    break;
+
+                default:
+                    return response()->json([
+                        'status'  => 'error',
+                        'message' => 'Invalid field selected.',
+                    ], 400);
             }
+
+            // ── Return paginated or full result ───────────────────────────────────
+            $data = $request->page
+                ? $baseQuery->paginate(50)
+                : $baseQuery->get();
+
+            return response()->json([
+                'status'  => 'success',
+                'data'    => $data,
+                'heading' => $heading,
+            ], 200);
+
         } catch (\Exception $e) {
             return response()->json([
-                'status' => 'error',
-                'message' => "Failed to get transport-wise report: "
+                'status'  => 'error',
+                'message' => 'Failed to get miss field report: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -3446,8 +3805,6 @@ class ReportController extends Controller
             'print_url' =>  url("admin/print-fee-slip-no?recpNo={$slipNo}&feeId={$academic_trans_value}&session={$session}")
         ], 200);
     }
-
-
 
 
     /** ClassWise Sections */
@@ -3578,7 +3935,7 @@ class ReportController extends Controller
             }
 
 
-            // ✅ CSV Export
+            // CSV Export
             $fileName = 'day_wise_collection_report.csv';
             $output = fopen('php://memory', 'w');
 
@@ -3617,7 +3974,7 @@ class ReportController extends Controller
                 ]);
             }
 
-            // ✅ Add Grand Total row
+            // Add Grand Total row
             fputcsv($output, []);
             fputcsv($output, [
                 'Grand Total',

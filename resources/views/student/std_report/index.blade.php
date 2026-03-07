@@ -2,241 +2,311 @@
 @section('sub-content')
     <div class="container-fluid">
         @if (Session::has('success'))
-            @section('scripts')
+            @push('st-swal-scripts')
                 <script>
-                    swal("Successful", "{{ Session::get('success') }}", "success").then(() => {
-                       location.reload();
-                    });
+                    swal("Successful", "{{ Session::get('success') }}", "success")
                 </script>
-            @endsection
+            @endpush
         @endif
 
         @if (Session::has('error'))
-            @section('scripts')
+            @push('st-swal-scripts')
                 <script>
-                    swal("Error", "{{ Session::get('error') }}", "error");
+                    swal("Error", "{{ Session::get('error') }}", "error")
                 </script>
-            @endsection
+            @endpush
         @endif
+
         <div class="row">
             <div class="col-md-12">
                 <div class="card border-0 bg-white">
-           <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between"><h5 class="mb-0 mt-0">{{ 'Student Details Class Wise' }}</h5>
-                        <a href="{{ route('student.st-report.index') }}" class="btn bg-light btn-sm" ><span class="mdi mdi-chevron-left me-2"></span>Back</a>
-
+                    <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between">
+                        <h5 class="mb-0 mt-0">Student Details Class Wise</h5>
+                        <a href="{{ route('student.st-report.index') }}" class="btn bg-light btn-sm">
+                            <span class="mdi mdi-chevron-left me-2"></span>Back
+                        </a>
                     </div>
                     <div class="card-body">
                         <form id="class-section-form" method="GET">
-
                             <div class="row">
-                                <div class="form-group col-md-6">
-                                    <label for="class_id" class="mt-2">Class <span class="text-danger">*</span></label>
-                                    <select name="class" id="class_id"
-                                        class="form-control @error('class') is-invalid @enderror" required>
-                                        <option value="">Select Class</option>
+                                {{-- Class --}}
+                                <div class="form-group col-md-4">
+                                    <label for="st_class_id" class="mt-2">Class <span class="text-danger">*</span></label>
+                                    <select name="class" id="st_class_id" class="form-control"
+                                        {{ count($classes) == 0 ? 'disabled' : 'required' }}>
                                         @if (count($classes) > 0)
+                                            <option value="">Select Class</option>
                                             @foreach ($classes as $key => $class)
-                                                <option value="{{ $key }}" {{ old('class') == $key ? 'selected' : ''}}>{{ $class }}</option>
+                                                <option value="{{ $key }}"
+                                                    {{ request()->get('class') == $key ? 'selected' : '' }}>
+                                                    {{ $class }}
+                                                </option>
                                             @endforeach
                                         @else
-                                            <option value="">No Class Found</option>
+                                            <option value="" selected disabled>No Class Found</option>
                                         @endif
                                     </select>
-                                    @error('class')
-                                        <span class="invalid-feedback form-invalid fw-bold"
-                                            role="alert">{{ $message }}</span>
-                                    @enderror
-
+                                    <span class="invalid-feedback form-invalid fw-bold" id="class-error" role="alert"></span>
                                 </div>
 
-
-                                <div class="form-group col-md-6">
-                                    <label for="section_id" class="mt-2">Section <span
-                                            class="text-danger">*</span></label>
-                                    <input type="hidden" id="initialSectionId"
-                                        value="{{ old('section') }}">
-                                    <select name="section" id="section_id"
-                                        class="form-control @error('section') is-invalid @enderror" required>
+                                {{-- Section --}}
+                                <div class="form-group col-md-4">
+                                    <label for="st_section_id" class="mt-2">Section <span class="text-danger">*</span></label>
+                                    <select name="section" id="st_section_id" class="form-control" required>
                                         <option value="">Select Section</option>
-
                                     </select>
-                                    <input type="hidden" name="current_session" value='' id="current_session">
-                                    @error('section')
-                                        <span class="invalid-feedback form-invalid fw-bold"
-                                            role="alert">{{ $message }}</span>
-                                    @enderror
-                                    <img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader"
-                                        id="loader" style="display:none; width:10%;">
+                                    <span class="invalid-feedback form-invalid fw-bold" id="section-error" role="alert"></span>
                                 </div>
-
                             </div>
 
                             <div class="mt-3">
-                                <button type="button" id="show-report" class="btn btn-primary"> Show Details</button>
-                                <span class="text-danger fw-bold" id="no-data"></span>
+                                <button type="button" id="show-report" class="btn btn-primary">Show Details</button>
+                                <span class="text-danger fw-bold ms-2" id="no-data"></span>
+                                <span>
+                                    <img src="{{ config('myconfig.myloader') }}" alt="Loading..."
+                                        id="loader" style="display:none; width:5%;">
+                                </span>
                             </div>
-
                         </form>
-                        <div class="row table mt-2" id="report-table">
-                            <div class="table-responsive" id="st-table">
 
-                                <table id="report-excel" class="table table-striped table-bordered">
-                                    <thead>
+                        <div class="table-responsive mt-3" id="report-table" style="display:none;">
+                            <table id="report-excel" class="table table-striped table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Roll No.</th>
+                                        <th>Class</th>
+                                        <th>Section</th>
+                                        <th>Admission Date</th>
+                                        <th>SRNO</th>
+                                        <th>Name</th>
+                                        <th>Father's Name</th>
+                                        <th>Mother's Name</th>
+                                        <th>Grand Father's Name</th>
+                                        <th>DOB</th>
+                                        <th>Address</th>
+                                        <th>Contact 1</th>
+                                        <th>Contact 2</th>
+                                        <th>Gender</th>
+                                        <th>Religion</th>
+                                        <th>Category</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="report-body"></tbody>
+                            </table>
 
-                                        <tr>
-                                            <th>Rollno.</th>
-                                            <th>Class</th>
-                                            <th>Section</th>
-                                            <th>Admission Date</th>
-                                            <th>SRNO</th>
-                                            <th>Name</th>
-                                            <th>Father's Name</th>
-                                            <th>Mother's Name</th>
-                                            <th>Grand Father's Name</th>
-                                            <th>DOB</th>
-                                            <th>Address</th>
-                                            <th>Contact 1</th>
-                                            <th>Contact 2</th>
-                                            <th>Gender</th>
-                                            <th>Religion</th>
-                                            <th>Category</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-
-
-                                    </tbody>
-
-                                </table>
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <div id="export-div" style="display:none;">
+                                    <button type="button" class="btn btn-info" id="export-button">
+                                        <i class="bx bx-download"></i> Export to Excel
+                                    </button>
+                                </div>
+                                <div id="std-pagination"></div>
                             </div>
-                            <div id="std-pagination"></div>
-                            <button id="download-csv" type="button"
-                                class="btn btn-primary mt-2 col-md-3 d-grid gap-2 col-6 mx-auto">Download Excel</button>
                         </div>
+
                     </div>
                 </div>
             </div>
         </div>
     </div>
 @endsection
+
 @section('std-scripts')
-    <script>
-        $(document).ready(function() {
-            var loader = $('#loader');
-            var reportTable = $('#report-table');
-            var paginationContainer = $('#std-pagination');
-            let initialClassId = $('#class_id').val();
-            let initialSectionId = $('#initialSectionId').val();
-            getClassSection(initialClassId, initialSectionId);
+<script>
+    $(document).ready(function () {
+
+        // ------------------------------------------------------------------ //
+        //  Cached selectors
+        // ------------------------------------------------------------------ //
+        const reportTable      = $('#report-table');
+        const reportBody       = $('#report-body');
+        const noData           = $('#no-data');
+        const loader           = $('#loader');
+        const classSelect      = $('#st_class_id');
+        const sectionSelect    = $('#st_section_id');
+        const paginationContainer = $('#std-pagination');
+        const exportDiv        = $('#export-div');
+
+        // ------------------------------------------------------------------ //
+        //  Helper: reset report — clear rows, hide table, hide export
+        // ------------------------------------------------------------------ //
+        function resetReport() {
             reportTable.hide();
-            $('#no-data').hide();
-            $('#class-section-form').validate({
-                rules: {
-                    class: {
-                        required: true,
-                    },
-                    section: {
-                        required: true,
-                    },
-                },
-                messages: {
-                    class: {
-                        required: "Please select a class.",
-                    },
-                    section: {
-                        required: "Please select a section.",
-                    },
-                },
-            });
+            reportBody.html('');
+            paginationContainer.html('');
+            exportDiv.hide();
+            noData.text('');
+        }
 
-            function stdDetails(page) {
-                var classId = $('#class_id').val();
-                var sectionId = $('#section_id').val();
-                var sessionId = $('#current_session').val();
-                if (classId && sectionId && sessionId) {
-                    reportTable.show();
-                    loader.show();
-                    $.ajax({
-                        url: '{{ route('stdNameFather.get') }}',
-                        type: 'GET',
-                        dataType: 'JSON',
-                        data: {
-                            class_id: classId,
-                            section_id: sectionId,
-                            session_id: sessionId,
-                            page: page,
-                        },
-                        success: function(students) {
-                            let stdHtml = '';
-                            if (students.data.length > 0) {
-                                students.data.forEach(student => {
-                                    stdHtml += `<tr>
-                                                    <td>${student.rollno ?? ''}</td>
-                                                    <td>${student.class_name ?? ''}</td>
-                                                    <td>${student.section_name ?? ''}</td>
-                                                    <td>${student.admission_date || ''}</td>
-                                                    <td>${student.srno ?? ''}</td>
-                                                    <td>${student.student_name ?? ''}</td>
-                                                    <td>${student.f_name ?? ''}</td>
-                                                    <td>${student.m_name ?? ''}</td>
-                                                    <td>${student.g_f_name ?? ''}</td>
-                                                    <td>${student.dob ?? ''}</td>
-                                                    <td>${student.address ?? ''}</td>
-                                                    <td>${student.f_mobile ?? ''}</td>
-                                                    <td>${student.m_mobile ?? ''}</td>
-                                                    <td>${(student.gender == 1 ? 'Male' : (student.gender == 2 ? 'Female' : (student.gender == 3 ? "Other's" : ''))) ?? ''}</td>
-                                                    <td>${(student.religion == 1 ? 'Hindu' : (student.religion == 2 ? 'Muslim' : (student.religion == 3 ? 'Christian' : 'Sikh'))) ?? ''}</td>
-                                                    <td>${(student.category == 1 ? 'General' : (student.category == 2 ? 'OBC' : (student.category == 3 ? 'SC' : (student.category == 4 ? 'ST' : 'BC')))) ?? ''}</td>
-                                                </tr>`;
-                                });
-                                $('#st-table table tbody').html(stdHtml);
-                                updatePaginationControls(students);
-                            } else {
-                                stdHtml = `<tr><td colspan="16">No Student Found</td></tr>`;
-                                $('#st-table table tbody').html(stdHtml);
-                            }
-                        },
-                        complete: function() {
-                            loader.hide();
-                        },
-                        error: function(xhr) {
-                            alert('An error occurred while fetching the student data. Please try again.');
-                            console.error(xhr.responseText);
-                        }
-                    });
-                }
-            }
-
-            $('#show-report').click(function() {
-                if ($('#class-section-form').valid()) {
-                    let page = 1;
-                    stdDetails(page);
+        // ------------------------------------------------------------------ //
+        //  On page load: restore dropdown chain from URL params if present
+        // ------------------------------------------------------------------ //
+        if (classSelect.val()) {
+            getStudentWithoutAllSections(classSelect.val(), function () {
+                var savedSection = '{{ request()->get("section") }}';
+                if (savedSection) {
+                    sectionSelect.val(savedSection).trigger('change');
                 }
             });
+        }
 
-            function getExcelReport() {
-                let classId = $('#class_id').val();
-                let sectionId = $('#section_id').val();
-                let sessionId = $('#current_session').val();
+        // ------------------------------------------------------------------ //
+        //  Class change
+        // ------------------------------------------------------------------ //
+        classSelect.on('change', function () {
+            resetReport();
+            sectionSelect.html('<option value="">Select Section</option>');
 
-                const exportUrl = "{{ route('student.student-report-class-wise-excel') }}?class_id=" +
-                classId + "&section_id=" + sectionId + "&session_id=" + sessionId;
-                window.location.href = exportUrl;
+            if ($(this).val()) {
+                getStudentWithoutAllSections($(this).val(), function () {});
             }
-
-            let currentPage = 1;
-            $(document).on('click', '#std-pagination .page-link', function(e) {
-                e.preventDefault();
-                const page = $(this).data('page');
-                stdDetails(page);
-
-                currentPage = $(this).data('page');
-            });
-
-            $('#download-csv').on('click', function() {
-                getExcelReport();
-            });
         });
-    </script>
-@endsection
 
+        // ------------------------------------------------------------------ //
+        //  Section change
+        // ------------------------------------------------------------------ //
+        sectionSelect.on('change', function () {
+            resetReport();
+        });
+
+        // ------------------------------------------------------------------ //
+        //  Show Report button click
+        // ------------------------------------------------------------------ //
+        $('#show-report').on('click', function () {
+            const classVal   = classSelect.val();
+            const sectionVal = sectionSelect.val();
+
+            if (!classVal) {
+                noData.text('Please select a class.');
+                return;
+            }
+            if (!sectionVal) {
+                noData.text('Please select a section.');
+                return;
+            }
+
+            noData.text('');
+            stdDetails(1); // always start from page 1
+        });
+
+        // ------------------------------------------------------------------ //
+        //  Pagination click
+        // ------------------------------------------------------------------ //
+        $(document).on('click', '#std-pagination .page-link', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const clickedPage = parseInt($(this).data('page'));
+            if (clickedPage && clickedPage > 0) {
+                $('html, body').animate({
+                    scrollTop: reportTable.offset().top - 100
+                }, 300);
+                stdDetails(clickedPage);
+            }
+        });
+
+        // ------------------------------------------------------------------ //
+        //  Helpers: label mappings
+        // ------------------------------------------------------------------ //
+        function genderLabel(val) {
+            const map = { 1: 'Male', 2: 'Female', 3: "Other's" };
+            return map[val] ?? '';
+        }
+
+        function religionLabel(val) {
+            const map = { 1: 'Hindu', 2: 'Muslim', 3: 'Christian', 4: 'Sikh' };
+            return map[val] ?? '';
+        }
+
+        function categoryLabel(val) {
+            const map = { 1: 'General', 2: 'OBC', 3: 'SC', 4: 'ST', 5: 'BC' };
+            return map[val] ?? '';
+        }
+
+        // ------------------------------------------------------------------ //
+        //  AJAX: fetch students
+        // ------------------------------------------------------------------ //
+        function stdDetails(page) {
+            const classVal   = classSelect.val();
+            const sectionVal = sectionSelect.val();
+
+            loader.show();
+            reportBody.html('');
+            paginationContainer.html('');
+
+            $.ajax({
+                url      : '{{ route('student.get.student-report') }}',
+                type     : 'POST',
+                dataType : 'json',
+                headers  : { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+                data: {
+                    class  : classVal,
+                    section: sectionVal,
+                    page   : page,
+                },
+                success: function (response) {
+                    if (response.status === 'success' && response.data.length > 0) {
+                        let html = '';
+
+                        response.data.forEach(student => {
+                            html += `
+                                <tr>
+                                    <td>${student.rollno          ?? ''}</td>
+                                    <td>${student.class           ?? ''}</td>
+                                    <td>${student.section         ?? ''}</td>
+                                    <td>${student.admission_date  ?? ''}</td>
+                                    <td>${student.srno            ?? ''}</td>
+                                    <td>${student.student_name    ?? ''}</td>
+                                    <td>${student.father_name     ?? ''}</td>
+                                    <td>${student.mother_name     ?? ''}</td>
+                                    <td>${student.grand_father_name ?? ''}</td>
+                                    <td>${student.dob             ?? ''}</td>
+                                    <td>${student.address         ?? ''}</td>
+                                    <td>${student.father_mobile   ?? ''}</td>
+                                    <td>${student.mother_mobile   ?? ''}</td>
+                                    <td>${genderLabel(student.gender)}</td>
+                                    <td>${religionLabel(student.religion)}</td>
+                                    <td>${categoryLabel(student.category_id)}</td>
+                                </tr>
+                            `;
+                        });
+
+                        reportBody.html(html);
+                        reportTable.show();
+                        exportDiv.show();
+                        studentUpdatePaginationControls(response.paginate);
+
+                    } else {
+                        reportBody.html('<tr><td colspan="16" class="text-center">No Student Found</td></tr>');
+                        reportTable.show();
+                        exportDiv.hide();
+                        paginationContainer.html('');
+                    }
+                },
+                error: function (xhr) {
+                    noData.text('Server error, please try again.');
+                    console.error('AJAX error:', xhr);
+                },
+                complete: function () {
+                    loader.hide();
+                }
+            });
+        }
+
+        // ------------------------------------------------------------------ //
+        //  Export to Excel
+        // ------------------------------------------------------------------ //
+        $('#export-button').on('click', function () {
+            const classVal   = classSelect.val();
+            const sectionVal = sectionSelect.val();
+            if (!classVal || !sectionVal) {
+                noData.text('Please select class and section before exporting.');
+                return;
+            }
+            const exportUrl = "{{ route('student.get.student-report.csv') }}" + '?class=' + classVal + '&section=' + sectionVal;
+            window.location.href = exportUrl;
+        });
+
+    });
+</script>
+@endsection

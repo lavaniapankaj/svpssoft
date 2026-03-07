@@ -34,7 +34,9 @@ class FeeSearchStudentController extends Controller
             ->leftJoin('class_masters', 'stu_main_srno.class', '=', 'class_masters.id')
             ->leftJoin('section_masters', 'stu_main_srno.section', '=', 'section_masters.id')
             ->where('stu_main_srno.session_id', $current_session->id)
-            ->whereIn('stu_main_srno.ssid', [1, 2]);
+            ->where('stu_main_srno.ssid', 1)
+            ->where('stu_main_srno.active', 1);
+            // ->whereIn('stu_main_srno.ssid', [1, 2]);
         if (!empty($search)) {
             $baseQuery->where(function ($q) use ($search) {
                 $q->where('stu_main_srno.srno', 'LIKE', "%{$search}%")

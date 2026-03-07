@@ -2,29 +2,27 @@
 
 namespace App\Http\Controllers\Marks;
 
+use App\Http\Controllers\Admin\SectionMasterController;
 use App\Http\Controllers\Controller;
 use App\Models\Admin\SessionMaster;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
 class MarksController extends Controller
 {
 
-    // public function __construct()
-    // {
-    //     $this->middleware('auth');
-    // }
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        //
-        return view('marks.default');
+       return view('marks.default');
     }
 
     /**
@@ -32,7 +30,6 @@ class MarksController extends Controller
      */
     public function create()
     {
-        //
     }
 
     /**
@@ -40,7 +37,6 @@ class MarksController extends Controller
      */
     public function store(Request $request)
     {
-        //
     }
 
     /**
@@ -48,7 +44,6 @@ class MarksController extends Controller
      */
     public function show(string $id)
     {
-        //
     }
 
     /**
@@ -56,7 +51,6 @@ class MarksController extends Controller
      */
     public function edit(string $id)
     {
-        //
     }
 
     /**
@@ -64,7 +58,6 @@ class MarksController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        //
     }
 
     /**
@@ -72,7 +65,6 @@ class MarksController extends Controller
      */
     public function destroy(string $id)
     {
-        //
     }
 
     public function login()
@@ -136,6 +128,90 @@ class MarksController extends Controller
             return redirect()->route('marks.changePass')->with('success', 'Password updated successfully.');
         } else {
             return redirect()->back()->with('error', 'Something went wrong, please try again.');
+        }
+    }
+
+
+    /**
+     * Get Sections
+     */
+    public function getSections(Request $request){
+        return SectionMasterController::getAllClassSectionsAjax($request);
+    }
+
+
+    /**
+     * Get Students by class and section
+     */
+    public function getStudents(Request $request){
+        try {
+            $current_session = Session::get('marks_current_session');
+            $validator = Validator::make($request->all(), [
+                'session_id' => 'nullable|exists:session_masters,id,active,1',
+                'class_id' => 'required',
+                'section_id' => 'required',
+            ]);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $validator->errors()
+                ], 200);
+            }
+            $currentSession = isset($request->session_id) ? $request->session_id : $current_session->id;
+            $ssid = isset($request->session_id) ? [1, 2, 3, 4, 5] : [1];
+            $classId = $request->class_id;
+            $sectionId = $request->section_id;
+            $baseQuery = DB::table('stu_main_srno')
+                ->leftJoin('stu_detail', 'stu_main_srno.srno', '=', 'stu_detail.srno')
+                ->leftJoin('parents_detail as parents', 'stu_main_srno.srno', '=', 'parents.srno')
+                ->select(
+                    'stu_main_srno.srno',
+                    'stu_main_srno.rollno',
+                    'stu_detail.name as student_name',
+                    'parents.f_name as father_name',
+                )
+                ->where('stu_main_srno.active', 1)
+                ->where('stu_main_srno.session_id', $currentSession)
+                ->whereIn('stu_main_srno.ssid', $ssid)->orderBy('stu_main_srno.rollno', 'asc');
+
+            if(!empty($classId) && $classId != 'all' && !empty($sectionId) && $sectionId != 'all'){
+                $baseQuery->where('stu_main_srno.class', $classId)->where('stu_main_srno.section', $sectionId);
+            }
+            $data = $baseQuery->get();
+            if ($data->isEmpty()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'No student found for the selected class and section.',
+                ], 200);
+            }else {
+                if ($classId == 'all' || $sectionId == 'all') {
+                   return response()->json([
+                    'status' => 'success',
+                        'message' => 'Students fetched successfully.',
+                        'data' => 'all'
+                    ], 200);
+                } else {
+                    $data = $data->map(function ($item) {
+                        return [
+                            'srno' => $item->srno,
+                            'rollno' => $item->rollno,
+                            'display_name' => $item->rollno . ' - ' . $item->student_name . ' / ' . $item->father_name,
+                            'student_name' => $item->student_name,
+                            'father_name' => $item->father_name,
+                        ];
+                    })->values(); /* Reindex the collection */
+                    return response()->json([
+                        'status' => 'success',
+                        'message' => 'Students fetched successfully.',
+                        'data' => $data
+                    ], 200);
+                }
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => "Failed to get students.",
+            ], 200);
         }
     }
 }

@@ -1,353 +1,359 @@
 @extends('admin.index')
+
 @section('sub-content')
     <div class="container-fluid">
+
         @if (Session::has('success'))
-            @section('scripts')
-                <script>
-                    swal("Successful", "{{ Session::get('success') }}", "success").then(() => {
-                        location.reload();
-                    });
-                </script>
-            @endsection
+            @push('swal-scripts')
+                <script>swal("Successful", "{{ Session::get('success') }}", "success");</script>
+            @endpush
         @endif
         @if (Session::has('error'))
-            @section('scripts')
-                <script>
-                    swal("Error", "{{ Session::get('error') }}", "error").then(() => {
-                        location.reload();
-                    });
-                </script>
-            @endsection
+            @push('swal-scripts')
+                <script>swal("Error", "{{ Session::get('error') }}", "error");</script>
+            @endpush
         @endif
+
         <div class="row">
             <div class="col-md-12">
                 <div class="card border-0 bg-white">
-           <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between"><h5 class="mb-0 mt-0">{{ 'Update Student Info. Class Wise' }}</h5>
-                        <a href="{{ route('admin.editSection.index') }}" class="btn bg-light btn-sm" ><span class="mdi mdi-chevron-left me-2"></span>Back</a>
+                    <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between">
+                        <h5 class="mb-0 mt-0">{{ __('Update Student Info. Class Wise') }}</h5>
+                        <a href="{{ route('admin.editSection.index') }}" class="btn bg-light btn-sm">
+                            <span class="mdi mdi-chevron-left me-2"></span>Back
+                        </a>
                     </div>
+
                     <div class="card-body">
-                        <form id="class-section-form">
+                        <form id="class-section-form" novalidate>
                             <div class="row">
-                                <div class="form-group col-md-6">
-                                    <label for="class_id" class="mt-2">Class <span class="text-danger">*</span></label>
-                                    <input type="hidden" id="initialClassId"
-                                        value="{{ old('class', request()->get('class_id')) }}">
-                                    <select name="class" id="class_id"
-                                        class="form-control @error('class') is-invalid @enderror" required>
-                                        <option value="">Select Class</option>
+                                {{-- Class --}}
+                                <div class="form-group col-md-4 mb-3">
+                                    <label for="admin_class_id" class="form-label fw-semibold">
+                                        Class <span class="text-danger">*</span>
+                                    </label>
+                                    <select name="class" id="admin_class_id"
+                                        class="form-control @error('class') is-invalid @enderror"
+                                        {{ count($classes) === 0 ? 'disabled' : 'required' }}>
                                         @if (count($classes) > 0)
+                                            <option value="">— Select Class —</option>
                                             @foreach ($classes as $key => $class)
                                                 <option value="{{ $key }}"
-                                                    {{ old('class', request()->get('class_id')) == $key ? 'selected' : '' }}>
-                                                    {{ $class }}</option>
+                                                    {{ old('class', request('class')) == $key ? 'selected' : '' }}>
+                                                    {{ $class }}
+                                                </option>
                                             @endforeach
                                         @else
-                                            <option value="">No Class Found</option>
+                                            <option value="" disabled selected>No Class Found</option>
                                         @endif
                                     </select>
                                     @error('class')
-                                        <span class="invalid-feedback form-invalid fw-bold"
-                                            role="alert">{{ $message }}</span>
+                                        <span class="invalid-feedback fw-bold" role="alert">{{ $message }}</span>
                                     @enderror
                                 </div>
-                                <div class="form-group col-md-6">
-                                    <label for="section_id" class="mt-2">Section <span
-                                            class="text-danger">*</span></label>
-                                    <input type="hidden" id="initialSectionId"
-                                        value="{{ old('section', request()->get('section_id')) }}">
-                                    <select name="section" id="section_id"
-                                        class="form-control @error('section') is-invalid @enderror" required>
-                                        <option value="">Select Section</option>
+
+                                {{-- Section --}}
+                                <div class="form-group col-md-4 mb-3">
+                                    <label for="admin_section_id" class="form-label fw-semibold">
+                                        Section <span class="text-danger">*</span>
+                                    </label>
+                                    <select name="section" id="admin_section_id" class="form-control" required>
+                                        <option value="">— Select Section —</option>
                                     </select>
                                     @error('section')
-                                        <span class="invalid-feedback form-invalid fw-bold"
-                                            role="alert">{{ $message }}</span>
+                                        <span class="invalid-feedback fw-bold" role="alert">{{ $message }}</span>
                                     @enderror
-                                    <img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader"
-                                        id="loader" style="display:none; width:10%;">
                                 </div>
                             </div>
-                            <div class="mt-3">
+
+                            <div class="mt-3 d-flex align-items-center gap-2">
                                 <button type="button" id="show-details" class="btn btn-primary">
-                                    Show Details</button>
+                                    Show Details
+                                </button>
+                                <img src="{{ config('myconfig.myloader') }}"
+                                    alt="Loading…"
+                                    id="loader"
+                                    class="loader"
+                                    style="display:none; width:5%;">
                             </div>
                         </form>
+
+                        {{-- ─── Student Form ─── --}}
                         <div id="std-container" class="mt-4">
-                            <form action="{{ route('admin.editSection.editStdInfoClass.store') }}" method="POST"
-                                id="std-form">
+                            <form action="{{ route('admin.editSection.editStdInfoClass.store') }}"
+                                method="POST" id="std-form" style="display:none;">
                                 @csrf
-                                <input type="hidden" name="class"
-                                    value="{{ old('class', request()->get('class_id')) }}">
-                                <input type="hidden" name="section"
-                                    value="{{ old('section', request()->get('section_id')) }}">
-                                <table class="table table-responsible">
-                                    <input type="hidden" name="current_session" value='' id="current_session">
-                                    <thead>
-                                        <tr>
-                                            <th>Roll No.</th>
-                                            <th>SRNO</th>
-                                            <th>Name</th>
-                                            <th>Father Name</th>
-                                            <th>Mother Name</th>
-                                            <th>Grand Father Name</th>
-                                            <th>DOB</th>
-                                            <th>Contact 1</th>
-                                            <th>Contact 2</th>
-                                            <th>Age Proof</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                    </tbody>
-                                </table>
-                                <div class="row">
-                                    <div class="mt-3">
-                                        <button type="submit" class="btn btn-primary"
-                                            id="section-updateBtn">Update</button>
-                                    </div>
+                                <input type="hidden" name="class"   id="hidden-class">
+                                <input type="hidden" name="section" id="hidden-section">
+                                <input type="hidden" name="current_session" id="current_session" value="">
+
+                                <div class="table-responsive">
+                                    <table class="table table-bordered">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Roll No.</th>
+                                                <th>SRNO</th>
+                                                <th>Name</th>
+                                                <th>Father Name</th>
+                                                <th>Mother Name</th>
+                                                <th>Grand Father Name</th>
+                                                <th>DOB</th>
+                                                <th>Contact 1</th>
+                                                <th>Contact 2</th>
+                                                <th>Age Proof</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="std-tbody"></tbody>
+                                    </table>
+                                </div>
+
+                                <div class="mt-3">
+                                    <button type="submit" class="btn btn-primary" id="section-updateBtn">
+                                        Update
+                                    </button>
                                 </div>
                             </form>
                         </div>
-                    </div>
-                </div>
+
+                    </div>{{-- /.card-body --}}
+                </div>{{-- /.card --}}
             </div>
         </div>
     </div>
 @endsection
+
 @section('admin-scripts')
-    <script>
-        $(document).ready(function() {
-            // Check if there are validation errors - if yes, keep form visible
-            let hasValidationErrors = @json($errors->any());
+<script>
+$(function () {
 
-            // Only hide form if there are no validation errors
-            if (!hasValidationErrors) {
-                $('#std-form').hide();
+    var hasValidationErrors = @json($errors->any());
+    var oldInputs           = @json(old('students', []));
+    var validationErrors    = @json($errors->toArray());
+    var oldClass            = @json(old('class',   request('class')));
+    var oldSection          = @json(old('section', request('section')));
+
+    /* ── Helpers ──────────────────────────────────────────────── */
+    function validateFilterForm() {
+        var errors = false;
+
+        if (!$('#admin_class_id').val()) {
+            $('#admin_class_id').addClass('is-invalid');
+            if (!$('#admin_class_id').siblings('.server-error').length) {
+                $('#admin_class_id').after('<span class="invalid-feedback server-error fw-bold" role="alert">Please select a class.</span>');
+            }
+            errors = true;
+        } else {
+            $('#admin_class_id').removeClass('is-invalid').siblings('.server-error').remove();
+        }
+
+        if (!$('#admin_section_id').val()) {
+            $('#admin_section_id').addClass('is-invalid');
+            if (!$('#admin_section_id').siblings('.server-error').length) {
+                $('#admin_section_id').after('<span class="invalid-feedback server-error fw-bold" role="alert">Please select a section.</span>');
+            }
+            errors = true;
+        } else {
+            $('#admin_section_id').removeClass('is-invalid').siblings('.server-error').remove();
+        }
+
+        return !errors;
+    }
+
+    function syncHiddenFields() {
+        $('#hidden-class').val($('#admin_class_id').val());
+        $('#hidden-section').val($('#admin_section_id').val());
+    }
+
+    /* ── Build student table rows ─────────────────────────────── */
+    function buildStudentRows(students) {
+        if (!students || !students.length) {
+            $('#section-updateBtn').hide();
+            return '<tr><td colspan="10" class="text-center text-muted">No students found.</td></tr>';
+        }
+
+        var ageProofOptions = {
+            1: 'Birth Certificate',
+            2: 'Transfer Certificate',
+            3: 'Affidavit',
+            4: 'Aadhar Card'
+        };
+
+        var html = '';
+
+        $.each(students, function (index, std) {
+
+            function val(field) {
+                return (oldInputs[index] !== undefined && oldInputs[index][field] !== undefined)
+                    ? oldInputs[index][field]
+                    : (std[field] !== null && std[field] !== undefined ? std[field] : '');
             }
 
-            var loader = $('#loader');
-
-            // Restore class and section values from old input or URL parameters
-            const oldClass = @json(old('class'));
-            const oldSection = @json(old('section'));
-            const initialClassId = $('#initialClassId').val();
-            const initialSectionId = $('#initialSectionId').val();
-
-            // Set class value if available
-            if (oldClass) {
-                $('#class_id').val(oldClass);
-            } else if (initialClassId) {
-                $('#class_id').val(initialClassId);
+            function errClass(field) {
+                return validationErrors['students.' + index + '.' + field] ? ' is-invalid' : '';
             }
 
-            // Load sections and set section value
-            getClassSection($('#class_id').val(), oldSection || initialSectionId);
-
-            const selectedClassId = $('#class_id');
-            const selectedSectionId = $('#section_id');
-            const sessionId = $('#current_session').val();
-            const paginationContainer = $('#std-pagination');
-
-            // If there are validation errors and both class and section are selected, auto-load students
-            if (hasValidationErrors && $('#class_id').val() && oldSection) {
-                // Wait a bit for sections to load, then auto-trigger show details
-                setTimeout(function() {
-                    if ($('#section_id').val()) {
-                        $('#show-details').trigger('click');
-                    }
-                }, 1000);
+            function errMsg(field) {
+                var key = 'students.' + index + '.' + field;
+                return validationErrors[key]
+                    ? '<div class="invalid-feedback">' + validationErrors[key][0] + '</div>'
+                    : '';
             }
 
-            // Track current class and section to detect changes
-            let currentClassId = selectedClassId.val();
-            let currentSectionId = selectedSectionId.val();
-
-            // Listen for changes in class and section dropdowns
-            selectedClassId.on('change', function() {
-                currentClassId = $(this).val();
-                currentSectionId = selectedSectionId.val();
-            });
-
-            selectedSectionId.on('change', function() {
-                currentSectionId = $(this).val();
-            });
-
-            $('#show-details').on('click', function() {
-                loader.show();
-
-                // Get old inputs and validation errors from server
-                let oldInputs = @json(old('students', []));
-                let validationErrors = @json($errors->toArray());
-
-                // Track the last loaded class/section combination
-                let lastLoadedClassId = null;
-                let lastLoadedSectionId = null;
-
-                function stdDetails() {
-                    const classId = selectedClassId.val();
-                    const sectionId = selectedSectionId.val();
-
-                    // Clear old inputs and errors if class or section has changed
-                    if (lastLoadedClassId !== null && lastLoadedSectionId !== null) {
-                        if (classId !== lastLoadedClassId || sectionId !== lastLoadedSectionId) {
-                            oldInputs = [];
-                            validationErrors = {};
-                            console.log('Class or section changed, clearing old data');
-                        }
-                    }
-
-                    // Update the last loaded values
-                    lastLoadedClassId = classId;
-                    lastLoadedSectionId = sectionId;
-
-                    if (classId && sectionId && sessionId) {
-                        // Always show the form when loading student details
-                        $('#std-form').show();
-
-                        $.ajax({
-                            url: '{{ route('stdNameFather.get') }}',
-                            type: 'GET',
-                            dataType: 'JSON',
-                            data: {
-                                class_id: classId,
-                                section_id: sectionId,
-                                session_id: sessionId,
-                            },
-                            success: function(students) {
-                                let stdHtml = '';
-                                $.each(students, function(index, std) {
-                                    // Function to get old input value
-                                    const getOldValue = (field) => {
-                                        return oldInputs[index] ? (oldInputs[index][field] ?? '') : std[field];
-                                    };
-
-                                    // Function to check for validation errors
-                                    const hasError = (field) => {
-                                        return validationErrors[`students.${index}.${field}`] !== undefined;
-                                    };
-
-                                    // Function to get error message
-                                    const getErrorMessage = (field) => {
-                                        return hasError(field) ? validationErrors[`students.${index}.${field}`][0] : '';
-                                    };
-
-                                    stdHtml += `<tr>
-                                        <td>${std.rollno}</td>
-                                        <td>${std.srno}</td>
-                                        <td>
-                                            <input type="hidden" name="students[${index}][srno]" value="${std.srno}">
-                                            <input type="text"
-                                                name="students[${index}][student_name]"
-                                                value="${getOldValue('student_name')}"
-                                                class="form-control ${hasError('student_name') ? 'is-invalid' : ''}"
-                                                data-index="${index}">
-                                            ${hasError('student_name') ? `<div class="invalid-feedback">${getErrorMessage('student_name')}</div>` : ''}
-                                        </td>
-                                        <td>
-                                            <input type="text"
-                                                name="students[${index}][f_name]"
-                                                value="${getOldValue('f_name')}"
-                                                class="form-control ${hasError('f_name') ? 'is-invalid' : ''}"
-                                                data-index="${index}">
-                                            ${hasError('f_name') ? `<div class="invalid-feedback">${getErrorMessage('f_name')}</div>` : ''}
-                                        </td>
-                                        <td>
-                                            <input type="text"
-                                                name="students[${index}][m_name]"
-                                                value="${getOldValue('m_name')}"
-                                                class="form-control ${hasError('m_name') ? 'is-invalid' : ''}"
-                                                data-index="${index}">
-                                            ${hasError('m_name') ? `<div class="invalid-feedback">${getErrorMessage('m_name')}</div>` : ''}
-                                        </td>
-                                        <td>
-                                            <input type="text"
-                                                name="students[${index}][g_f_name]"
-                                                value="${getOldValue('g_f_name') ?? ''}"
-                                                class="form-control ${hasError('g_f_name') ? 'is-invalid' : ''}"
-                                                data-index="${index}">
-                                            ${hasError('g_f_name') ? `<div class="invalid-feedback">${getErrorMessage('g_f_name')}</div>` : ''}
-                                        </td>
-                                        <td>
-                                            <input type="date"
-                                                name="students[${index}][dob]"
-                                                value="${getOldValue('dob') ?? ''}"
-                                                class="form-control ${hasError('dob') ? 'is-invalid' : ''}"
-                                                data-index="${index}">
-                                            ${hasError('dob') ? `<div class="invalid-feedback">${getErrorMessage('dob')}</div>` : ''}
-                                        </td>
-                                        <td>
-                                            <input type="text"
-                                                name="students[${index}][f_mobile]"
-                                                value="${getOldValue('f_mobile') || ''}"
-                                                class="form-control ${hasError('f_mobile') ? 'is-invalid' : ''}"
-                                                data-index="${index}">
-                                            ${hasError('f_mobile') ? `<div class="invalid-feedback">${getErrorMessage('f_mobile')}</div>` : ''}
-                                        </td>
-                                        <td>
-                                            <input type="text"
-                                                name="students[${index}][m_mobile]"
-                                                value="${getOldValue('m_mobile') || ''}"
-                                                class="form-control ${hasError('m_mobile') ? 'is-invalid' : ''}"
-                                                data-index="${index}">
-                                            ${hasError('m_mobile') ? `<div class="invalid-feedback">${getErrorMessage('m_mobile')}</div>` : ''}
-                                        </td>
-                                        <td>
-                                            <select name="students[${index}][age_proof]"
-                                                class="form-control ${hasError('age_proof') ? 'is-invalid' : ''}"
-                                                data-index="${index}">
-                                                <option value="">Select Age Proof</option>
-                                                <option value="1" ${getOldValue('age_proof') == 1 ? 'selected' : ''}>Birth Certificate</option>
-                                                <option value="2" ${getOldValue('age_proof') == 2 ? 'selected' : ''}>Transfer Certificate</option>
-                                                <option value="3" ${getOldValue('age_proof') == 3 ? 'selected' : ''}>Affidavit</option>
-                                                <option value="4" ${getOldValue('age_proof') == 4 ? 'selected' : ''}>Aadhar Card</option>
-                                            </select>
-                                            ${hasError('age_proof') ? `<div class="invalid-feedback">${getErrorMessage('age_proof')}</div>` : ''}
-                                        </td>
-                                    </tr>`;
-                                });
-
-                                if (stdHtml == '') {
-                                    stdHtml =
-                                        '<tr><td colspan="10" class="text-center">No Student found</td></tr>';
-                                }
-
-                                $('#std-container table tbody').html(stdHtml);
-                            },
-                            complete: function() {
-                                loader.hide();
-                            },
-                            error: function(xhr) {
-                                console.log(xhr);
-                                console.error(xhr.responseText);
-                                // Keep the form visible even if there's an error
-                                $('#std-form').show();
-                            }
-                        });
-                    } else {
-                        // Hide form if required fields are not selected
-                        $('#std-form').hide();
-                        loader.hide();
-                    }
-                }
-
-                stdDetails();
-            });
-
-            // Update hidden fields when class/section changes
-            selectedClassId.on('change', function() {
-                $('input[name="class"]').val($(this).val());
-            });
-
-            selectedSectionId.on('change', function() {
-                $('input[name="section"]').val($(this).val());
-            });
-
-            // Set initial values for hidden fields
-            if (selectedClassId.val()) {
-                $('input[name="class"]').val(selectedClassId.val());
+            function textInput(field) {
+                return '<input type="text"' +
+                    ' name="students[' + index + '][' + field + ']"' +
+                    ' value="' + (val(field) || '') + '"' +
+                    ' class="form-control' + errClass(field) + '">' +
+                    errMsg(field);
             }
-            if (selectedSectionId.val()) {
-                $('input[name="section"]').val(selectedSectionId.val());
+
+            // Age proof select
+            var ageProofVal = val('age_proof');
+            var ageProofSelect = '<select name="students[' + index + '][age_proof]"' +
+                ' class="form-control' + errClass('age_proof') + '">' +
+                '<option value="">Select Age Proof</option>';
+            $.each(ageProofOptions, function (optVal, optLabel) {
+                ageProofSelect += '<option value="' + optVal + '"' +
+                    (ageProofVal == optVal ? ' selected' : '') + '>' + optLabel + '</option>';
+            });
+            ageProofSelect += '</select>' + errMsg('age_proof');
+
+            // DOB input
+            var dobVal = val('dob') || '';
+            var dobInput = '<input type="date"' +
+                ' name="students[' + index + '][dob]"' +
+                ' value="' + dobVal + '"' +
+                ' class="form-control' + errClass('dob') + '">' +
+                errMsg('dob');
+
+            html +=
+                '<tr>' +
+                    '<td>' + (std.rollno || '') + '</td>' +
+                    '<td>' + (std.srno   || '') + '</td>' +
+                    '<td>' +
+                        '<input type="hidden" name="students[' + index + '][srno]" value="' + std.srno + '">' +
+                        textInput('student_name') +
+                    '</td>' +
+                    '<td>' + textInput('f_name')   + '</td>' +
+                    '<td>' + textInput('m_name')   + '</td>' +
+                    '<td>' + textInput('g_f_name') + '</td>' +
+                    '<td>' + dobInput              + '</td>' +
+                    '<td>' + textInput('f_mobile') + '</td>' +
+                    '<td>' + textInput('m_mobile') + '</td>' +
+                    '<td>' + ageProofSelect        + '</td>' +
+                '</tr>';
+        });
+
+        $('#section-updateBtn').show();
+        return html;
+    }
+
+    /* ── Load students ────────────────────────────────────────── */
+    function loadStudents() {
+        var classId   = $('#admin_class_id').val();
+        var sectionId = $('#admin_section_id').val();
+        var sessionId = $('#current_session').val();
+
+        if (!classId || !sectionId || !sessionId) {
+            $('#std-form').hide();
+            return;
+        }
+
+        syncHiddenFields();
+        $('#loader').show();
+        $('#std-form').show();
+
+        $.ajax({
+            url     : '{{ route('stdNameFather.get') }}',
+            type    : 'GET',
+            dataType: 'json',
+            data    : {
+                class_id   : classId,
+                section_id : sectionId,
+                session_id : sessionId,
+            },
+
+            success: function (students) {
+                $('#std-tbody').html(buildStudentRows(students));
+            },
+
+            error: function (xhr) {
+                console.error('Load students error:', xhr);
+                $('#std-tbody').html(
+                    '<tr><td colspan="10" class="text-center text-danger">Error loading students. Please try again.</td></tr>'
+                );
+            },
+
+            complete: function () {
+                $('#loader').hide();
             }
         });
-    </script>
+    }
+
+    /* ── Event: class change → load sections via global fn ───── */
+    $('#admin_class_id').on('change', function () {
+        var classId = $(this).val();
+
+        // Clear section error
+        $('#admin_section_id').removeClass('is-invalid').siblings('.server-error').remove();
+
+        // Hide student form until new selection is confirmed
+        $('#std-form').hide();
+        $('#section-updateBtn').hide();
+        $('#std-tbody').html('');
+
+        // Use global function (without "All" option)
+        getAdminWithoutAllSections(classId, function () {
+            // After sections load: if restoring old section, set it
+            if (oldSection && classId == oldClass) {
+                $('#admin_section_id').val(oldSection);
+            }
+            syncHiddenFields();
+        });
+    });
+
+    /* ── Event: section change → sync hidden field ────────────── */
+    $('#admin_section_id').on('change', function () {
+        $('#admin_section_id').removeClass('is-invalid').siblings('.server-error').remove();
+        $('#std-form').hide();
+        $('#section-updateBtn').hide();
+        $('#std-tbody').html('');
+        syncHiddenFields();
+    });
+
+    /* ── Event: Show Details button ───────────────────────────── */
+    $('#show-details').on('click', function () {
+        // Clear old inputs/errors if filter has changed
+        var classId   = $('#admin_class_id').val();
+        var sectionId = $('#admin_section_id').val();
+
+        if (classId != oldClass || sectionId != oldSection) {
+            oldInputs        = [];
+            validationErrors = {};
+        }
+
+        if (!validateFilterForm()) return;
+
+        loadStudents();
+    });
+
+    /* ── On page load: restore class → load sections → restore section ── */
+    if (oldClass) {
+        $('#admin_class_id').val(oldClass);
+
+        getAdminWithoutAllSections(oldClass, function () {
+            if (oldSection) {
+                $('#admin_section_id').val(oldSection);
+                syncHiddenFields();
+
+                // Auto-load students if restoring after validation error
+                if (hasValidationErrors) {
+                    loadStudents();
+                }
+            }
+        });
+    }
+
+});
+</script>
 @endsection

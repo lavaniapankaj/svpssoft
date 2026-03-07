@@ -52,10 +52,9 @@ function marksheetPrint() {
     let marksheetDiv = $('.marksheet-div');
     let classId = $('#class_id').val();
     let sectionId = $('#section_id').val();
-    let sessionId = $('#current_session').val();
     let examId = $('#exam_id').val();
     let stdId = $('#std_id').val();
-    if (classId && sessionId && examId && stdId) {
+    if (classId && examId && stdId) {
         $.ajax({
             url: siteUrl + '/marks/marksheet-report',
             type: 'GET',
@@ -63,7 +62,6 @@ function marksheetPrint() {
             data: {
                 class: classId,
                 section: sectionId,
-                session: sessionId,
                 exam: examId,
                 std_id: stdId,
             },
@@ -219,9 +217,7 @@ function marksheetPrint() {
                     });
                     $('.marksheet').html(tableHtml);
                 } else {
-                    $('.marksheet').html(
-                        '<p>No data available for the selected criteria.</p>'
-                    );
+                    $('.marksheet').html('<p>No data available for the selected criteria.</p>');
                 }
             },
             complete: function() {
@@ -1039,5 +1035,303 @@ function marksheetData() {
         setTimeout(() => {
             iframe.remove();
         }, 1000);
+    });
+}
+
+
+/* ================================================================= */
+/* ================================================================= */
+
+/** Date 16-02-2026 */
+
+function getMarksAllSections(classId, callback) {
+    const loader = $('#loader');
+    const sectionSelect = $('#marks_section_id');
+
+    // Reset section dropdown if no class selected
+    if (!classId) {
+        sectionSelect.prop('disabled', true).html('<option value="">Select class first</option>');
+        return;
+    }
+
+    loader.show();
+    sectionSelect.prop('disabled', true).html('<option value="">Loading sections...</option>');
+    $.ajax({
+        url: siteUrl + '/marks/sections',
+        type: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        },
+        data: { class_id: classId },
+        dataType: 'json',
+
+        success: function (response) {
+            sectionSelect.empty();
+            if (response.status == 'success' && response.data == 'all') {
+                sectionSelect.append('<option value="all">All Sections</option>');
+                sectionSelect.prop('disabled', false);
+            }else if (response.status == 'success' && response.data && Object.keys(response.data).length > 0) {
+                sectionSelect.append('<option value="all">All Sections</option>');
+                $.each(response.data, function (id, name) {
+                    sectionSelect.append(`<option value="${id}">${name}</option>`);
+                });
+                sectionSelect.prop('disabled', false);
+            } else {
+                sectionSelect.html('<option value="">No sections found</option>').prop('disabled', true);
+            }
+            // Execute callback after sections are loaded
+            if (typeof callback === 'function') {
+                callback();
+            }
+        },
+        error: function () {
+            sectionSelect.html('<option value="">No sections found</option>').prop('disabled', true);
+            if (typeof callback === 'function') {
+                callback();
+            }
+        },
+        complete: function () {
+            loader.hide();
+        }
+    });
+}
+
+/** Get all students */
+function getMarksAllStudents(classId, sectionId) {
+
+    const loader = $('#loader');
+    const studentSelect = $('#marks_student_id');
+
+    // Reset student dropdown if no class or section selected
+    if (!classId && !sectionId) {
+        studentSelect.prop('disabled', true).html('<option value="">Select class and section first</option>');
+        return;
+    }
+
+    loader.show();
+    studentSelect.prop('disabled', true).html('<option value="">Loading students...</option>');
+    $.ajax({
+        url: siteUrl + '/marks/students',
+        type: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        },
+        data: { class_id: classId, section_id: sectionId },
+        dataType: 'json',
+
+        success: function (response) {
+            studentSelect.empty();
+            if (response.status == 'success' && response.data == 'all') {
+                studentSelect.append('<option value="all">All Students</option>');
+                studentSelect.prop('disabled', false);
+                return;
+            }
+            if (response.status == 'success' && response.data && response.data.length > 0) {
+                studentSelect.append('<option value="all">All Students</option>');
+                $.each(response.data, function (id, st) {
+                    studentSelect.append(`<option value="${st.srno}">${st.display_name}</option>`);
+                });
+                studentSelect.prop('disabled', false);
+            } else {
+                studentSelect.html('<option value="">No students found</option>').prop('disabled', true);
+            }
+        },
+        error: function () {
+            studentSelect.html('<option value="">No students found</option>').prop('disabled', true);
+        },
+        complete: function () {
+            loader.hide();
+        }
+    });
+}
+
+
+/* Update pagination controls function */
+function dueUpdatePaginationControls(data) {
+    var paginationHtml = '';
+    var paginationContainer = $('#marks-std-pagination');
+
+    if (data.last_page > 1) {
+        paginationHtml += '<nav aria-label="Page navigation"><ul class="pagination justify-content-center">';
+
+        // Previous button
+        if (data.current_page > 1) {
+            paginationHtml += `<li class="page-item">
+                <a class="page-link" href="javascript:void(0);" data-page="${data.current_page - 1}">
+                    <i class="tf-icon bx bx-chevron-left"></i>
+                </a>
+            </li>`;
+        } else {
+            paginationHtml += `<li class="page-item disabled">
+                <span class="page-link">
+                    <i class="tf-icon bx bx-chevron-left"></i>
+                </span>
+            </li>`;
+        }
+
+        // First page
+        if (data.current_page > 3) {
+            paginationHtml += `<li class="page-item">
+                <a class="page-link" href="javascript:void(0);" data-page="1">1</a>
+            </li>`;
+            if (data.current_page > 4) {
+                paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+        }
+
+        // Page numbers around current page
+        let startPage = Math.max(1, data.current_page - 2);
+        let endPage = Math.min(data.last_page, data.current_page + 2);
+
+        for (let i = startPage; i <= endPage; i++) {
+            if (i == data.current_page) {
+                paginationHtml += `<li class="page-item active">
+                    <span class="page-link">${i}</span>
+                </li>`;
+            } else {
+                paginationHtml += `<li class="page-item">
+                    <a class="page-link" href="javascript:void(0);" data-page="${i}">${i}</a>
+                </li>`;
+            }
+        }
+
+        // Last page
+        if (data.current_page < data.last_page - 2) {
+            if (data.current_page < data.last_page - 3) {
+                paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+            paginationHtml += `<li class="page-item">
+                <a class="page-link" href="javascript:void(0);" data-page="${data.last_page}">${data.last_page}</a>
+            </li>`;
+        }
+
+        // Next button
+        if (data.current_page < data.last_page) {
+            paginationHtml += `<li class="page-item">
+                <a class="page-link" href="javascript:void(0);" data-page="${data.current_page + 1}">
+                    <i class="tf-icon bx bx-chevron-right"></i>
+                </a>
+            </li>`;
+        } else {
+            paginationHtml += `<li class="page-item disabled">
+                <span class="page-link">
+                    <i class="tf-icon bx bx-chevron-right"></i>
+                </span>
+            </li>`;
+        }
+
+        paginationHtml += '</ul></nav>';
+
+        // Add page info
+        paginationHtml += `<div class="text-center mt-2">
+            <small class="text-muted">Showing ${data.from} to ${data.to} of ${data.total} entries</small>
+        </div>`;
+    }
+
+    paginationContainer.html(paginationHtml);
+}
+
+/* Get Sections - without all */
+function getMarksWithoutAllSections(classId, callback) {
+    const loader = $('#loader');
+    const sectionSelect = $('#marks_section_id');
+
+    // Reset section dropdown if no class selected
+    if (!classId) {
+        sectionSelect.prop('disabled', true).html('<option value="">Select class first</option>');
+        return;
+    }
+
+    loader.show();
+    sectionSelect.prop('disabled', true).html('<option value="">Loading sections...</option>');
+    $.ajax({
+        url: siteUrl + '/marks/sections',
+        type: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        },
+        data: { class_id: classId },
+        dataType: 'json',
+
+        success: function (response) {
+            sectionSelect.empty();
+            if (response.status == 'success' && response.data == 'all') {
+                sectionSelect.append('<option value="all">All Sections</option>');
+                sectionSelect.prop('disabled', false);
+            }else if (response.status == 'success' && response.data && Object.keys(response.data).length > 0) {
+                sectionSelect.append('<option value="">Select Section</option>');
+                $.each(response.data, function (id, name) {
+                    sectionSelect.append(`<option value="${id}">${name}</option>`);
+                });
+                sectionSelect.prop('disabled', false);
+            } else {
+                sectionSelect.html('<option value="">No sections found</option>').prop('disabled', true);
+            }
+            // Execute callback after sections are loaded
+            if (typeof callback === 'function') {
+                callback();
+            }
+        },
+        error: function () {
+            sectionSelect.html('<option value="">No sections found</option>').prop('disabled', true);
+            if (typeof callback === 'function') {
+                callback();
+            }
+        },
+        complete: function () {
+            loader.hide();
+        }
+    });
+}
+
+/** Get without all students */
+function getMarksStudentsWithoutAll(classId, sectionId) {
+
+    const loader = $('#loader');
+    const studentSelect = $('#marks_student_id');
+
+    // Reset student dropdown if no class or section selected
+    if (!classId && !sectionId) {
+        studentSelect.prop('disabled', true).html('<option value="">Select class and section first</option>');
+        return;
+    }
+    if (!sectionId) {
+        studentSelect.prop('disabled', true).html('<option value="">Select section first</option>');
+        return;
+    }
+
+    loader.show();
+    studentSelect.prop('disabled', true).html('<option value="">Loading students...</option>');
+    $.ajax({
+        url: siteUrl + '/marks/students',
+        type: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        },
+        data: { class_id: classId, section_id: sectionId },
+        dataType: 'json',
+        success: function (response) {
+            studentSelect.empty();
+            if (response.status == 'success' && response.data == 'all') {
+                studentSelect.append('<option value="all">All Students</option>');
+                studentSelect.prop('disabled', false);
+                return;
+            }
+            if (response.status == 'success' && response.data && response.data.length > 0) {
+                studentSelect.append('<option value="">Select Student</option>');
+                $.each(response.data, function (id, st) {
+                    studentSelect.append(`<option value="${st.srno}">${st.display_name}</option>`);
+                });
+                studentSelect.prop('disabled', false);
+            } else {
+                studentSelect.html('<option value="">No students found</option>').prop('disabled', true);
+            }
+        },
+        error: function () {
+            studentSelect.html('<option value="">No students found</option>').prop('disabled', true);
+        },
+        complete: function () {
+            loader.hide();
+        }
     });
 }

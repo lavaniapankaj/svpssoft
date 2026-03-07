@@ -23,6 +23,7 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Validator;
 
@@ -33,6 +34,7 @@ class StdMarksController extends Controller
     {
         $classes = ClassMasterController::getClasses();
         $exams = ExamMasterController::getAllExam();
+        $subjects = SubjectMasterController::getAllSubjects();
 
         return view('marks.marks_entry.index', compact('classes', 'exams'));
     }
@@ -41,299 +43,392 @@ class StdMarksController extends Controller
     public function checkExistingMarks(Request $request)
     {
         try {
-            $request->validate([
-                'class_id' => 'required|exists:class_masters,id,active,1',
-                'section_id' => 'required|exists:section_masters,id,active,1',
-                'subject_id' => 'required|exists:subject_masters,id,active,1',
-                'exam_id' => 'required|exists:exam_masters,id,active,1',
-                'session_id' => 'required|exists:session_masters,id,active,1',
+            $validator = Validator::make($request->all(), [
+                'class' => 'required|exists:class_masters,id,active,1',
+                'section' => 'required|exists:section_masters,id,active,1',
+                'subject' => 'required|exists:subject_masters,id,active,1',
+                'exam' => 'required|exists:exam_masters,id,active,1',
             ]);
-            /** Get Student srno */
-            $studentSrnos = StudentMaster::where('class', $request->class_id)->where('section', $request->section_id)->where('session_id', $request->session_id)->where('ssid', 1)->where('active', 1)->pluck('srno');
-            if (count($studentSrnos) == 0) {
-                return response()->json(['msg' => 'No students found.', 'exists' => false, 'studentsCount' => count($studentSrnos) ?? 0]);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $validator->errors()
+                ], 200);
             }
-            $existingMarks = Marks::where('class_id', $request->class_id)->where('exam_id', $request->exam_id)->where('subject_id', $request->subject_id)->where('session_id', $request->session_id)->whereIn('srno', $studentSrnos)->exists();
+
+            $current_session = Session::get('marks_current_session');
+
+            $classId = $request->class;
+            $sectionId = $request->section;
+            $subjectId = $request->subject;
+            $examId = $request->exam;
+            $sessionId = $current_session->id;
+
+            /** Get Student srno */
+            $studentSrnos = DB::table('stu_main_srno')->where('class', $classId)->where('section', $sectionId)->where('session_id', $sessionId)->where('ssid', 1)->where('active', 1)->pluck('srno');
+            if (count($studentSrnos) == 0) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'No students found.',
+                    'exists' => false,
+                    'studentsCount' => count($studentSrnos) ?? 0
+                ], 200);
+            }
+            $existingMarks = Marks::where('class_id', $classId)->where('exam_id', $examId)->where('subject_id', $subjectId)->where('session_id', $sessionId)->whereIn('srno', $studentSrnos)->exists();
             // Fetch names for friendly message
-            $class = ClassMaster::find($request->class_id)->class ?? 'Unknown Class';
-            $section = SectionMaster::find($request->section_id)->section ?? 'Unknown Section';
-            $subject = SubjectMaster::find($request->subject_id)->subject ?? 'Unknown Subject';
-            $exam = ExamMaster::find($request->exam_id)->exam ?? 'Unknown Exam';
+            $class = ClassMaster::find($classId)->class ?? 'Unknown Class';
+            $section = SectionMaster::find($sectionId)->section ?? 'Unknown Section';
+            $subject = SubjectMaster::find($subjectId)->subject ?? 'Unknown Subject';
+            $exam = ExamMaster::find($examId)->exam ?? 'Unknown Exam';
 
             $msg = $existingMarks ? "Marks are already filled for {$subject} in {$class} - {$section} for {$exam}." : "No marks have been filled yet for {$subject} in {$class} - {$section} for {$exam}.";
 
             return response()->json([
-                'msg' => $msg,
+                'status' => 'success',
+                'message' => $msg,
                 'exists' => $existingMarks,
-            ]);
+            ], 200);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return response()->json([
+                'status' => 'error',
+                'message' => "Something went wrong, please try again.",
+            ], 200);
         }
     }
-
     public function marksEntryStore(Request $request)
     {
-        // Decode the JSON string for updated students
+        // ------------------------------------------------------------------ //
+        //  1. Decode the JSON string BEFORE validation so Laravel can reach
+        //     the nested keys (updated_students.*.srno etc.)
+        // ------------------------------------------------------------------ //
         $updatedStudents = json_decode($request->input('updated_students'), true);
 
-        // Validate the decoded student data
-        $data = $request->validate([
-            'updated_students' => 'required', // Ensure the updated_students is an array
-            'updated_students.*.srno' => 'required|exists:stu_main_srno,srno', // Validate each student's srno
-            'updated_students.*.status' => 'in:1,0', // Validate attendance status
-            'updated_students.*.marks' => [
+        if (!is_array($updatedStudents) || empty($updatedStudents)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No student data received.',
+            ], 422);
+        }
+
+        // Re-merge decoded array back into the request so the validator can
+        // walk the nested structure with dot-notation rules.
+        $request->merge(['updated_students' => $updatedStudents]);
+
+        // ------------------------------------------------------------------ //
+        //  2. Resolve session — prefer the value sent by the client, fall back
+        //     to the server-side session (same logic as before).
+        // ------------------------------------------------------------------ //
+        $current_session = Session::get('marks_current_session');
+        $currentSession = $current_session->id;
+
+        if (!$currentSession) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Session not found. Please refresh and try again.',
+            ], 422);
+        }
+
+        // Friendly aliases for the incoming field names (JS sends class_id, not hidden_class)
+        $classId   = $request->input('class_id');
+        $subjectId = $request->input('subject_id');
+        $examId    = $request->input('exam_id');
+
+        // ------------------------------------------------------------------ //
+        //  3. Validate
+        // ------------------------------------------------------------------ //
+        $request->validate([
+            'class_id'                   => 'required',
+            'section_id'                 => 'required',
+            'subject_id'                 => 'required',
+            'exam_id'                    => 'required',
+            'updated_students'           => 'required|array|min:1',
+            'updated_students.*.srno'    => 'required|exists:stu_main_srno,srno',
+            'updated_students.*.status'  => 'nullable|in:0,1',
+            'updated_students.*.marks'   => [
                 'nullable',
-                'numeric', // Ensure marks are numeric
-                function ($attribute, $value, $fail) use ($request) {
-                    // Max marks validation
-                    $threshold = MarksMaster::where('session_id', $request->current_session)
-                        ->where('class_id', $request->hidden_class)
-                        ->where('subject_id', $request->hidden_subject)
-                        ->where('exam_id', $request->hidden_exam)
+                'numeric',
+                function ($attribute, $value, $fail) use ($currentSession, $classId, $subjectId, $examId) {
+                    if (is_null($value)) {
+                        return; // Allow null/empty marks
+                    }
+
+                    $maxMarks = MarksMaster::where('session_id', $currentSession)
+                        ->where('class_id',   $classId)
+                        ->where('subject_id', $subjectId)
+                        ->where('exam_id',    $examId)
                         ->where('active', 1)
                         ->value('max_marks');
-                    if ($value > $threshold) {
-                        $fail("The $attribute must not be greater than $threshold.");
+
+                    if (!is_null($maxMarks) && $value > $maxMarks) {
+                        $fail("Marks must not exceed the maximum allowed marks of {$maxMarks}.");
                     }
                 },
             ],
         ]);
 
-        $user = Auth::user();
+        // ------------------------------------------------------------------ //
+        //  4. Upsert each student record
+        // ------------------------------------------------------------------ //
+        $user         = Auth::user();
         $updatedCount = 0;
 
-        // Loop through the updated students and update or create their records
         foreach ($updatedStudents as $std) {
-            // Get the current marks of the student (if any)
-            $st = Marks::where('srno', $std['srno'])
-                ->where('class_id', $request->hidden_class)
-                ->where('exam_id', $request->hidden_exam)
-                ->where('subject_id', $request->hidden_subject)
-                ->where('session_id', $request->current_session)
-                ->value('marks');
+            $marks      = (isset($std['marks']) && $std['marks'] !== '') ? $std['marks'] : null;
+            $attendance = isset($std['status']) ? (int) $std['status'] : 0;
 
-            // Update or create the student record
-            $marks = isset($std['marks']) && $std['marks'] !== '' ? $std['marks'] : null;
-            $student = Marks::updateOrCreate(
-                [
-                    'srno' => $std['srno'],
-                    'class_id' => $request->hidden_class,
-                    'exam_id' => $request->hidden_exam,
-                    'subject_id' => $request->hidden_subject,
-                    'session_id' => $request->current_session,
-                ],
-                [
-                    'session_id' => $request->current_session,
-                    'class_id' => $request->hidden_class,
-                    'exam_id' => $request->hidden_exam,
-                    'subject_id' => $request->hidden_subject,
-                    'srno' => $std['srno'],
-                    'marks' => $marks, // Keep existing marks if not provided
-                    // 'marks' => isset($std['marks']) ? $std['marks'] : $st, // Keep existing marks if not provided
-                    'attendance' => isset($std['status']) ? $std['status'] : 0, // Default to 0 (absent) if no status is provided
-                    'add_user_id' => $user->id,
-                    'edit_user_id' => $user->id,
-                    'active' => 1, // Mark as active
-                ]
-            );
+            // Match keys — these uniquely identify a marks record
+            $matchKeys = [
+                'srno'       => $std['srno'],
+                'class_id'   => $classId,
+                'exam_id'    => $examId,
+                'subject_id' => $subjectId,
+                'session_id' => $currentSession,
+            ];
 
-            // If the student data is updated or created, increment the counter
-            if ($student) {
-                $updatedCount++;
-            }
+            // Values to set on create or update
+            $fillValues = [
+                'marks'       => $attendance ? $marks : null, // If attendance is marked as 0 (absent), we nullify the marks
+                'attendance'  => $attendance,
+                'add_user_id' => $user->id,
+                'edit_user_id'=> $user->id,
+                'active'      => 1,
+            ];
+
+            Marks::updateOrCreate($matchKeys, $fillValues);
+            $updatedCount++;
         }
 
-        // After processing all students, check if updates were made
+        // ------------------------------------------------------------------ //
+        //  5. Response
+        // ------------------------------------------------------------------ //
         if ($updatedCount > 0) {
             return response()->json([
                 'success' => true,
-                'message' => 'Students Marks Entered successfully.',
-
+                'message' => 'Student marks and attendance updated successfully.',
             ]);
-            // return redirect()->route('marks.marks-entry.index')->with('success', 'Students Marks Entered successfully.');
-        } else {
-            return response()->json([
-                'error' => true,
-                'message' => 'Something went wrong, please try again.',
-
-            ]);
-            // return redirect()->back()->with('error', 'Something went wrong, please try again.');
         }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Something went wrong. Please try again.',
+        ]);
     }
 
     public function marksReport()
     {
         $classes = ClassMasterController::getClasses();
         $exams = ExamMasterController::getAllExam();
-
         return view('marks.marks_entry.report', compact('classes', 'exams'));
     }
 
     public function getMarksReport(Request $request)
     {
         try {
-            // Validate the request
             $validator = Validator::make($request->all(), [
                 'class' => 'required|exists:class_masters,id,active,1',
                 'subject' => 'required',
-                'exam' => 'required|exists:exam_masters,id,active,1',
+                'exam'  => 'required|exists:exam_masters,id,active,1',
             ]);
 
             if ($validator->fails()) {
                 return response()->json([
-                    'status' => 'error',
+                    'status'  => 'error',
                     'message' => $validator->errors(),
-                ], 400);
+                ], 200);
             }
-            $sessionId = $request->session;
-            $examId = $request->exam;
-            $classId = $request->class;
-            $subjectIds = explode(',', $request->subject);
-            $studentIds = explode(',', $request->std_id);
 
-            $marks = Marks::where('session_id', $sessionId)->where('exam_id', $examId)->where('class_id', $classId)->whereIn('subject_id', $subjectIds)->whereIn('srno', $studentIds)->get();
-            $marksGroup = $marks->groupBy(['subject_id', 'srno']);
-            $subjects = SubjectMasterController::getAllSubjects(['id', 'subject'], '', [], [], false, '', false, ['id' => $subjectIds]);
+            $current_session = Session::get('marks_current_session');
+            $sessionId       = $current_session->id;
+            $examId          = $request->exam;
+            $classId         = $request->class;
+            $filterSubjectId = $request->subject;   // renamed to avoid collision
+            $filterStudentId = $request->std_id;
 
+            // ── 1. Fetch all students in one query ────────────────────────────────
+            $studentQuery = DB::table('stu_main_srno')
+                ->join('stu_detail', 'stu_main_srno.srno', '=', 'stu_detail.srno')
+                ->select('stu_main_srno.srno', 'stu_main_srno.rollno', 'stu_detail.name')
+                ->where('stu_main_srno.class',      $classId)
+                ->where('stu_main_srno.session_id', $sessionId)
+                ->where('stu_main_srno.ssid',       1)
+                ->where('stu_main_srno.active',     1)
+                ->orderBy('stu_main_srno.rollno')
+                ->orderBy('stu_detail.name');
+
+            if (!empty($filterStudentId) && $filterStudentId !== 'all') {
+                $studentQuery->where('stu_main_srno.srno', $filterStudentId);
+            }
+
+            // Keyed by srno for O(1) lookup
+            $students = $studentQuery->get()->keyBy('srno');
+            $studentIds = $students->keys()->toArray();
+
+            // ── 2. Fetch all subjects in one query ────────────────────────────────
+            $subjectQuery = DB::table('subject_masters')
+                ->select('id', 'subject')          // <-- subject name for header
+                ->where('class_id', $classId)
+                ->where('active', 1)
+                ->orderBy('subject');
+
+            if (!empty($filterSubjectId) && $filterSubjectId !== 'all') {
+                $subjectQuery->where('id', $filterSubjectId);
+            }
+
+            $subjects   = $subjectQuery->get()->keyBy('id');
+            $subjectIds = $subjects->keys()->toArray();
+
+            // ── 3. Fetch ALL marks in one query ───────────────────────────────────
+            $marksQuery = DB::table('marks')
+                ->select('subject_id', 'srno', 'marks')
+                ->where('session_id', $sessionId)
+                ->where('exam_id',    $examId)
+                ->where('class_id',   $classId)
+                ->where('active',     1)
+                ->whereIn('subject_id', $subjectIds)
+                ->whereIn('srno',       $studentIds);
+
+            // Group as [subject_id][srno] => marks
+            $marksGrouped = $marksQuery->get()
+                ->groupBy('subject_id')
+                ->map(fn($rows) => $rows->keyBy('srno'));
+
+            // ── 4. Build report (pure in-memory, zero extra queries) ──────────────
             $report = [];
 
-            foreach ($subjects as $subjectId => $subjectName) {
-                $subjectReport = [
-                    'subject' => $subjectName,
-                    'students' => [],
-                ];
+            foreach ($subjectIds as $subId) {
+                $subject       = $subjects[$subId];
+                $subjectMarks  = $marksGrouped[$subId] ?? collect();
 
-                foreach ($studentIds as $studentId) {
-                    $studentMarks = $marksGroup[$subjectId][$studentId] ?? null;
-                    $fields = [
-                        'stu_main_srno.srno',
-                        'stu_main_srno.rollno',
-                        'stu_detail.name',
-                        'stu_main_srno.ssid',
-                        'stu_main_srno.class',
-                        'stu_main_srno.section',
-                        'stu_main_srno.session_id',
-                        'stu_main_srno.active',
-                    ];
+                $studentReports = [];
+                foreach ($studentIds as $stuId) {
+                    $student     = $students[$stuId];
+                    $markRow     = $subjectMarks[$stuId] ?? null;
 
-                    $student = StudentMasterController::getStdWithNames(false, $fields)->where('stu_main_srno.srno', $studentId)->where('stu_main_srno.class', $classId)->where('stu_main_srno.session_id', $sessionId)->first();
-                    $subjectReport['students'][] = [
-                        'student_id' => $studentId,
-                        'name' => $student->name ?? 'N/A',
-                        'roll_number' => $student->rollno ?? 'N/A',
-                        'marks' => $studentMarks ? $studentMarks->first()->marks : 'N/A',
+                    $studentReports[] = [
+                        'student_id'  => $stuId,
+                        'name'        => $student->name,
+                        'roll_number' => $student->rollno,
+                        'marks'       => $markRow ? $markRow->marks : 'N/A',
                     ];
                 }
 
-                $report[] = $subjectReport;
+                $report[] = [
+                    'subject_id'   => $subId,
+                    'subject_name' => $subject->subject,
+                    'students'     => $studentReports,
+                ];
+            }
+
+            // ── 5. Build flat pivot table (student × subject) for the UI ──────────
+            // This makes the frontend table trivial: one row per student,
+            // one column per subject — exactly like the screenshot.
+            $pivot = [];
+            foreach ($studentIds as $stuId) {
+                $student = $students[$stuId];
+                $row = [
+                    'student_id'  => $stuId,
+                    'name'        => $student->name,
+                    'roll_number' => $student->rollno,
+                    'total'       => 0,
+                ];
+                foreach ($subjectIds as $subId) {
+                    $markRow = $marksGrouped[$subId][$stuId] ?? null;
+                    $marks   = $markRow ? (float) $markRow->marks : null;
+
+                    $row['subjects'][$subId] = [
+                        'subject_name' => $subjects[$subId]->subject,
+                        'marks'        => $marks ?? 'N/A',
+                    ];
+
+                    if ($marks !== null) {
+                        $row['total'] += $marks;
+                    }
+                }
+                $pivot[] = $row;
             }
 
             return response()->json([
-                'status' => 200,
-                'message' => 'Subject Marks List',
-                'data' => $report,
+                'status'   => 200,
+                'message'  => 'Subject Marks List',
+                'subjects' => $subjects->values()->map(fn($s) => [   // header list
+                    'id'   => $s->id,
+                    'name' => $s->subject,
+                ]),
+                'data'     => $pivot,   // flat pivot — one row per student
+                'report'   => $report,  // grouped by subject if also needed
             ]);
+
         } catch (\Exception $e) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to get subjects',
-            ], 500);
+                'status'  => 'error',
+                'message' => 'Failed to get subjects marks report: ' . $e->getMessage(),
+            ], 200);
         }
     }
 
-    /**
-     * Marks-Report Excel File
-     */
     public function marksReportExcel(Request $request)
     {
         try {
             $response = $this->getMarksReport($request);
-
-            if ($response->getStatusCode() !== 200) {
+            $decoded  = json_decode($response->getContent(), true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
                 return response()->json([
-                    'status' => 'error',
-                    'message' => 'Failed to generate report: '.$response->getContent(),
+                    'status'  => 'error',
+                    'message' => 'Invalid JSON response: ' . json_last_error_msg(),
                 ], 500);
             }
-
-            $decodedResponse = json_decode($response->getContent(), true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                return response()->json(['status' => 'error', 'message' => 'Invalid JSON response: '.json_last_error_msg()], 500);
+            if (($decoded['status'] ?? null) !== 200) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => $decoded['message'] ?? 'Failed to generate report.',
+                ], 500);
             }
-
-            $reportData = $decodedResponse['data'] ?? null;
-            if (! $reportData) {
-                return response()->json(['status' => 'error', 'message' => 'No data found'], 404);
+            // ── Read from the pivot structure ──────────────────────────────────────
+            $subjects = $decoded['subjects'] ?? [];
+            $pivot    = $decoded['data']     ?? [];   // one row per student
+            if (empty($pivot) || empty($subjects)) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'No data found.',
+                ], 404);
             }
-
-            $fileName = 'marks_report.csv';
-            $csvContent = '';
+            // ── Build CSV in memory ────────────────────────────────────────────────
             $output = fopen('php://memory', 'w');
             if ($output === false) {
                 throw new \Exception('Failed to open output stream.');
             }
 
-            // Collect all subjects and initialize student data
-            $subjects = [];
-            $studentsData = [];
-
-            foreach ($reportData as $subjectData) {
-                $subjects[] = $subjectData['subject'];
-
-                foreach ($subjectData['students'] as $student) {
-                    if (! isset($studentsData[$student['roll_number']])) {
-                        $studentsData[$student['roll_number']] = [
-                            'name' => $student['name'],
-                            'marks' => [],
-                        ];
-                    }
-                    $studentsData[$student['roll_number']]['marks'][$subjectData['subject']] = $student['marks'];
-                }
-            }
-
-            // Write headers
-            $headers = ['Student'];
+            // Header row: # | Student | Subject1 | Subject2 | … | Total
+            $headerRow = ['#', 'Student'];
             foreach ($subjects as $subject) {
-                $headers[] = $subject;
+                $headerRow[] = $subject['name'];
             }
-            $headers[] = 'Total';
-            fputcsv($output, $headers);
-
-            // Write student data
-            ksort($studentsData); // Sort by roll number
-            foreach ($studentsData as $rollNumber => $student) {
-                $row = [$student['name']];
-                $totalMarks = 0;
-
-                // Add marks for each subject
+            $headerRow[] = 'Total';
+            fputcsv($output, $headerRow);
+            // Data rows — pivot already ordered by roll number from API
+            foreach ($pivot as $index => $student) {
+                $row   = [$index + 1, $student['name']];
+                $total = 0;
                 foreach ($subjects as $subject) {
-                    $mark = $student['marks'][$subject] ?? 'N/A';
-                    $row[] = $mark;
-                    if ($mark !== 'N/A' && $mark !== null) {
-                        $totalMarks += (float) $mark;
+                    $subjectId = $subject['id'];
+                    $marks     = $student['subjects'][$subjectId]['marks'] ?? 'N/A';
+                    $row[] = $marks;
+                    if ($marks !== 'N/A' && $marks !== null) {
+                        $total += (float) $marks;
                     }
                 }
-
-                // Add total
-                $row[] = ($totalMarks > 0) ? $totalMarks : 0;
-
-                // Write the complete row
+                $row[] = $total;
                 fputcsv($output, $row);
             }
-            // Rewind the memory to the start
             rewind($output);
-
-            // Capture the content into a string
             $csvContent = stream_get_contents($output);
-
             fclose($output);
-
-            return response($csvContent, 200)->header('Content-Type', 'text/csv')
-                ->header('Content-Disposition', 'attachment; filename="'.$fileName.'"');
+            $fileName = 'marks_report_' . now()->format('Y_m_d_His') . '.csv';
+            return response($csvContent, 200)->header('Content-Type', 'text/csv')->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         } catch (\Exception $e) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to export report',
+                'status'  => 'error',
+                'message' => 'Failed to export report: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -389,16 +484,13 @@ class StdMarksController extends Controller
                 'required',
                 'exists:section_masters,id,active,1',
             ],
-            'std_id' => 'required',
+            'std' => 'required',
         ]);
         $exam = $request->exam;
         $classId = $request->class;
         $sectionId = $request->section;
-        $students = $request->std_id;
-
+        $students = $request->std;
         return redirect()->route('marks.marks-report.public-exam-wise.print')->with('exam', $exam)->with('class', $classId)->with('section', $sectionId)->with('students', $students);
-
-        // return view('marks.marksheet.exam_wise_public_report_print');
     }
 
     /**
@@ -444,13 +536,12 @@ class StdMarksController extends Controller
                 'required',
                 'exists:section_masters,id,active,1',
             ],
-            'std_id' => 'required',
+            'std' => 'required',
         ]);
         $exam = $request->exam;
         $classId = $request->class;
         $sectionId = $request->section;
-        $students = $request->std_id;
-
+        $students = $request->std;
         return redirect()->route('marks.marks-report.play-exam-wise.print')->with('exam', $exam)->with('class', $classId)->with('section', $sectionId)->with('students', $students);
     }
 
@@ -676,12 +767,12 @@ class StdMarksController extends Controller
                     'message' => $validator->errors(),
                 ], 400);
             }
-
-            $sessionId = (int) $request->session;
+            $current_session = Session::get('marks_current_session');
+            $sessionId = $current_session->id;
             $examId = $request->exam;
             $classId = $request->class;
             $sectionId = $request->section;
-            $studentIds = explode(',', $request->std_id);
+            $studentId = $request->std_id;
             $fields = [
                 'stu_main_srno.session_id',
                 'session_masters.session as session_name',
@@ -701,9 +792,11 @@ class StdMarksController extends Controller
                 'parents_detail.f_name',
                 'parents_detail.m_name',
             ];
-
-            // $students = StudentMasterController::getStdWithNames(false, $fields)
-            $students = StudentMasterController::getMarksheetStdWithNames(false, $fields)->whereIn('stu_main_srno.srno', $studentIds)->where('stu_main_srno.class', $classId)->where('stu_main_srno.section', $sectionId)->where('stu_main_srno.session_id', $sessionId)->get();
+            $studentQuery = StudentMasterController::getMarksheetStdWithNames(false, $fields)->where('stu_main_srno.class', $classId)->where('stu_main_srno.section', $sectionId)->where('stu_main_srno.session_id', $sessionId);
+            if (!empty($studentId) && $studentId !== 'all') {
+                $studentQuery->where('stu_main_srno.srno', $studentId);
+            }
+            $students = $studentQuery->get();
 
             if ($students->isNotEmpty()) {
                 $exam = ExamMasterController::getAllExam(['id', 'exam'], ['id' => $examId]);
@@ -888,10 +981,130 @@ class StdMarksController extends Controller
     /**
      * Class Wise Rank Report Get
      */
+    // public function classWiseRankReport(Request $request)
+    // {
+    //     try {
+    //         $validator = Validator::make($request->all(), [
+    //             'class' => 'required|exists:class_masters,id,active,1',
+    //         ]);
+
+    //         if ($validator->fails()) {
+    //             return response()->json([
+    //                 'status' => 'error',
+    //                 'message' => $validator->errors(),
+    //             ], 200);
+    //         }
+
+    //         $sessionId = session('marks_current_session')->id;
+    //         $classId = $request->class;
+    //         $fields = [
+    //             'stu_main_srno.session_id',
+    //             'class_masters.class as class_name',
+    //             'section_masters.section as section_name',
+    //             'stu_main_srno.class',
+    //             'stu_main_srno.section',
+    //             'stu_main_srno.srno',
+    //             'stu_main_srno.school',
+    //             'stu_main_srno.rollno',
+    //             'stu_main_srno.ssid',
+    //             'stu_main_srno.active',
+    //             'stu_detail.name',
+    //             'stu_detail.dob',
+    //             'stu_detail.srno',
+    //             'parents_detail.srno',
+    //             'parents_detail.f_name',
+    //             'parents_detail.m_name',
+    //         ];
+    //         // $students = StudentMasterController::getMarksheetStdWithNames(false, $fields)->where('stu_main_srno.class', $classId)->where('stu_main_srno.session_id', $sessionId)->get();
+    //         $students = DB::table('stu_main_srno')
+    //             ->leftJoin('stu_detail',      'stu_main_srno.srno',    '=', 'stu_detail.srno')
+    //             ->leftJoin('parents_detail',  'stu_main_srno.srno',    '=', 'parents_detail.srno')
+    //             ->leftJoin('class_masters',   'stu_main_srno.class',   '=', 'class_masters.id')
+    //             ->leftJoin('section_masters', 'stu_main_srno.section', '=', 'section_masters.id')
+    //             ->select($fields)
+    //             ->where('stu_main_srno.class',      $classId)
+    //             ->where('stu_main_srno.session_id', $sessionId)
+    //             ->where('stu_main_srno.ssid',   1)
+    //             ->where('stu_main_srno.active', 1)
+    //             ->orderBy('stu_main_srno.rollno', 'asc')
+    //             ->get();
+    //         if ($students->isNotEmpty()) {
+    //             $report = [];
+    //             foreach ($students as $st) {
+
+    //                 $marks = DB::table('marks')
+    //                     ->leftJoin('subject_masters', 'marks.subject_id', '=', 'subject_masters.id')
+    //                     ->where('subject_masters.by_m_g', 1)
+    //                     ->where('marks.srno', $st->srno)
+    //                     ->where('marks.class_id', $classId)->where('marks.session_id', $sessionId)->where('marks.active', 1)->get(['marks.subject_id', 'marks.marks']);
+    //                 $totalMarks = $marks->sum('marks');
+    //                 $totalMeeting = 0;
+    //                 // Get total meetings
+    //                 $totalMeetingsData = AttendanceSchedule::where('session_id', $sessionId)->sum('status');
+
+    //                 if ($totalMeetingsData) {
+    //                     $totalMeeting = $totalMeetingsData * 2;
+    //                 }
+    //                 $whereAttend = [
+    //                     'where' => [
+    //                         'session_id' => $sessionId,
+    //                         'srno' => $st->srno,
+    //                         'class' => $st->class,
+    //                     ],
+    //                 ];
+    //                 $meetingsAttended = StdAttendanceController::getAttendance(['id', 'session_id', 'srno', 'class', 'status'], $whereAttend)->sum('status');
+    //                 $meetingsAttended = $meetingsAttended ? ($meetingsAttended * 2) : 0;
+
+    //                 $report[] = [
+    //                     'class' => $st->class_name,
+    //                     'section' => $st->section_name,
+    //                     'srno' => $st->srno,
+    //                     'rollno' => $st->rollno,
+    //                     'name' => $st->name,
+    //                     'total_marks' => $totalMarks,
+    //                     'total_meeting' => $totalMeeting,
+    //                     'meeting_attended' => $meetingsAttended,
+
+    //                 ];
+    //             }
+    //             usort($report, function ($a, $b) {
+    //                 return $b['total_marks'] <=> $a['total_marks'];
+    //             });
+    //             /* First, get unique marks and assign ranks */
+    //             $uniqueMarks = [];
+    //             $rank = 1;
+    //             foreach ($report as $item) {
+    //                 if (!isset($uniqueMarks[$item['total_marks']])) {
+    //                     $uniqueMarks[$item['total_marks']] = $rank++;
+    //                 }
+    //             }
+    //             /* Then assign ranks to all students */
+    //             foreach ($report as &$student) {
+    //                 $student['rank'] = $uniqueMarks[$student['total_marks']];
+    //             }
+    //             return response()->json([
+    //                 'status' => 200,
+    //                 'message' => 'Class-Wise Rank Report',
+    //                 'data' => $report,
+    //             ]);
+    //         } else {
+    //             return response()->json([
+    //                 'status' => 200,
+    //                 'message' => 'Class-Wise Rank Report',
+    //                 'data' => [],
+    //             ]);
+    //         }
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'Failed to get Class-Wise Rank Report',
+    //         ], 200);
+    //     }
+    // }
+
     public function classWiseRankReport(Request $request)
     {
         try {
-            //code...
             $validator = Validator::make($request->all(), [
                 'class' => 'required|exists:class_masters,id,active,1',
             ]);
@@ -900,111 +1113,122 @@ class StdMarksController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => $validator->errors(),
-                ], 400);
+                ], 200);
             }
 
-            $sessionId = $request->session;
-            $classId = $request->class;
-            $fields = [
-                'stu_main_srno.session_id',
-                'session_masters.session as session_name',
-                'class_masters.class as class_name',
-                'section_masters.section as section_name',
-                'stu_main_srno.class',
-                'stu_main_srno.section',
-                'stu_main_srno.srno',
-                'stu_main_srno.school',
-                'stu_main_srno.rollno',
-                'stu_main_srno.ssid',
-                'stu_main_srno.active',
-                'stu_detail.name',
-                'stu_detail.dob',
-                'stu_detail.srno',
-                'parents_detail.srno',
-                'parents_detail.f_name',
-                'parents_detail.m_name',
-            ];
-            $students = StudentMasterController::getMarksheetStdWithNames(false, $fields)->where('stu_main_srno.class', $classId)->where('stu_main_srno.session_id', $sessionId)->get();
-            // $students = StudentMasterController::getStdWithNames(false, $fields)->where('stu_main_srno.class', $classId)->where('stu_main_srno.session_id', $sessionId)->get();
-            if ($students->isNotEmpty()) {
-                $report = [];
-                foreach ($students as $st) {
+            $sessionId = session('marks_current_session')->id;
+            $classId   = $request->class;
 
-                    $marks = DB::table('marks')
-                        ->leftJoin('subject_masters', 'marks.subject_id', '=', 'subject_masters.id')
-                        ->where('subject_masters.by_m_g', 1)
-                        ->where('marks.srno', $st->srno)
-                        ->where('marks.class_id', $classId)->where('marks.session_id', $sessionId)->where('marks.active', 1)->get(['marks.subject_id', 'marks.marks']);
-                    $totalMarks = $marks->sum('marks');
+            // ─── 1. Fetch all students for this class in one query ───────────────
+            $students = DB::table('stu_main_srno')
+                ->leftJoin('stu_detail',      'stu_main_srno.srno',    '=', 'stu_detail.srno')
+                ->leftJoin('parents_detail',  'stu_main_srno.srno',    '=', 'parents_detail.srno')
+                ->leftJoin('class_masters',   'stu_main_srno.class',   '=', 'class_masters.id')
+                ->leftJoin('section_masters', 'stu_main_srno.section', '=', 'section_masters.id')
+                ->select([
+                    'class_masters.class  as class_name',
+                    'section_masters.section as section_name',
+                    'stu_main_srno.class',
+                    'stu_main_srno.section',
+                    'stu_main_srno.srno',
+                    'stu_main_srno.rollno',
+                    'stu_detail.name',
+                ])
+                ->where('stu_main_srno.class',      $classId)
+                ->where('stu_main_srno.session_id', $sessionId)
+                ->where('stu_main_srno.ssid',       1)
+                ->where('stu_main_srno.active',     1)
+                ->orderBy('stu_main_srno.rollno', 'asc')
+                ->get();
 
-                    /*   $marks = Marks::where('srno', $st->srno)->where('class_id', $classId)->where('session_id', $sessionId)->where('active', 1)->get(['subject_id', 'marks']);
-                    $totalMarks = $marks->sum('marks'); */
-                    $totalMeeting = 0;
-
-                    // Get total meetings
-                    $totalMeetingsData = AttendanceSchedule::where('session_id', $sessionId)->sum('status');
-
-                    if ($totalMeetingsData) {
-                        $totalMeeting = $totalMeetingsData * 2;
-                    }
-                    $whereAttend = [
-                        'where' => [
-                            'session_id' => $sessionId,
-                            'srno' => $st->srno,
-                            'class' => $st->class,
-                        ],
-                    ];
-                    $meetingsAttended = StdAttendanceController::getAttendance(['id', 'session_id', 'srno', 'class', 'status'], $whereAttend)->sum('status');
-                    $meetingsAttended = $meetingsAttended ? ($meetingsAttended * 2) : 0;
-
-                    $report[] = [
-                        'class' => $st->class_name,
-                        'section' => $st->section_name,
-                        'srno' => $st->srno,
-                        'rollno' => $st->rollno,
-                        'name' => $st->name,
-                        'total_marks' => $totalMarks,
-                        'total_meeting' => $totalMeeting,
-                        'meeting_attended' => $meetingsAttended,
-
-                    ];
-                }
-                usort($report, function ($a, $b) {
-                    return $b['total_marks'] <=> $a['total_marks'];
-                });
-
-                // First, get unique marks and assign ranks
-                $uniqueMarks = [];
-                $rank = 1;
-                foreach ($report as $item) {
-                    if (! isset($uniqueMarks[$item['total_marks']])) {
-                        $uniqueMarks[$item['total_marks']] = $rank++;
-                    }
-                }
-
-                // Then assign ranks to all students
-                foreach ($report as &$student) {
-                    $student['rank'] = $uniqueMarks[$student['total_marks']];
-                }
-
+            if ($students->isEmpty()) {
                 return response()->json([
-                    'status' => 200,
+                    'status'  => 200,
                     'message' => 'Class-Wise Rank Report',
-                    'data' => $report,
-                ]);
-            } else {
-                // code...
-                return response()->json([
-                    'status' => 200,
-                    'message' => 'Class-Wise Rank Report',
-                    'data' => [],
+                    'data'    => [],
                 ]);
             }
+
+            // Collect all srno values for use in bulk queries
+            $srnoList = $students->pluck('srno')->all();
+
+            // ─── 2. Fetch ALL marks for this class+session in ONE query ──────────
+            //    (was: 1 query per student inside the loop)
+            $allMarks = DB::table('marks')
+                ->leftJoin('subject_masters', 'marks.subject_id', '=', 'subject_masters.id')
+                ->where('subject_masters.by_m_g',  1)
+                ->where('marks.class_id',           $classId)
+                ->where('marks.session_id',         $sessionId)
+                ->where('marks.active',             1)
+                ->whereIn('marks.srno', $srnoList)
+                ->select('marks.srno', 'marks.marks')
+                ->get();
+
+            // Group marks by srno and pre-sum them  →  ['srno' => totalMarks]
+            $marksBySrno = $allMarks
+                ->groupBy('srno')
+                ->map(fn($rows) => $rows->sum('marks'));
+
+            // ─── 3. Calculate total meetings ONCE (was recalculated every iteration) ──
+            $totalMeetingsSum = AttendanceSchedule::where('session_id', $sessionId)->sum('status');
+            $totalMeeting     = $totalMeetingsSum ? (int)($totalMeetingsSum * 2) : 0;
+
+            // ─── 4. Fetch ALL attendance for this class+session in ONE query ─────
+            //    (was: 1 query per student via StdAttendanceController::getAttendance)
+            $allAttendance = DB::table('attendance')   // ← adjust table name if different
+                ->where('session_id', $sessionId)
+                ->where('class',      $classId)
+                ->whereIn('srno',     $srnoList)
+                ->select('srno', 'status')
+                ->get();
+
+            // Group attendance by srno and pre-sum  →  ['srno' => attendedCount*2]
+            $attendanceBySrno = $allAttendance
+                ->groupBy('srno')
+                ->map(fn($rows) => (int)($rows->sum('status') * 2));
+
+            // ─── 5. Build the report array using pre-fetched data ────────────────
+            $report = [];
+            foreach ($students as $st) {
+                $report[] = [
+                    'class'            => $st->class_name,
+                    'section'          => $st->section_name,
+                    'srno'             => $st->srno,
+                    'rollno'           => $st->rollno,
+                    'name'             => $st->name,
+                    'total_marks'      => (int) ($marksBySrno[$st->srno] ?? 0),
+                    'total_meeting'    => $totalMeeting,
+                    'meeting_attended' => $attendanceBySrno[$st->srno] ?? 0,
+                ];
+            }
+
+            // ─── 6. Sort by marks descending ────────────────────────────────────
+            usort($report, fn($a, $b) => $b['total_marks'] <=> $a['total_marks']);
+
+            // ─── 7. Assign ranks (tie-aware) ────────────────────────────────────
+            $uniqueMarks = [];
+            $rank        = 1;
+            foreach ($report as $item) {
+                if (!isset($uniqueMarks[$item['total_marks']])) {
+                    $uniqueMarks[$item['total_marks']] = $rank++;
+                }
+            }
+            foreach ($report as &$student) {
+                $student['rank'] = $uniqueMarks[$student['total_marks']];
+            }
+            unset($student); // break reference
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Class-Wise Rank Report',
+                'data'    => $report,
+            ]);
+
         } catch (\Exception $e) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to get Class-Wise Rank Report',
-            ], 500);
+                'status'  => 'error',
+                'message' => 'Failed to get Class-Wise Rank Report'.$e->getMessage(),
+            ], 200);
         }
     }
 
@@ -1123,11 +1347,11 @@ class StdMarksController extends Controller
                 'required',
                 'exists:section_masters,id,active,1',
             ],
-            'std_id' => 'required',
+            'std' => 'required',
         ]);
         $classId = $request->class;
         $sectionId = $request->section;
-        $students = $request->std_id;
+        $students = $request->std;
         $sessionMessage = $request->sessionMessage;
         $dateMessage = $request->dateMessage;
 
@@ -1145,23 +1369,23 @@ class StdMarksController extends Controller
     public function finalMarksheetClassPGAndNursaryReport(Request $request)
     {
         try {
-            // Validate input parameters
             $validated = $request->validate([
-                'class' => 'required|exists:class_masters,id,active,1',
+                'class'   => 'required|exists:class_masters,id,active,1',
                 'section' => 'required|exists:section_masters,id,active,1',
             ]);
 
-            // Get current active session
             $session = session('marks_current_session');
-
-            if (! $session) {
+            if (!$session) {
                 return response()->json([
-                    'error' => 'No active session found',
+                    'error'   => 'No active session found',
                     'message' => 'Set Current Session',
                 ], 400);
             }
-            $srno = explode(',', $request->std_id);
-            // Get students for this session, class, and section
+
+            $classId   = $validated['class'];
+            $sectionId = $validated['section'];
+            $sessionId = $session->id;
+            $srno      = $request->std_id;
 
             $fields = [
                 'stu_main_srno.session_id',
@@ -1182,153 +1406,203 @@ class StdMarksController extends Controller
                 'parents_detail.f_name',
                 'parents_detail.m_name',
             ];
-            $students = StudentMasterController::getMarksheetStdWithNames(false, $fields)
-                // $students = StudentMasterController::getStdWithNames(false, $fields)
-                ->where('stu_main_srno.session_id', $session->id)
-                ->where('stu_main_srno.class', $validated['class'])
-                ->where('stu_main_srno.section', $validated['section'])
-                ->whereIn('stu_main_srno.srno', $srno)->get();
+
+            // ── 1. Fetch all students in ONE query ────────────────────────────────
+            $studentQuery = StudentMasterController::getMarksheetStdWithNames(false, $fields)
+                ->where('stu_main_srno.session_id', $sessionId)
+                ->where('stu_main_srno.class',      $classId)
+                ->where('stu_main_srno.section',    $sectionId);
+
+            if (!empty($srno) && $srno !== 'all') {
+                $studentQuery->where('stu_main_srno.srno', $srno);
+            }
+
+            $students = $studentQuery->get();
 
             if ($students->isEmpty()) {
                 return response()->json([
-                    'error' => 'No students found',
+                    'error'   => 'No students found',
                     'message' => 'No students in this class and section',
                 ], 404);
             }
 
+            $studentIds = $students->pluck('srno')->toArray();
+
+            // ── 2. Fetch subjects ONCE (outside loop) ─────────────────────────────
+            $subFields = ['id', 'class_id', 'subject', 'subject_id', 'by_m_g', 'priority', 'active'];
+            $subjects  = SubjectMasterController::getAllSubjects(
+                $subFields, '', ['class_id' => $classId], ['by_m_g' => 'asc'], true
+            );
+            $subjectIds = $subjects->pluck('id')->toArray();
+
+            // ── 3. Fetch exams ONCE (outside loop) ────────────────────────────────
+            $exams   = ExamMasterController::getAllExam(['id', 'exam']); // plain array [id => name]
+            $examIds = array_keys($exams);
+
+            // ── 4. Fetch ALL marks joined with marks_masters in ONE query ──────────
+            // marks table has no max_marks — it lives in marks_masters
+            $allMarks = DB::table('marks')
+                ->select(
+                    'marks.exam_id',
+                    'marks.subject_id',
+                    'marks.srno',
+                    'marks.marks',
+                    'marks_masters.max_marks',
+                    'marks_masters.min_marks'
+                )
+                ->leftJoin('marks_masters', function ($join) {
+                    $join->on('marks_masters.exam_id',    '=', 'marks.exam_id')
+                        ->on('marks_masters.subject_id', '=', 'marks.subject_id')
+                        ->on('marks_masters.class_id',   '=', 'marks.class_id')
+                        ->on('marks_masters.session_id', '=', 'marks.session_id');
+                })
+                ->where('marks.session_id', $sessionId)
+                ->where('marks.class_id',   $classId)
+                ->where('marks.active',     1)
+                ->whereIn('marks.exam_id',    $examIds)
+                ->whereIn('marks.subject_id', $subjectIds)
+                ->whereIn('marks.srno',       $studentIds)
+                ->get()
+                ->groupBy('srno')
+                ->map(fn($rows) => $rows->groupBy('exam_id')
+                    ->map(fn($rows) => $rows->keyBy('subject_id')));
+
+            // ── 5. Fetch valid exam IDs ONCE (exams that have marks entered) ───────
+            $activeExamIds = DB::table('marks')
+                ->where('session_id', $sessionId)
+                ->where('class_id',   $classId)
+                ->where('active',     1)
+                ->whereIn('exam_id',  $examIds)
+                ->pluck('exam_id')
+                ->unique()
+                ->toArray();
+
+            // ── 6. Fetch attendance ONCE for all students ─────────────────────────
+            $totalAttendanceDays = DB::table('attendance_schedule')
+                ->where('session_id', $sessionId)
+                ->sum('status');
+
+            $attendanceMap = StdAttendanceController::getAttendance([
+                    'id', 'status', 'session_id', 'class', 'section', 'srno'
+                ])
+                ->where('session_id', $sessionId)
+                ->where('class',      $classId)
+                ->where('section',    $sectionId)
+                ->whereIn('srno',     $studentIds)
+                ->get()
+                ->groupBy('srno')
+                ->map(fn($rows) => $rows->sum('status'));
+
+            // ── 7. Build report in memory (zero extra queries) ────────────────────
             $studentReports = [];
 
             foreach ($students as $student) {
-                // Get student details
-                $studentDetail = StudentMasterController::getMarksheetStdWithNames(false, $fields)
-                    // $studentDetail = StudentMasterController::getStdWithNames(false, $fields)
-                    ->where('stu_main_srno.session_id', $student->session_id)
-                    ->where('stu_main_srno.class', $student->class)
-                    ->where('stu_main_srno.section', $student->section)
-                    ->where('stu_main_srno.srno', $student->srno)->first();
-
-                // Get subjects for this class
-                $subFields = ['id', 'class_id', 'subject', 'subject_id', 'by_m_g', 'priority', 'active'];
-                $subWhere = ['class_id' => $validated['class']];
-                $subjects = SubjectMasterController::getAllSubjects($subFields, '', $subWhere, ['by_m_g' => 'asc'], true);
-
-                $exams = ExamMasterController::getAllExam(['id', 'exam']);
-
+                $stuId        = $student->srno;
+                $studentMarks = $allMarks[$stuId] ?? collect();
                 $subjectMarks = [];
-                $totalMax = 0;
+                $totalMax     = 0;
                 $totalObtained = 0;
 
-                // Calculate marks for each subject and exam
                 foreach ($subjects as $subject) {
+                    $subId = $subject->id;
+
                     $subjectResult = [
-                        'subject_id' => $subject->id,
-                        'subject_name' => $subject->subject,
+                        'subject_id'     => $subId,
+                        'subject_name'   => $subject->subject,
                         'sub_subject_id' => $subject->subject_id,
-                        'by_m_g' => $subject->by_m_g,
-                        'exams' => [],
+                        'by_m_g'         => $subject->by_m_g,
+                        'exams'          => [],
                     ];
 
-                    $subjectTotalMax = 0;
+                    $subjectTotalMax      = 0;
                     $subjectTotalObtained = 0;
 
-                    foreach ($exams as $key => $exam) {
-                        // Check if marks exist for this exam and subject
-                        $marksCheck = DB::table('marks')
-                            ->where('class_id', $validated['class'])
-                            ->where('session_id', $session->id)
-                            ->where('exam_id', $key)
-                            ->where('active', 1)
-                            ->exists();
+                    foreach ($exams as $examId => $examName) {
 
-                        if ($marksCheck) {
-                            $marks = DB::table('marks_masters')
-                                ->join('marks', function ($join) use ($key, $subject, $student, $session, $validated) {
-                                    $join->on('marks_masters.exam_id', '=', 'marks.exam_id')
-                                        ->on('marks_masters.subject_id', '=', 'marks.subject_id')
-                                        ->where('marks_masters.exam_id', $key)
-                                        ->where('marks_masters.subject_id', $subject->id)
-                                        ->where('marks.session_id', $session->id)
-                                        ->where('marks.class_id', $validated['class'])
-                                        ->where('marks.srno', $student->srno);
-                                })
-                                ->first();
+                        // Skip exams with no marks data entered at all
+                        if (!in_array($examId, $activeExamIds)) {
+                            continue;
+                        }
 
-                            if ($marks) {
-                                $subjectResult['exams'][] = [
-                                    'exam_id' => $key,
-                                    'exam_name' => $exam,
-                                    'obtained_marks' => $marks->marks ?? 0,
-                                    'max_marks' => $marks->max_marks ?? 0,
-                                    // 'grade' => $this->getPGNurGrade($marks->max_marks, $marks->marks) ?? 'Abst',
-                                    'grade' => $this->getPGNurGradeSubject($marks->max_marks, $marks->marks, $validated['class'], $session->id, $subject->id, $key) ?? 'Abst',
-                                    // 'grade' => $this->getGrade($marks->max_marks, $marks->marks) ?? 'Abst',
-                                    'status' => $marks->marks ? 'Present' : 'Abst',
-                                ];
+                        // Get mark from in-memory grouped collection
+                        $markRow = $studentMarks[$examId][$subId] ?? null;
 
-                                $subjectTotalMax += $marks->max_marks ?? 0;
-                                $subjectTotalObtained += $marks->marks ?? 0;
-                            } else {
-                                $subjectResult['exams'][] = [
-                                    'exam_id' => $key,
-                                    'exam_name' => $exam,
-                                    'obtained_marks' => 0,
-                                    'max_marks' => 0,
-                                    // 'grade' => $this->getPGNurGrade(0, 0) ?? 'Abst',
-                                    'grade' => $this->getPGNurGradeSubject(0, 0, $validated['class'], $session->id, $subject->id, $key) ?? 'Abst',
-                                    'status' => 'Abst',
-                                ];
-                            }
+                        if ($markRow) {
+                            $obtainedMarks = $markRow->marks     ?? 0;
+                            $maxMarks      = $markRow->max_marks ?? 0;
+
+                            $subjectResult['exams'][] = [
+                                'exam_id'        => $examId,
+                                'exam_name'      => $examName,
+                                'obtained_marks' => $obtainedMarks,
+                                'max_marks'      => $maxMarks,
+                                'grade'          => $this->getPGNurGradeSubject(
+                                                        $maxMarks, $obtainedMarks,
+                                                        $classId, $sessionId, $subId, $examId
+                                                    ) ?? 'Abst',
+                                'status'         => $obtainedMarks ? 'Present' : 'Abst',
+                            ];
+
+                            $subjectTotalMax      += $maxMarks;
+                            $subjectTotalObtained += $obtainedMarks;
+
+                        } else {
+                            $subjectResult['exams'][] = [
+                                'exam_id'        => $examId,
+                                'exam_name'      => $examName,
+                                'obtained_marks' => 0,
+                                'max_marks'      => 0,
+                                'grade'          => $this->getPGNurGradeSubject(
+                                                        0, 0,
+                                                        $classId, $sessionId, $subId, $examId
+                                                    ) ?? 'Abst',
+                                'status'         => 'Abst',
+                            ];
                         }
                     }
 
-                    $subjectResult['total_max'] = ($subjectTotalMax == null || $this->getPGNurGrade($subjectTotalMax, $subjectTotalObtained, $validated['class'], $session->id) == null) ? 'Abst' : $this->getPGNurGrade($subjectTotalMax, $subjectTotalObtained, $validated['class'], $session->id);
-                    $subjectResult['total_obtained'] = ($subjectTotalObtained == null || $this->getPGNurGrade($subjectTotalMax, $subjectTotalObtained, $validated['class'], $session->id) == null) ? 'Abst' : $this->getPGNurGrade($subjectTotalMax, $subjectTotalObtained, $validated['class'], $session->id);
-                    /*  $subjectResult['total_max'] = ($subjectTotalMax == null || $this->getPGNurGrade($subjectTotalMax, $subjectTotalObtained) == null)
-                        ? 'Abst'
-                        : ($subject->by_m_g == 1 ? $subjectTotalMax : $this->getPGNurGrade($subjectTotalMax, $subjectTotalObtained));
+                    // Overall subject grade based on totals
+                    $grade = $this->getPGNurGrade(
+                        $subjectTotalMax, $subjectTotalObtained, $classId, $sessionId
+                    );
 
-                    $subjectResult['total_obtained'] = ($subjectTotalObtained == null || $this->getPGNurGrade($subjectTotalMax, $subjectTotalObtained) == null)
-                        ? 'Abst'
-                        : ($subject->by_m_g == 1 ? $subjectTotalObtained : $this->getPGNurGrade($subjectTotalMax, $subjectTotalObtained)); */
+                    $subjectResult['total_max']     = ($subjectTotalMax === 0      || $grade === null) ? 'Abst' : $grade;
+                    $subjectResult['total_obtained'] = ($subjectTotalObtained === 0 || $grade === null) ? 'Abst' : $grade;
 
-                    $totalMax += $subjectTotalMax;
+                    $totalMax      += $subjectTotalMax;
                     $totalObtained += $subjectTotalObtained;
 
                     $subjectMarks[] = $subjectResult;
                 }
 
-                // Calculate attendance
-                $totalAttendanceDays = DB::table('attendance_schedule')->where('session_id', $session->id)->sum('status');
-                $studentAttendance = 0;
-                if ($totalAttendanceDays > 0 || $totalObtained !== '') {
-                    // code...
-                    $studentAttendance = StdAttendanceController::getAttendance(['id', 'status', 'session_id', 'class', 'section', 'srno'])->where('session_id', $session->id)->where('class', $student->class)->where('section', $student->section)->where('srno', $student->srno)->sum('status');
-                }
+                // Attendance from in-memory map
+                $studentAttendance = $attendanceMap[$stuId] ?? 0;
 
                 $studentReports[] = [
                     'student_details' => [
-                        'name' => $studentDetail->name,
-                        'sr_no' => $student->srno,
-                        'father_name' => $studentDetail->f_name,
-                        'mother_name' => $studentDetail->m_name,
-                        'class' => $studentDetail->class_name,
-                        'section' => $studentDetail->section_name,
-                        'roll_no' => $student->rollno,
-                        'dob' => $studentDetail->dob ? Carbon::parse($studentDetail->dob)->format('d-M-Y') : 'N/A',
+                        'name'        => $student->name,
+                        'sr_no'       => $stuId,
+                        'father_name' => $student->f_name,
+                        'mother_name' => $student->m_name,
+                        'class'       => $student->class_name,
+                        'section'     => $student->section_name,
+                        'roll_no'     => $student->rollno,
+                        'dob'         => $student->dob
+                                            ? Carbon::parse($student->dob)->format('d-M-Y')
+                                            : 'N/A',
                     ],
                     'subject_marks' => $subjectMarks,
-                    'total_marks' => [
-                        'max_marks' => $totalMax,
+                    'total_marks'   => [
+                        'max_marks'      => $totalMax,
                         'obtained_marks' => $totalObtained,
                     ],
                     'attendance' => [
                         'days_present' => $studentAttendance * 2,
-                        'total_days' => $totalAttendanceDays * 2,
-
+                        'total_days'   => $totalAttendanceDays * 2,
                     ],
                     'result_data' => [
-                        'result' => 'Pass',
-                        'result_date_message' => $request->dateMessage ?? '',
+                        'result'                => 'Pass',
+                        'result_date_message'   => $request->dateMessage    ?? '',
                         'session_start_message' => $request->sessionMessage ?? '',
                     ],
                 ];
@@ -1336,15 +1610,16 @@ class StdMarksController extends Controller
 
             return response()->json([
                 'session' => $session->session,
-                'logo' => [
-                    'school_logo' => config('myconfig.mylogo'),
+                'logo'    => [
+                    'school_logo'    => config('myconfig.mylogo'),
                     'principal_sign' => config('myconfig.mysignature'),
                 ],
                 'students' => $studentReports,
             ]);
+
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'Access Denied',
+                'error'   => 'Access Denied',
                 'message' => $e->getMessage(),
             ], 500);
         }
@@ -1393,11 +1668,11 @@ class StdMarksController extends Controller
                 'required',
                 'exists:section_masters,id,active,1',
             ],
-            'std_id' => 'required',
+            'std' => 'required',
         ]);
         $classId = $request->class;
         $sectionId = $request->section;
-        $students = $request->std_id;
+        $students = $request->std;
         $sessionMessage = $request->sessionMessage;
         $dateMessage = $request->dateMessage;
 
@@ -1412,81 +1687,55 @@ class StdMarksController extends Controller
     public function finalMarksheetClassKGReport(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'class' => 'required|exists:class_masters,id,active,1',
-            'section' => 'required|exists:section_masters,id,active,1',
+            'class'    => 'required|exists:class_masters,id,active,1',
+            'section'  => 'required|exists:section_masters,id,active,1',
             'students' => 'nullable|string',
         ]);
 
-        // Check if validation fails
         if ($validator->fails()) {
             return response()->json([
-                'success' => false,
-                'error' => 'Validation Error',
+                'success'  => false,
+                'error'    => 'Validation Error',
                 'messages' => $validator->errors(),
             ], 422);
         }
 
-        // Get validated data
         $validated = $validator->validated();
+        $session   = session('marks_current_session');
 
-        $fields = ['stu_main_srno.class', 'stu_main_srno.section', 'stu_main_srno.session_id', 'stu_main_srno.srno'];
-        $studentIds = explode(',', $request->students);
-
-        $reportCards = [];
-        $session = session('marks_current_session');
-
-        foreach ($studentIds as $student) {
-            // foreach ($students as $student) {
-            try {
-                $reportCard = $this->generateSingleReportCard(
-                    $student,
-                    $validated['class'],
-                    $validated['section'] ?? null,
-                    $request->dateMessage ?? '',
-                    $request->sessionMessage ?? ''
-                );
-
-                $reportCards[] = $reportCard;
-            } catch (Exception $e) {
-                $reportCards[] = [
-                    'student_id' => $student,
-                    'error' => $e->getMessage(),
-                ];
-            }
-        }
-
-        // Return JSON response
-        return response()->json([
-            'success' => true,
-            'logo' => [
-                'school_logo' => config('myconfig.mylogo'),
-                'principal_sign' => config('myconfig.mysignature'),
-            ],
-            'session' => [
-                'name' => $session->session,
-                'id' => $session->id,
-            ],
-            'report_cards' => $reportCards,
-            'class_id' => $validated['class'],
-            'section_id' => $validated['section'] ?? null,
-            'total_students' => count($reportCards),
-        ]);
-    }
-
-    private function generateSingleReportCard($student, $classId, $sectionId, $dateMessage, $sessionMessage)
-    {
-
-        // Get current active session
-        $session = session('marks_current_session');
-
-        if (! $session) {
+        if (!$session) {
             return response()->json([
-                'error' => 'Session Error',
+                'error'   => 'Session Error',
                 'message' => 'No active session found',
             ], 404);
         }
 
-        // Build the base query for student details with multiple joins
+        $classId   = $validated['class'];
+        $sectionId = $validated['section'];
+        $sessionId = $session->id;
+
+        // ── Resolve student IDs ───────────────────────────────────────────────────
+        $rawStudents = trim($request->students ?? '');
+
+        if (empty($rawStudents) || $rawStudents === 'all') {
+            $studentIds = StudentMasterController::getMarksheetStdWithNames(false, ['stu_main_srno.srno'])
+                ->where('stu_main_srno.session_id', $sessionId)
+                ->where('stu_main_srno.class',      $classId)
+                ->where('stu_main_srno.section',    $sectionId)
+                ->pluck('stu_main_srno.srno')
+                ->toArray();
+        } else {
+            // Single student ID
+            $studentIds = [$rawStudents];
+        }
+
+        if (empty($studentIds)) {
+            return response()->json([
+                'success' => false,
+                'error'   => 'No students found for this class and section',
+            ], 404);
+        }
+
         $fields = [
             'stu_main_srno.session_id',
             'session_masters.session as session_name',
@@ -1507,179 +1756,291 @@ class StdMarksController extends Controller
             'parents_detail.m_name',
         ];
 
-        // $detail = StudentMasterController::getStdWithNames(false, $fields)
-        $detail = StudentMasterController::getMarksheetStdWithNames(false, $fields)
-            ->where('stu_main_srno.srno', $student)
-            ->where('stu_main_srno.class', $classId)
-            ->where('stu_main_srno.section', $sectionId)
-            ->where('stu_main_srno.session_id', $session->id)->first();
-        if (! $detail) {
+        // ── 1. Fetch ALL students in ONE query ────────────────────────────────────
+        $students = StudentMasterController::getMarksheetStdWithNames(false, $fields)
+            ->where('stu_main_srno.session_id', $sessionId)
+            ->where('stu_main_srno.class',      $classId)
+            ->where('stu_main_srno.section',    $sectionId)
+            ->whereIn('stu_main_srno.srno',     $studentIds)
+            ->get()
+            ->keyBy('srno');
+
+        if ($students->isEmpty()) {
             return response()->json([
-                'error' => 'No students found',
-                'message' => 'No students in this class and section',
+                'success' => false,
+                'error'   => 'No students found',
             ], 404);
         }
 
-        // Fetch subjects for the class
+        $foundStudentIds = $students->keys()->toArray();
+
+        // ── 2. Fetch subjects ONCE ────────────────────────────────────────────────
         $subFields = ['id', 'class_id', 'subject', 'subject_id', 'by_m_g', 'priority', 'active'];
-        $subWhere = ['class_id' => $classId];
-        $subjects = SubjectMasterController::getAllSubjects($subFields, '', $subWhere, ['by_m_g' => 'asc'], true);
+        $subjects  = SubjectMasterController::getAllSubjects(
+            $subFields, '', ['class_id' => $classId], ['by_m_g' => 'asc'], true
+        );
+        $subjectIds = $subjects->pluck('id')->toArray();
 
-        // Fetch exams
-        $exams = ExamMasterController::getAllExam(['id', 'exam']);
+        // ── 3. Fetch exams ONCE ───────────────────────────────────────────────────
+        $exams   = ExamMasterController::getAllExam(['id', 'exam']); // [id => name]
+        $examIds = array_keys($exams);
 
-        // Calculate marks and grades
-        $marksData = $this->calculateMarksData($student, $classId, $session->id, $subjects, $exams);
-        // Calculate attendance
-        $totalAttendanceDays = DB::table('attendance_schedule')->where('session_id', $session->id)->sum('status');
-        $studentAttendance = 0;
-        if ($totalAttendanceDays > 0) {
-            $studentAttendance = StdAttendanceController::getAttendance(['id', 'status', 'session_id', 'class', 'section', 'srno'])->where('session_id', $session->id)->where('srno', $detail->srno)->where('class', $classId)->sum('status');
-        }
+        // ── 4. Fetch ALL marks + max_marks in ONE query (join marks_masters) ──────
+        $allMarks = DB::table('marks')
+            ->select(
+                'marks.srno',
+                'marks.exam_id',
+                'marks.subject_id',
+                'marks.marks',
+                'marks.attendance',
+                'marks_masters.max_marks',
+                'marks_masters.min_marks'
+            )
+            ->leftJoin('marks_masters', function ($join) {
+                $join->on('marks_masters.exam_id',    '=', 'marks.exam_id')
+                    ->on('marks_masters.subject_id', '=', 'marks.subject_id')
+                    ->on('marks_masters.class_id',   '=', 'marks.class_id')
+                    ->on('marks_masters.session_id', '=', 'marks.session_id');
+            })
+            ->where('marks.session_id', $sessionId)
+            ->where('marks.class_id',   $classId)
+            ->where('marks.active',     1)
+            ->whereIn('marks.srno',       $foundStudentIds)
+            ->whereIn('marks.exam_id',    $examIds)
+            ->whereIn('marks.subject_id', $subjectIds)
+            ->get()
+            ->groupBy('srno')
+            ->map(fn($rows) => $rows->groupBy('exam_id')
+                ->map(fn($rows) => $rows->keyBy('subject_id')));
 
-        return [
+        // ── 5. Fetch marks_masters ONCE (for absent students with no mark row) ────
+        $masterMarks = DB::table('marks_masters')
+            ->select('exam_id', 'subject_id', 'max_marks', 'min_marks')
+            ->where('session_id', $sessionId)
+            ->where('class_id',   $classId)
+            ->where('active',     1)
+            ->whereIn('exam_id',    $examIds)
+            ->whereIn('subject_id', $subjectIds)
+            ->get()
+            ->groupBy('exam_id')
+            ->map(fn($rows) => $rows->keyBy('subject_id'));
 
-            'student_id' => $detail->srno,
-            'student_details' => [
-                'name' => $detail->name,
-                'father_name' => $detail->f_name,
-                'mother_name' => $detail->m_name,
-                'class' => $detail->class_name,
-                'section' => $detail->section_name,
-                'roll_no' => $detail->rollno,
-                'dob' => $detail->dob,
-                'ssid' => $detail->ssid,
-            ],
+        // ── 6. Fetch ALL subject grades in ONE query ──────────────────────────────
+        $allSubjectGrades = DB::table('subject_grades')
+            ->select([
+                'grade_name', 'subject_id', 'class_id',
+                'exam_id', 'session_id', 'min_marks',
+                'max_marks', 'is_overall',
+            ])
+            ->where('session_id', $sessionId)
+            ->where('class_id',   $classId)
+            ->where('active',     1)
+            ->whereIn('subject_id', $subjectIds)
+            ->get();
 
-            'attendance' => [
-                'days_present' => $studentAttendance * 2,
-                'total_days' => $totalAttendanceDays * 2,
-                'result_date_message' => $dateMessage,
-                'session_start_message' => $sessionMessage,
+        // Exam-wise grades: [subject_id][exam_id] => collection of grade rows
+        $examWiseGrades = $allSubjectGrades
+            ->filter(fn($row) => is_null($row->is_overall) && !is_null($row->exam_id))
+            ->groupBy('subject_id')
+            ->map(fn($rows) => $rows->groupBy('exam_id'));
 
-            ],
-            'marks_data' => $marksData,
-            'summary' => $this->calculateReportSummary($marksData),
-        ];
-    }
+        // Overall grades: [subject_id] => collection of grade rows
+        $overallGrades = $allSubjectGrades
+            ->filter(fn($row) => $row->is_overall == 4 && is_null($row->exam_id))
+            ->groupBy('subject_id');
 
-    private function calculateMarksData($student, $classId, $sessionId, $subjects, $exams)
-    {
-        $marksData = [];
+        // ── 7. Fetch attendance ONCE for all students ─────────────────────────────
+        $totalAttendanceDays = DB::table('attendance_schedule')
+            ->where('session_id', $sessionId)
+            ->sum('status');
 
-        foreach ($subjects as $subject) {
-            $subjectMarks = [];
-            $totalMaxMarks = 0;
-            $totalObtainedMarks = 0;
+        $attendanceMap = StdAttendanceController::getAttendance([
+                'id', 'status', 'session_id', 'class', 'section', 'srno',
+            ])
+            ->where('session_id', $sessionId)
+            ->where('class',      $classId)
+            ->where('section',    $sectionId)
+            ->whereIn('srno',     $foundStudentIds)
+            ->get()
+            ->groupBy('srno')
+            ->map(fn($rows) => $rows->sum('status'));
 
-            foreach ($exams as $key => $exam) {
-                // Fetch marks for the subject and exam
-                $marks = DB::table('marks')
-                    ->where('srno', $student)
-                    ->where('class_id', $classId)
-                    ->where('session_id', $sessionId)
-                    ->where('exam_id', $key)
-                    ->where('subject_id', $subject->id)->where('attendance', 1)
-                    ->where('active', 1)
-                    ->first();
+        // ── 8. Build all report cards in memory (zero extra queries) ──────────────
+        $reportCards = [];
 
-                // Fetch max marks
-                $maxMarks = DB::table('marks_masters')->where('class_id', $classId)->where('session_id', $sessionId)->where('exam_id', $key)->where('subject_id', $subject->id)->where('active', 1)->value('max_marks');
-                if ($maxMarks !== null) {
-                    $obtainedMarks = $marks ? $marks->marks : 0;
-                    // $grade = $this->calculateGrade($obtainedMarks, $maxMarks);
-                    $grade = $this->calculateGrade($obtainedMarks, $maxMarks, $subject->id, $classId, $sessionId, $key,true);
+        foreach ($studentIds as $stuId) {
+            $stuId = (string) $stuId;
 
-                    $subjectMarks[] = [
-                        'exam_id' => $key,
-                        'exam_name' => $exam,
-                        'max_marks' => $maxMarks ?? 0,
-                        'obtained_marks' => ($maxMarks != null && $obtainedMarks == 0) ? 'Abs' : $obtainedMarks,
-                        'grade' => $grade,
+            if (!$students->has($stuId)) {
+                $reportCards[] = [
+                    'student_id' => $stuId,
+                    'error'      => 'Student not found',
+                ];
+                continue;
+            }
+
+            try {
+                $student      = $students[$stuId];
+                $studentMarks = $allMarks[$stuId] ?? collect();
+                $marksData    = [];
+
+                foreach ($subjects as $subject) {
+                    $subId         = $subject->id;
+                    $subjectMarks  = [];
+                    $totalMax      = 0;
+                    $totalObtained = 0;
+
+                    foreach ($exams as $examId => $examName) {
+                        // Only include exams that have a marks_masters entry
+                        $master   = $masterMarks[$examId][$subId] ?? null;
+                        $maxMarks = $master ? ($master->max_marks ?? null) : null;
+
+                        if ($maxMarks === null) {
+                            continue;
+                        }
+
+                        $markRow       = $studentMarks[$examId][$subId] ?? null;
+                        $isAbsent      = !$markRow || $markRow->attendance != 1;
+                        $obtainedMarks = !$isAbsent ? ($markRow->marks ?? 0) : 0;
+
+                        $grade = $this->resolveGrade(
+                            $obtainedMarks, $maxMarks, $subId, $examId, true,
+                            $examWiseGrades, $overallGrades
+                        );
+
+                        $subjectMarks[] = [
+                            'exam_id'        => $examId,
+                            'exam_name'      => $examName,
+                            'max_marks'      => $maxMarks,
+                            'obtained_marks' => ($maxMarks > 0 && $isAbsent) ? 'Abs' : $obtainedMarks,
+                            'grade'          => $grade,
+                        ];
+
+                        $totalMax      += $maxMarks;
+                        $totalObtained += $obtainedMarks;
+                    }
+
+                    $overallGrade = $this->resolveGrade(
+                        $totalObtained, $totalMax, $subId, null, false,
+                        $examWiseGrades, $overallGrades
+                    );
+
+                    $marksData[] = [
+                        'subject_id'           => $subId,
+                        'subject_name'         => $subject->subject,
+                        'by_m_g'               => $subject->by_m_g,
+                        'exam_marks'           => $subjectMarks,
+                        'total_max_marks'      => $totalMax,
+                        'total_obtained_marks' => $totalObtained,
+                        'percentage'           => $totalMax > 0
+                                                    ? round(($totalObtained / $totalMax) * 100, 2)
+                                                    : 'NaN',
+                        'overall_grade'        => $overallGrade,
                     ];
-
-                    // Accumulate total marks
-                    $totalMaxMarks += $maxMarks;
-                    $totalObtainedMarks += $obtainedMarks;
                 }
-            }
 
-            // Calculate subject-level summary
-            $marksData[] = [
-                'subject_id' => $subject->id,
-                'subject_name' => $subject->subject,
-                'by_m_g' => $subject->by_m_g,
-                'exam_marks' => $subjectMarks,
-                'total_max_marks' => $totalMaxMarks,
-                'total_obtained_marks' => $totalObtainedMarks,
-                'percentage' => $totalMaxMarks > 0 ? round(($totalObtainedMarks / $totalMaxMarks) * 100, 2) : 'NaN',
-                'overall_grade' => $this->calculateGrade($totalObtainedMarks, $totalMaxMarks, $subject->id, $classId, $sessionId, null, false),
-            ];
+                // ── Summary (inline — no extra loop function needed) ───────────────
+                $summaryMax      = 0;
+                $summaryObtained = 0;
+                $subjectGrades   = [];
+
+                foreach ($marksData as $subjectData) {
+                    if ($subjectData['by_m_g'] !== 2) {
+                        $summaryMax      += $subjectData['total_max_marks'];
+                        $summaryObtained += $subjectData['total_obtained_marks'];
+                        $subjectGrades[]  = $subjectData['overall_grade'];
+                    }
+                }
+
+                $studentAttendance = $attendanceMap[$stuId] ?? 0;
+
+                $reportCards[] = [
+                    'student_id'      => $stuId,
+                    'student_details' => [
+                        'name'        => $student->name,
+                        'father_name' => $student->f_name,
+                        'mother_name' => $student->m_name,
+                        'class'       => $student->class_name,
+                        'section'     => $student->section_name,
+                        'roll_no'     => $student->rollno,
+                        'dob'         => $student->dob,
+                        'ssid'        => $student->ssid,
+                    ],
+                    'attendance' => [
+                        'days_present'          => $studentAttendance * 2,
+                        'total_days'            => $totalAttendanceDays * 2,
+                        'result_date_message'   => $request->dateMessage    ?? '',
+                        'session_start_message' => $request->sessionMessage ?? '',
+                    ],
+                    'marks_data' => $marksData,
+                    'summary'    => [
+                        'total_max_marks'      => $summaryMax,
+                        'total_obtained_marks' => $summaryObtained,
+                        'overall_percentage'   => $summaryMax > 0
+                                                    ? round(($summaryObtained / $summaryMax) * 100, 2)
+                                                    : null,
+                        'overall_result'       => $this->determineOverallResult($subjectGrades),
+                    ],
+                ];
+
+            } catch (\Exception $e) {
+                $reportCards[] = [
+                    'student_id' => $stuId,
+                    'error'      => $e->getMessage(),
+                ];
+            }
         }
 
-        return $marksData;
+        return response()->json([
+            'success'        => true,
+            'logo'           => [
+                'school_logo'    => config('myconfig.mylogo'),
+                'principal_sign' => config('myconfig.mysignature'),
+            ],
+            'session'        => [
+                'name' => $session->session,
+                'id'   => $sessionId,
+            ],
+            'report_cards'   => $reportCards,
+            'class_id'       => $classId,
+            'section_id'     => $sectionId,
+            'total_students' => count($reportCards),
+        ]);
     }
 
-    private function calculateReportSummary($marksData)
-    {
-        $totalMaxMarks = 0;
-        $totalObtainedMarks = 0;
-        $subjectGrades = [];
+    // ── Helpers ───────────────────────────────────────────────────────────────────
 
-        foreach ($marksData as $subject) {
-            if ($subject['by_m_g'] !== 2) {
-                $totalMaxMarks += $subject['total_max_marks'];
-                $totalObtainedMarks += $subject['total_obtained_marks'];
-                $subjectGrades[] = $subject['overall_grade'];
-            }
-        }
-
-        return [
-            'total_max_marks' => $totalMaxMarks,
-            'total_obtained_marks' => $totalObtainedMarks,
-            'overall_percentage' => $totalMaxMarks > 0 ? round(($totalObtainedMarks / $totalMaxMarks) * 100, 2) : null,
-            'overall_result' => $this->determineOverallResult($subjectGrades),
-        ];
-    }
-
-    private function calculateGrade($obtainedMarks, $maxMarks, $subjectId,  $classId, $sessionId, $examId = null, $isExamWise = false)
+    private function resolveGrade($obtainedMarks, $maxMarks, $subjectId, $examId, $isExamWise, $examWiseGrades, $overallGrades)
     {
         if ($isExamWise) {
-            // Try to get grade from SubjectGrade table
-            $grade = DB::table('subject_grades')->select(['grade_name'])->whereNull('is_overall')->where('subject_id', $subjectId)->where('class_id', $classId)->where('exam_id', $examId)->where('session_id', $sessionId)->where('min_marks', '<=', $obtainedMarks)->where('max_marks', '>=', $obtainedMarks)->where('active', 1)->first();
-            if (!empty($grade)) {
-                return $grade->grade_name;
-            }
+            $rows  = $examWiseGrades[$subjectId][$examId] ?? collect();
+            $grade = $rows->first(fn($g) =>
+                $g->min_marks <= $obtainedMarks && $g->max_marks >= $obtainedMarks
+            );
+            if ($grade) return $grade->grade_name;
+        } else {
+            $rows  = $overallGrades[$subjectId] ?? collect();
+            $grade = $rows->first(fn($g) =>
+                $g->min_marks <= $obtainedMarks && $g->max_marks >= $obtainedMarks
+            );
+            if ($grade) return $grade->grade_name;
         }
-        if (!$isExamWise) {
-            // Try to get grade from SubjectGrade table
-            $grade = DB::table('subject_grades')->select(['grade_name'])->where('is_overall', 4)->where('subject_id', $subjectId)->where('class_id', $classId)->whereNull('exam_id')->where('session_id', $sessionId)->where('min_marks', '<=', $obtainedMarks)->where('max_marks', '>=', $obtainedMarks)->where('active', 1)->first();
-            if (!empty($grade)) {
-                return $grade->grade_name;
-            }
+
+        // Fallback to hardcoded ranges
+        if ($maxMarks == 50) {
+            if ($obtainedMarks >= 46) return 'A+';
+            if ($obtainedMarks >= 41) return 'A';
+            if ($obtainedMarks >= 31) return 'B+';
+            return 'B';
         }
-        $total = $maxMarks;
-        if ($total == 50) {
-            if ($obtainedMarks >= 46 && $obtainedMarks <= 50) {
-                return 'A+';
-            } elseif ($obtainedMarks >= 41 && $obtainedMarks <= 45) {
-                return 'A';
-            } elseif ($obtainedMarks >= 31 && $obtainedMarks <= 40) {
-                return 'B+';
-            } else {
-                return 'B';
-            }
-        } elseif ($total == 150) {
-            if ($obtainedMarks >= 136 && $obtainedMarks <= 150) {
-                return 'A+';
-            } elseif ($obtainedMarks >= 121 && $obtainedMarks <= 135) {
-                return 'A';
-            } elseif ($obtainedMarks >= 91 && $obtainedMarks <= 120) {
-                return 'B+';
-            } else {
-                return 'B';
-            }
+
+        if ($maxMarks == 150) {
+            if ($obtainedMarks >= 136) return 'A+';
+            if ($obtainedMarks >= 121) return 'A';
+            if ($obtainedMarks >= 91)  return 'B+';
+            return 'B';
         }
+
         return 'ER';
     }
 
@@ -1762,11 +2123,11 @@ class StdMarksController extends Controller
                 'required',
                 'exists:section_masters,id,active,1',
             ],
-            'std_id' => 'required',
+            'std' => 'required',
         ]);
         $classId = $request->class;
         $sectionId = $request->section;
-        $students = $request->std_id;
+        $students = $request->std;
         $sessionMessage = $request->sessionMessage;
         $dateMessage = $request->dateMessage;
 
@@ -1781,41 +2142,61 @@ class StdMarksController extends Controller
     public function finalMarksheetClassFirstSecond(Request $request)
     {
         try {
-            // Validate input parameters
             $validator = Validator::make($request->all(), [
-                'class' => 'required|exists:class_masters,id,active,1',
-                'section' => 'required|exists:section_masters,id,active,1',
+                'class'    => 'required|exists:class_masters,id,active,1',
+                'section'  => 'required|exists:section_masters,id,active,1',
                 'students' => 'required',
             ]);
 
-            // Check if validation fails
             if ($validator->fails()) {
                 return response()->json([
-                    'success' => false,
-                    'error' => 'Validation Error',
+                    'success'  => false,
+                    'error'    => 'Validation Error',
                     'messages' => $validator->errors(),
                 ], 422);
             }
-            // Get validated data
+
             $validatedData = $validator->validated();
-            // Get current active session
-            $session = session('marks_current_session');
+            $session       = session('marks_current_session');
+
             if (blank($session)) {
                 return response()->json(['error' => 'Current session not set'], 400);
             }
 
-            // Fetch main subjects for the class
-            $subFields = ['id', 'subject', 'by_m_g', 'priority', 'subject_id', 'class_id'];
-            $subWhere = ['class_id' => $validatedData['class']];
+            $classId   = $validatedData['class'];
+            $sectionId = $validatedData['section'];
+            $sessionId = $session->id;
+            $studentId = $request->students;
+
+            // ── 1. Fetch main subjects (priority 1) ONCE ──────────────────────────
+            $subFields  = ['id', 'subject', 'by_m_g', 'priority', 'subject_id', 'class_id'];
+            $subWhere   = ['class_id' => $classId];
             $subWhereIn = ['priority' => [1]];
-            $mainSubjects = SubjectMasterController::getAllSubjects($subFields, '', $subWhere, ['by_m_g' => 'asc'], true, '', false, $subWhereIn);
-            // Check if no subjects found for the class
+            $mainSubjects = SubjectMasterController::getAllSubjects(
+                $subFields, '', $subWhere, ['by_m_g' => 'asc'], true, '', false, $subWhereIn
+            );
+
             if ($mainSubjects->isEmpty()) {
                 return response()->json(['error' => 'No subjects found'], 404);
             }
-            $studentIds = explode(',', $request->students);
 
-            // Student details query
+            $mainSubjectIds = $mainSubjects->pluck('id')->toArray();
+
+            // ── 2. Fetch ALL sub-subjects (priority 2 / oral) ONCE ────────────────
+            // Oral subjects are linked to main subjects via subject_id
+            $oralSubjects = DB::table('subject_masters')
+                ->select('id', 'subject_id', 'priority')
+                ->where('class_id', $classId)
+                ->where('priority', 2)
+                ->where('active',   1)
+                ->whereIn('subject_id', $mainSubjectIds)
+                ->get()
+                ->keyBy('subject_id'); // [main_subject_id => oral_subject_row]
+
+            $oralSubjectIds = $oralSubjects->pluck('id')->toArray();
+            $allSubjectIds  = array_merge($mainSubjectIds, $oralSubjectIds);
+
+            // ── 3. Fetch students ONCE ────────────────────────────────────────────
             $fields = [
                 'stu_main_srno.srno',
                 'stu_main_srno.rollno',
@@ -1829,95 +2210,249 @@ class StdMarksController extends Controller
                 'class_masters.class as class_name',
                 'section_masters.section as section_name',
             ];
-            // $studentDetails = StudentMasterController::getStdWithNames(false, $fields)
-            $studentDetails = StudentMasterController::getMarksheetStdWithNames(false, $fields)
-                ->whereIn('stu_main_srno.srno', $studentIds) // Using whereIn for multiple srnos
-                ->where('stu_main_srno.session_id', $session->id)
-                ->where('stu_main_srno.class', $validatedData['class'])
-                ->where('stu_main_srno.section', $validatedData['section'])->get();
 
-            // Fetch exams
-            $exams = ExamMasterController::getAllExam(['id', 'exam']);
+            $studentQuery = StudentMasterController::getMarksheetStdWithNames(false, $fields)
+                ->where('stu_main_srno.session_id', $sessionId)
+                ->where('stu_main_srno.class',      $classId)
+                ->where('stu_main_srno.section',    $sectionId);
+
+            if (!empty($studentId) && $studentId !== 'all') {
+                $studentQuery->where('stu_main_srno.srno', $studentId);
+            }
+
+            $studentDetails  = $studentQuery->get();
+            $foundStudentIds = $studentDetails->pluck('srno')->toArray();
+
+            if ($studentDetails->isEmpty()) {
+                return response()->json(['error' => 'No students found'], 404);
+            }
+
+            // ── 4. Fetch exams ONCE ───────────────────────────────────────────────
+            $exams   = ExamMasterController::getAllExam(['id', 'exam']); // [id => name]
+            $examIds = array_keys($exams);
+
+            // ── 5. Fetch ALL marks + max_marks in ONE query ───────────────────────
+            $allMarks = DB::table('marks')
+                ->select(
+                    'marks.srno',
+                    'marks.exam_id',
+                    'marks.subject_id',
+                    'marks.marks',
+                    'marks.attendance',
+                    'marks_masters.max_marks',
+                    'subject_masters.priority',
+                    'subject_masters.subject_id as parent_subject_id'
+                )
+                ->join('subject_masters', 'subject_masters.id', '=', 'marks.subject_id')
+                ->leftJoin('marks_masters', function ($join) {
+                    $join->on('marks_masters.subject_id', '=', 'marks.subject_id')
+                        ->on('marks_masters.exam_id',    '=', 'marks.exam_id')
+                        ->on('marks_masters.class_id',   '=', 'marks.class_id')
+                        ->on('marks_masters.session_id', '=', 'marks.session_id');
+                })
+                ->where('marks.session_id', $sessionId)
+                ->where('marks.class_id',   $classId)
+                ->where('marks.active',     1)
+                ->where('marks_masters.active',    1)
+                ->where('subject_masters.active',  1)
+                ->whereIn('marks.srno',       $foundStudentIds)
+                ->whereIn('marks.exam_id',    $examIds)
+                ->whereIn('marks.subject_id', $allSubjectIds)
+                ->get()
+                ->groupBy('srno')
+                ->map(fn($rows) => $rows->groupBy('exam_id')
+                    ->map(fn($rows) => $rows->keyBy('subject_id')));
+
+            // ── 6. Fetch ALL subject grades in ONE query ──────────────────────────
+            $allGrades = DB::table('subject_grades')
+                ->select(['grade_name', 'subject_id', 'exam_id', 'min_marks', 'max_marks'])
+                ->where('session_id', $sessionId)
+                ->where('class_id',   $classId)
+                ->where('is_overall', 2)
+                ->where('active',     1)
+                ->whereIn('subject_id', $mainSubjectIds)
+                ->whereIn('exam_id',    $examIds)
+                ->get()
+                ->groupBy('subject_id')
+                ->map(fn($rows) => $rows->groupBy('exam_id'));
+
+            // ── 7. Fetch attendance schedule grouped by month ONCE ────────────────
+            $scheduleByMonth = DB::table('attendance_schedule')
+                ->selectRaw('MONTH(a_date) as month_number, SUM(status) as total')
+                ->where('session_id', $sessionId)
+                ->groupBy(DB::raw('MONTH(a_date)'))
+                ->get()
+                ->keyBy('month_number');
+
+            // ── 8. Fetch ALL student attendance grouped by srno + month ONCE ──────
+            $attendanceByStudent = DB::table('attendance')
+                ->selectRaw('srno, MONTH(a_date) as month_number, SUM(status) as total')
+                ->where('session_id', $sessionId)
+                ->whereIn('srno', $foundStudentIds)
+                ->groupBy('srno', DB::raw('MONTH(a_date)'))
+                ->get()
+                ->groupBy('srno')
+                ->map(fn($rows) => $rows->keyBy('month_number'));
+
+            // ── 9. Build report in memory (zero extra queries) ────────────────────
+            $monthNames = [
+                4 => 'April',    5 => 'May',       6 => 'June',
+                7 => 'July',     8 => 'August',    9 => 'September',
+                10 => 'October', 11 => 'November', 12 => 'December',
+                1 => 'January',  2 => 'February',  3 => 'March',
+            ];
 
             $finalData = [];
 
             foreach ($studentDetails as $studentDetail) {
+                $stuId        = $studentDetail->srno;
+                $studentMarks = $allMarks[$stuId] ?? collect();
 
-                // Prepare results data structure for each student
                 $reportData = [
                     'student_info' => $studentDetail,
-                    'exams' => [],
-                    'attendance' => [],
+                    'exams'        => [],
+                    'attendance'   => [],
                 ];
 
-                // Iterate through each subject
+                // ── Marks ─────────────────────────────────────────────────────────
                 foreach ($mainSubjects as $subject) {
+                    $subId = $subject->id;
+
+                    // Get oral subject linked to this main subject
+                    $oralSubject   = $oralSubjects[$subId] ?? null;
+                    $oralSubjectId = $oralSubject ? $oralSubject->id : null;
+
                     $subjectMarksData = [
-                        'id' => $subject->id,
-                        'subject' => $subject->subject,
-                        'by_m_g' => $subject->by_m_g,
-                        'priority' => $subject->priority,
+                        'id'           => $subId,
+                        'subject'      => $subject->subject,
+                        'by_m_g'       => $subject->by_m_g,
+                        'priority'     => $subject->priority,
                         'subSubjectId' => $subject->subject_id,
-                        'exam-info' => [],
+                        'exam-info'    => [],
                     ];
 
-                    // Collect marks and grades for each exam
-                    foreach ($exams as $key => $exam) {
-                        $examMarks = $this->getExamMarksForStudent(
-                            $validatedData['class'],
-                            $key,
-                            $session->id,
-                            $studentDetail->srno,
-                            $subject->id // Pass the subject_id to filter marks for the specific subject
+                    foreach ($exams as $examId => $examName) {
+                        $examMarks = $studentMarks[$examId] ?? collect();
+
+                        // Written (priority 1)
+                        $mainRow      = $examMarks[$subId] ?? null;
+                        // Oral (priority 2)
+                        $oralRow      = $oralSubjectId ? ($examMarks[$oralSubjectId] ?? null) : null;
+
+                        // Skip if neither written nor oral marks exist
+                        if (!$mainRow && !$oralRow) {
+                            continue;
+                        }
+
+                        $writtenMarks    = $mainRow ? ($mainRow->marks    ?? 0) : 0;
+                        $writtenMaxMarks = $mainRow ? ($mainRow->max_marks ?? 0) : 0;
+                        $oralMarksVal    = $oralRow ? ($oralRow->marks    ?? 0) : 0;
+                        $oralMaxMarks    = $oralRow ? ($oralRow->max_marks ?? 0) : 0;
+
+                        $totalMarks    = $writtenMarks + $oralMarksVal;
+                        $totalMaxMarks = $writtenMaxMarks + $oralMaxMarks;
+
+                        // Grade from in-memory lookup
+                        $grade = $this->resolveGradeFirstSecond(
+                            $totalMarks, $totalMaxMarks, $subId, $examId, $allGrades
                         );
 
-                        // If marks data exists, add to the subject's exam-info
-                        if (! empty($examMarks)) {
-
-                            $subjectMarksData['exam-info'][] = [
-                                'exam_id' => $key,
-                                'exam' => $exam,
-                                'written_marks' => $examMarks['written_marks'],
-                                'written_max_marks' => $examMarks['written_max_marks'],
-                                'oral_marks' => $examMarks['oral_marks'],
-                                'oral_max_marks' => $examMarks['oral_max_marks'],
-                                'total_marks' => $examMarks['total_marks'],
-                                'max_marks' => $examMarks['max_marks'],
-                                'grade' => $examMarks['grade'],
-                            ];
-                        }
+                        $subjectMarksData['exam-info'][] = [
+                            'exam_id'           => $examId,
+                            'exam'              => $examName,
+                            'written_marks'     => ($mainRow && $mainRow->attendance == 1) ? $writtenMarks : 'Abs',
+                            'written_max_marks' => $writtenMaxMarks,
+                            'oral_marks'        => ($oralRow && $oralRow->attendance == 1) ? $oralMarksVal : 'Abs',
+                            'oral_max_marks'    => $oralMaxMarks,
+                            'total_marks'       => $totalMarks,
+                            'max_marks'         => $totalMaxMarks,
+                            'grade'             => $grade,
+                        ];
                     }
 
-                    // Add subject data to reportData
                     $reportData['exams'][] = $subjectMarksData;
                 }
-                $reportData['attendance'] = $this->firstSecondAttendance(
-                    $session->id,
-                    $studentDetail->srno
-                );
-                // Add the student's report data to the final result
+
+                // ── Attendance (in-memory) ────────────────────────────────────────
+                $stuAttendance  = $attendanceByStudent[$stuId] ?? collect();
+                $monthlyData    = [];
+                $totalMeetings  = 0;
+                $totalAttended  = 0;
+
+                foreach ($monthNames as $monthNumber => $monthName) {
+                    $scheduled = $scheduleByMonth[$monthNumber]->total ?? 0;
+                    $attended  = $stuAttendance[$monthNumber]->total   ?? 0;
+
+                    $monthlyData[] = [
+                        'month'                  => $monthName,
+                        'month_number'           => $monthNumber,
+                        'total_meetings'         => $scheduled * 2,
+                        'attended_meetings'      => $attended  * 2,
+                        'attendance_percentage'  => $scheduled > 0
+                                                    ? round(($attended / $scheduled) * 100, 2)
+                                                    : 0,
+                    ];
+
+                    $totalMeetings += $scheduled;
+                    $totalAttended += $attended;
+                }
+
+                $reportData['attendance'] = [
+                    'student_id'         => $stuId,
+                    'session_id'         => $sessionId,
+                    'monthly_attendance' => $monthlyData,
+                    'summary'            => [
+                        'total_meetings'               => $totalMeetings * 2,
+                        'total_attended'               => $totalAttended * 2,
+                        'overall_attendance_percentage' => $totalMeetings > 0
+                                                            ? round(($totalAttended / $totalMeetings) * 100, 2)
+                                                            : 0,
+                    ],
+                ];
+
                 $finalData[] = $reportData;
             }
 
-            // return response()->json($finalData);
             return response()->json([
                 'success' => true,
-                'data' => $finalData,
+                'data'    => $finalData,
                 'session' => $session,
-                'logo' => [
-                    'school_logo' => config('myconfig.mylogo'),
-                    // 'principal_sign' => asset('public/marks/images/' . $image),
-                    'principal_sign' => config('myconfig.mysignature'),
-                    'result_date_message' => $request->dateMessage ?? '',
+                'logo'    => [
+                    'school_logo'           => config('myconfig.mylogo'),
+                    'principal_sign'        => config('myconfig.mysignature'),
+                    'result_date_message'   => $request->dateMessage    ?? '',
                     'session_start_message' => $request->sessionMessage ?? '',
                 ],
             ]);
+
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'An error occurred',
-                'message' => $e->getMessage().' at line number '.$e->getLine(),
+                'error'   => 'An error occurred',
+                'message' => $e->getMessage() . ' at line number ' . $e->getLine(),
             ], 500);
         }
+    }
+
+    // ── Grade resolver (in-memory, zero DB calls) ─────────────────────────────────
+    private function resolveGradeFirstSecond($marks, $maxMarks, $subjectId, $examId, $allGrades)
+    {
+        $rows  = $allGrades[$subjectId][$examId] ?? collect();
+        $grade = $rows->first(fn($g) =>
+            $g->min_marks <= $marks && $g->max_marks >= $marks
+        );
+
+        if ($grade) return $grade->grade_name;
+
+        // Fallback percentage-based grade
+        if ($maxMarks <= 0) return 'ER';
+
+        $percentage = ($marks * 100.0) / $maxMarks;
+
+        if ($percentage > 80) return 'A';
+        if ($percentage > 60) return 'B';
+        if ($percentage > 40) return 'C';
+
+        return 'D';
     }
 
     // Helper method to get exam marks for a student and subject
@@ -2173,11 +2708,11 @@ class StdMarksController extends Controller
                 'required',
                 'exists:section_masters,id,active,1',
             ],
-            'std_id' => 'required',
+            'std' => 'required',
         ]);
         $classId = $request->class;
         $sectionId = $request->section;
-        $students = $request->std_id;
+        $students = $request->std;
         $sessionMessage = $request->sessionMessage;
         $dateMessage = $request->dateMessage;
 
@@ -2223,46 +2758,67 @@ class StdMarksController extends Controller
     public function finalMarksheetThirdtoFiveReport(Request $request)
     {
         try {
-            // Validate the request
             $validator = Validator::make($request->all(), [
-                'class' => 'required|exists:class_masters,id,active,1',
-                'section' => 'required|exists:section_masters,id,active,1',
+                'class'    => 'required|exists:class_masters,id,active,1',
+                'section'  => 'required|exists:section_masters,id,active,1',
                 'students' => 'required',
             ]);
 
             if ($validator->fails()) {
                 return response()->json([
-                    'status' => 'error',
+                    'status'  => 'error',
                     'message' => $validator->errors(),
                 ], 400);
             }
 
-            // Get active session
-            // $session = SessionMaster::select('id', 'session')->where('marks_current_session', 1)->where('active', 1)->first();
             $session = session('marks_current_session');
-
             if (blank($session)) {
                 return response()->json(['status' => 'error', 'message' => 'Current session not set'], 400);
             }
 
-            // Fetch main subjects and exams
-            $subFields = ['id', 'subject', 'by_m_g', 'priority', 'subject_id', 'class_id'];
-            $subWhere = ['class_id' => $request->class];
-            $subWhereIn = ['priority' => [1]];
-            $mainSubjects = SubjectMasterController::getAllSubjects($subFields, '', $subWhere, ['by_m_g' => 'asc'], true, '', false, $subWhereIn);
+            $classId   = $request->class;
+            $sectionId = $request->section;
+            $sessionId = $session->id;
+            $studentId = $request->students;
+
+            // ── 1. Fetch main subjects ONCE ───────────────────────────────────────
+            $subFields    = ['id', 'subject', 'by_m_g', 'priority', 'subject_id', 'class_id'];
+            $subWhere     = ['class_id' => $classId];
+            $subWhereIn   = ['priority' => [1]];
+            $mainSubjects = SubjectMasterController::getAllSubjects(
+                $subFields, '', $subWhere, ['by_m_g' => 'asc'], true, '', false, $subWhereIn
+            );
 
             if ($mainSubjects->isEmpty()) {
                 return response()->json(['status' => 'error', 'message' => 'No subjects found'], 404);
             }
 
-            $examIds = explode(',', $request->exam);
-            $exams = ExamMasterController::getAllExam(['id', 'exam'], [], [], '', false, ['id' => $examIds]);
+            $mainSubjectIds = $mainSubjects->pluck('id')->toArray();
+
+            // ── 2. Fetch oral subjects (priority 2) ONCE ──────────────────────────
+            $oralSubjects = DB::table('subject_masters')
+                ->select('id', 'subject_id', 'priority')
+                ->where('class_id', $classId)
+                ->where('priority', 2)
+                ->where('active',   1)
+                ->whereIn('subject_id', $mainSubjectIds)
+                ->get()
+                ->keyBy('subject_id'); // [main_subject_id => oral_subject_row]
+
+            $oralSubjectIds = $oralSubjects->pluck('id')->toArray();
+            $allSubjectIds  = array_merge($mainSubjectIds, $oralSubjectIds);
+
+            // ── 3. Fetch exams ONCE ───────────────────────────────────────────────
+            $requestedExamIds = array_filter(array_map('trim', explode(',', $request->exam ?? '')));
+            $exams            = ExamMasterController::getAllExam(['id', 'exam'], [], [], '', false, ['id' => $requestedExamIds]);
+
             if (empty($exams)) {
                 return response()->json(['status' => 'error', 'message' => 'No exams found'], 404);
             }
 
-            // Fetch students with necessary details using joins
-            $studentIds = explode(',', $request->students);
+            $examIds = array_keys($exams);
+
+            // ── 4. Fetch students ONCE ────────────────────────────────────────────
             $fields = [
                 'stu_main_srno.srno',
                 'stu_main_srno.rollno',
@@ -2276,46 +2832,220 @@ class StdMarksController extends Controller
                 'class_masters.class as class_name',
                 'section_masters.section as section_name',
             ];
-            // $students = StudentMasterController::getStdWithNames(false, $fields)
-            $students = StudentMasterController::getMarksheetStdWithNames(false, $fields)
-                ->whereIn('stu_main_srno.srno', $studentIds) // Using whereIn for multiple srnos
-                ->where('stu_main_srno.session_id', $session->id)
-                ->where('stu_main_srno.class', $request->class)
-                ->where('stu_main_srno.section', $request->section)->get();
 
-            // Process students
-            $finalData = $students->map(function ($studentDetail) use ($mainSubjects, $exams, $session, $request) {
-                return [
-                    'student_info' => $studentDetail,
+            $studentQuery = StudentMasterController::getMarksheetStdWithNames(false, $fields)
+                ->where('stu_main_srno.session_id', $sessionId)
+                ->where('stu_main_srno.class',      $classId)
+                ->where('stu_main_srno.section',    $sectionId);
 
-                    'exams' => $mainSubjects->map(function ($subject) use ($exams, $request, $session, $studentDetail) {
-                        return $this->processSubjectMarks(
-                            $subject,
-                            $exams,
-                            $request->class,
-                            $session->id,
-                            $studentDetail->srno
+            if (!empty($studentId) && $studentId !== 'all') {
+                $studentQuery->where('stu_main_srno.srno', $studentId);
+            }
+
+            $students = $studentQuery->get();
+
+            if ($students->isEmpty()) {
+                return response()->json(['status' => 'error', 'message' => 'No students found'], 404);
+            }
+
+            $foundStudentIds = $students->pluck('srno')->toArray();
+
+            // ── 5. Fetch ALL marks + max_marks in ONE query ───────────────────────
+            $allMarks = DB::table('marks')
+                ->select(
+                    'marks.srno',
+                    'marks.exam_id',
+                    'marks.subject_id',
+                    'marks.marks',
+                    'marks.attendance',
+                    'marks_masters.max_marks',
+                    'subject_masters.priority',
+                    'subject_masters.subject_id as parent_subject_id'
+                )
+                ->join('subject_masters', 'subject_masters.id', '=', 'marks.subject_id')
+                ->leftJoin('marks_masters', function ($join) {
+                    $join->on('marks_masters.subject_id', '=', 'marks.subject_id')
+                        ->on('marks_masters.exam_id',    '=', 'marks.exam_id')
+                        ->on('marks_masters.class_id',   '=', 'marks.class_id')
+                        ->on('marks_masters.session_id', '=', 'marks.session_id');
+                })
+                ->where('marks.session_id',       $sessionId)
+                ->where('marks.class_id',         $classId)
+                ->where('marks.active',           1)
+                ->where('marks_masters.active',   1)
+                ->where('subject_masters.active', 1)
+                ->whereIn('marks.srno',       $foundStudentIds)
+                ->whereIn('marks.exam_id',    $examIds)
+                ->whereIn('marks.subject_id', $allSubjectIds)
+                ->get()
+                ->groupBy('srno')
+                ->map(fn($rows) => $rows->groupBy('exam_id')
+                    ->map(fn($rows) => $rows->keyBy('subject_id')));
+
+            // ── 6. Fetch ALL subject grades in ONE query ──────────────────────────
+            $allGrades = DB::table('subject_grades')
+                ->select(['grade_name', 'subject_id', 'exam_id', 'min_marks', 'max_marks'])
+                ->where('session_id', $sessionId)
+                ->where('class_id',   $classId)
+                ->where('is_overall', 2)
+                ->where('active',     1)
+                ->whereIn('subject_id', $mainSubjectIds)
+                ->whereIn('exam_id',    $examIds)
+                ->get()
+                ->groupBy('subject_id')
+                ->map(fn($rows) => $rows->groupBy('exam_id'));
+
+            // ── 7. Fetch attendance schedule grouped by month ONCE ────────────────
+            $scheduleByMonth = DB::table('attendance_schedule')
+                ->selectRaw('MONTH(a_date) as month_number, SUM(status) as total')
+                ->where('session_id', $sessionId)
+                ->groupBy(DB::raw('MONTH(a_date)'))
+                ->get()
+                ->keyBy('month_number');
+
+            // ── 8. Fetch ALL student attendance grouped by srno + month ONCE ──────
+            $attendanceByStudent = DB::table('attendance')
+                ->selectRaw('srno, MONTH(a_date) as month_number, SUM(status) as total')
+                ->where('session_id', $sessionId)
+                ->whereIn('srno',     $foundStudentIds)
+                ->groupBy('srno', DB::raw('MONTH(a_date)'))
+                ->get()
+                ->groupBy('srno')
+                ->map(fn($rows) => $rows->keyBy('month_number'));
+
+            // ── 9. Build report in memory (zero extra queries) ────────────────────
+            $monthNames = [
+                4  => 'April',     5  => 'May',       6  => 'June',
+                7  => 'July',      8  => 'August',    9  => 'September',
+                10 => 'October',   11 => 'November',  12 => 'December',
+                1  => 'January',   2  => 'February',  3  => 'March',
+            ];
+
+            $finalData = [];
+
+            foreach ($students as $studentDetail) {
+                $stuId        = $studentDetail->srno;
+                $studentMarks = $allMarks[$stuId] ?? collect();
+
+                // ── Marks ─────────────────────────────────────────────────────────
+                $examsData = [];
+
+                foreach ($mainSubjects as $subject) {
+                    $subId         = $subject->id;
+                    $oralSubject   = $oralSubjects[$subId]   ?? null;
+                    $oralSubjectId = $oralSubject ? $oralSubject->id : null;
+                    $allExamsTotal = 0;
+                    $examInfo      = [];
+
+                    foreach ($exams as $examId => $examName) {
+                        $examMarks = $studentMarks[$examId] ?? collect();
+
+                        $mainRow = $examMarks[$subId]         ?? null;
+                        $oralRow = $oralSubjectId
+                                    ? ($examMarks[$oralSubjectId] ?? null)
+                                    : null;
+
+                        if (!$mainRow && !$oralRow) {
+                            continue;
+                        }
+
+                        $writtenMarks    = $mainRow ? ($mainRow->marks    ?? 0) : 0;
+                        $writtenMaxMarks = $mainRow ? ($mainRow->max_marks ?? 0) : 0;
+                        $oralMarksVal    = $oralRow ? ($oralRow->marks    ?? 0) : 0;
+                        $oralMaxMarks    = $oralRow ? ($oralRow->max_marks ?? 0) : 0;
+
+                        $totalMarks    = $writtenMarks + $oralMarksVal;
+                        $totalMaxMarks = $writtenMaxMarks + $oralMaxMarks;
+
+                        $allExamsTotal += $totalMarks;
+
+                        // Grade from in-memory lookup
+                        $grade = $this->resolveGradeFirstSecond(
+                            $totalMarks, $totalMaxMarks, $subId, $examId, $allGrades
                         );
-                    }),
-                    'attendance' => $this->firstSecondAttendance($session->id, $studentDetail->srno),
+
+                        $examInfo[] = [
+                            'exam_id'           => $examId,
+                            'exam'              => $examName,
+                            'written_marks'     => ($mainRow && $mainRow->attendance == 1) ? $writtenMarks    : 'Abs',
+                            'written_max_marks' => $writtenMaxMarks,
+                            'oral_marks'        => ($oralRow && $oralRow->attendance == 1) ? $oralMarksVal    : 'Abs',
+                            'oral_max_marks'    => $oralMaxMarks,
+                            'total_marks'       => $totalMarks,
+                            'max_marks'         => $totalMaxMarks,
+                            'grade'             => $grade,
+                        ];
+                    }
+
+                    $examsData[] = [
+                        'id'           => $subId,
+                        'subject'      => $subject->subject,
+                        'by_m_g'       => $subject->by_m_g,
+                        'priority'     => $subject->priority,
+                        'subSubjectId' => $subject->subject_id,
+                        'exam-info'    => $examInfo,
+                        'allExamsTotal' => $allExamsTotal,
+                    ];
+                }
+
+                // ── Attendance (in-memory) ────────────────────────────────────────
+                $stuAttendance = $attendanceByStudent[$stuId] ?? collect();
+                $monthlyData   = [];
+                $totalMeetings = 0;
+                $totalAttended = 0;
+
+                foreach ($monthNames as $monthNumber => $monthName) {
+                    $scheduled = $scheduleByMonth[$monthNumber]->total ?? 0;
+                    $attended  = $stuAttendance[$monthNumber]->total   ?? 0;
+
+                    $monthlyData[] = [
+                        'month'                  => $monthName,
+                        'month_number'           => $monthNumber,
+                        'total_meetings'         => $scheduled * 2,
+                        'attended_meetings'      => $attended  * 2,
+                        'attendance_percentage'  => $scheduled > 0
+                                                    ? round(($attended / $scheduled) * 100, 2)
+                                                    : 0,
+                    ];
+
+                    $totalMeetings += $scheduled;
+                    $totalAttended += $attended;
+                }
+
+                $finalData[] = [
+                    'student_info' => $studentDetail,
+                    'exams'        => $examsData,
+                    'attendance'   => [
+                        'student_id'         => $stuId,
+                        'session_id'         => $sessionId,
+                        'monthly_attendance' => $monthlyData,
+                        'summary'            => [
+                            'total_meetings'                => $totalMeetings * 2,
+                            'total_attended'                => $totalAttended * 2,
+                            'overall_attendance_percentage' => $totalMeetings > 0
+                                                                ? round(($totalAttended / $totalMeetings) * 100, 2)
+                                                                : 0,
+                        ],
+                    ],
                 ];
-            });
+            }
 
             return response()->json([
-                'status' => 'success',
+                'status'  => 'success',
                 'session' => $session,
-                'data' => $finalData,
-                'logo' => [
-                    'school_logo' => config('myconfig.mylogo'),
-                    'principal_sign' => config('myconfig.mysignature'),
-                    'result_date_message' => $request->dateMessage ?? '',
+                'data'    => $finalData,
+                'logo'    => [
+                    'school_logo'           => config('myconfig.mylogo'),
+                    'principal_sign'        => config('myconfig.mysignature'),
+                    'result_date_message'   => $request->dateMessage    ?? '',
                     'session_start_message' => $request->sessionMessage ?? '',
                 ],
             ]);
+
         } catch (\Exception $e) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to export report',
+                'status'  => 'error',
+                'message' => 'Failed to export report: ' . $e->getMessage() . ' at line ' . $e->getLine(),
             ], 500);
         }
     }
@@ -2392,20 +3122,15 @@ class StdMarksController extends Controller
                 'required',
                 'exists:section_masters,id,active,1',
             ],
-            'std_id' => 'required',
+            'std' => 'required',
         ]);
         $classId = $request->class;
         $sectionId = $request->section;
-        $students = $request->std_id;
+        $students = $request->std;
         $sessionMessage = $request->sessionMessage;
         $dateMessage = $request->dateMessage;
 
-        return redirect()->route('marks.marks-report.select.exam.six.eighth')
-            ->with('class', $classId)
-            ->with('section', $sectionId)
-            ->with('students', $students)
-            ->with('sessionMessage', $sessionMessage)
-            ->with('dateMessage', $dateMessage);
+        return redirect()->route('marks.marks-report.select.exam.six.eighth')->with('class', $classId)->with('section', $sectionId)->with('students', $students)->with('sessionMessage', $sessionMessage)->with('dateMessage', $dateMessage);
     }
 
     public function selectExamWithOrWithoutSixEighthStore(Request $request)
@@ -2439,81 +3164,70 @@ class StdMarksController extends Controller
         }
     }
 
-    private function processSubjectMarks($subject, $exams, $class, $sessionId, $studentSrno)
-    {
-        $allExamsTotal = 0;
-        $subjectMarksData = [
-            'id' => $subject->id,
-            'subject' => $subject->subject,
-            'by_m_g' => $subject->by_m_g,
-            'priority' => $subject->priority,
-            'subSubjectId' => $subject->subject_id,
-
-            'exam-info' => collect($exams)->map(function ($exam, $key) use (&$allExamsTotal, $class, $sessionId, $studentSrno, $subject) {
-                $examMarks = $this->getExamMarksForStudent($class, $key, $sessionId, $studentSrno, $subject->id);
-                $allExamsTotal += $examMarks ? $examMarks['total_marks'] : 0;
-
-                return $examMarks ? [
-                    'exam_id' => $key,
-                    'exam' => $exam,
-                    'written_marks' => $examMarks['written_marks'],
-                    'written_max_marks' => $examMarks['written_max_marks'],
-                    'oral_marks' => $examMarks['oral_marks'],
-                    'oral_max_marks' => $examMarks['oral_max_marks'],
-                    'total_marks' => $examMarks['total_marks'],
-                    'max_marks' => $examMarks['max_marks'],
-                    'grade' => $examMarks['grade'],
-                ] : null;
-            })->filter()->values(),
-            'allExamsTotal' => $allExamsTotal,
-        ];
-
-        return $subjectMarksData;
-    }
-
     public function finalMarksheetSixtoEighthReport(Request $request)
     {
         try {
-            // Validate the request
             $validator = Validator::make($request->all(), [
-                'class' => 'required|exists:class_masters,id,active,1',
-                'section' => 'required|exists:section_masters,id,active,1',
+                'class'    => 'required|exists:class_masters,id,active,1',
+                'section'  => 'required|exists:section_masters,id,active,1',
                 'students' => 'required',
             ]);
 
             if ($validator->fails()) {
                 return response()->json([
-                    'status' => 'error',
+                    'status'  => 'error',
                     'message' => $validator->errors(),
                 ], 400);
             }
 
-            // Get active session
-            // $session = SessionMaster::select('id', 'session')->where('marks_current_session', 1)->where('active', 1)->first();
             $session = session('marks_current_session');
-
             if (blank($session)) {
                 return response()->json(['status' => 'error', 'message' => 'Current session not set'], 400);
             }
-            // Fetch main subjects and exams
 
-            $subFields = ['id', 'subject', 'by_m_g', 'priority', 'subject_id', 'class_id'];
-            $subWhere = ['class_id' => $request->class];
-            $subWhereIn = ['priority' => [1]];
-            $mainSubjects = SubjectMasterController::getAllSubjects($subFields, '', $subWhere, ['by_m_g' => 'asc'], true, '', false, $subWhereIn);
+            $classId   = $request->class;
+            $sectionId = $request->section;
+            $sessionId = $session->id;
+            $studentId = $request->students;
+
+            // ── 1. Fetch main subjects ONCE ───────────────────────────────────────
+            $subFields    = ['id', 'subject', 'by_m_g', 'priority', 'subject_id', 'class_id'];
+            $subWhere     = ['class_id' => $classId];
+            $subWhereIn   = ['priority' => [1]];
+            $mainSubjects = SubjectMasterController::getAllSubjects(
+                $subFields, '', $subWhere, ['by_m_g' => 'asc'], true, '', false, $subWhereIn
+            );
 
             if ($mainSubjects->isEmpty()) {
                 return response()->json(['status' => 'error', 'message' => 'No subjects found'], 404);
             }
 
-            $examIds = explode(',', $request->exam);
-            $exams = ExamMasterController::getAllExam(['id', 'exam'], [], [], '', false, ['id' => $examIds]);
+            $mainSubjectIds = $mainSubjects->pluck('id')->toArray();
+
+            // ── 2. Fetch oral subjects (priority 2) ONCE ──────────────────────────
+            $oralSubjects = DB::table('subject_masters')
+                ->select('id', 'subject_id', 'priority')
+                ->where('class_id', $classId)
+                ->where('priority', 2)
+                ->where('active',   1)
+                ->whereIn('subject_id', $mainSubjectIds)
+                ->get()
+                ->keyBy('subject_id'); // [main_subject_id => oral_subject_row]
+
+            $oralSubjectIds = $oralSubjects->pluck('id')->toArray();
+            $allSubjectIds  = array_merge($mainSubjectIds, $oralSubjectIds);
+
+            // ── 3. Fetch exams ONCE ───────────────────────────────────────────────
+            $requestedExamIds = array_filter(array_map('trim', explode(',', $request->exam ?? '')));
+            $exams            = ExamMasterController::getAllExam(['id', 'exam'], [], [], '', false, ['id' => $requestedExamIds]);
+
             if (empty($exams)) {
                 return response()->json(['status' => 'error', 'message' => 'No exams found'], 404);
             }
 
-            // Fetch students with necessary details using joins
-            $studentIds = explode(',', $request->students);
+            $examIds = array_keys($exams);
+
+            // ── 4. Fetch students ONCE ────────────────────────────────────────────
             $fields = [
                 'stu_main_srno.srno',
                 'stu_main_srno.rollno',
@@ -2527,45 +3241,217 @@ class StdMarksController extends Controller
                 'class_masters.class as class_name',
                 'section_masters.section as section_name',
             ];
-            // $students = StudentMasterController::getStdWithNames(false, $fields)
-            $students = StudentMasterController::getMarksheetStdWithNames(false, $fields)
-                ->whereIn('stu_main_srno.srno', $studentIds) // Using whereIn for multiple srnos
-                ->where('stu_main_srno.session_id', $session->id)
-                ->where('stu_main_srno.class', $request->class)
-                ->where('stu_main_srno.section', $request->section)->get();
 
-            // Process students
-            $finalData = $students->map(function ($studentDetail) use ($mainSubjects, $exams, $session, $request) {
-                return [
-                    'student_info' => $studentDetail,
-                    'exams' => $mainSubjects->map(function ($subject) use ($exams, $request, $session, $studentDetail) {
-                        return $this->processSubjectMarks(
-                            $subject,
-                            $exams,
-                            $request->class,
-                            $session->id,
-                            $studentDetail->srno
+            $studentQuery = StudentMasterController::getMarksheetStdWithNames(false, $fields)
+                ->where('stu_main_srno.session_id', $sessionId)
+                ->where('stu_main_srno.class',      $classId)
+                ->where('stu_main_srno.section',    $sectionId);
+
+            if (!empty($studentId) && $studentId !== 'all') {
+                $studentQuery->where('stu_main_srno.srno', $studentId);
+            }
+
+            $students = $studentQuery->get();
+
+            if ($students->isEmpty()) {
+                return response()->json(['status' => 'error', 'message' => 'No students found'], 404);
+            }
+
+            $foundStudentIds = $students->pluck('srno')->toArray();
+
+            // ── 5. Fetch ALL marks + max_marks in ONE query ───────────────────────
+            $allMarks = DB::table('marks')
+                ->select(
+                    'marks.srno',
+                    'marks.exam_id',
+                    'marks.subject_id',
+                    'marks.marks',
+                    'marks.attendance',
+                    'marks_masters.max_marks',
+                    'subject_masters.priority',
+                    'subject_masters.subject_id as parent_subject_id'
+                )
+                ->join('subject_masters', 'subject_masters.id', '=', 'marks.subject_id')
+                ->leftJoin('marks_masters', function ($join) {
+                    $join->on('marks_masters.subject_id', '=', 'marks.subject_id')
+                        ->on('marks_masters.exam_id',    '=', 'marks.exam_id')
+                        ->on('marks_masters.class_id',   '=', 'marks.class_id')
+                        ->on('marks_masters.session_id', '=', 'marks.session_id');
+                })
+                ->where('marks.session_id',       $sessionId)
+                ->where('marks.class_id',         $classId)
+                ->where('marks.active',           1)
+                ->where('marks_masters.active',   1)
+                ->where('subject_masters.active', 1)
+                ->whereIn('marks.srno',       $foundStudentIds)
+                ->whereIn('marks.exam_id',    $examIds)
+                ->whereIn('marks.subject_id', $allSubjectIds)
+                ->get()
+                ->groupBy('srno')
+                ->map(fn($rows) => $rows->groupBy('exam_id')
+                    ->map(fn($rows) => $rows->keyBy('subject_id')));
+
+            // ── 6. Fetch ALL subject grades in ONE query ──────────────────────────
+            $allGrades = DB::table('subject_grades')
+                ->select(['grade_name', 'subject_id', 'exam_id', 'min_marks', 'max_marks'])
+                ->where('session_id', $sessionId)
+                ->where('class_id',   $classId)
+                ->where('is_overall', 2)
+                ->where('active',     1)
+                ->whereIn('subject_id', $mainSubjectIds)
+                ->whereIn('exam_id',    $examIds)
+                ->get()
+                ->groupBy('subject_id')
+                ->map(fn($rows) => $rows->groupBy('exam_id'));
+
+            // ── 7. Fetch attendance schedule grouped by month ONCE ────────────────
+            $scheduleByMonth = DB::table('attendance_schedule')
+                ->selectRaw('MONTH(a_date) as month_number, SUM(status) as total')
+                ->where('session_id', $sessionId)
+                ->groupBy(DB::raw('MONTH(a_date)'))
+                ->get()
+                ->keyBy('month_number');
+
+            // ── 8. Fetch ALL student attendance grouped by srno + month ONCE ──────
+            $attendanceByStudent = DB::table('attendance')
+                ->selectRaw('srno, MONTH(a_date) as month_number, SUM(status) as total')
+                ->where('session_id', $sessionId)
+                ->whereIn('srno',     $foundStudentIds)
+                ->groupBy('srno', DB::raw('MONTH(a_date)'))
+                ->get()
+                ->groupBy('srno')
+                ->map(fn($rows) => $rows->keyBy('month_number'));
+
+            // ── 9. Build report in memory (zero extra queries) ────────────────────
+            $monthNames = [
+                4  => 'April',     5  => 'May',       6  => 'June',
+                7  => 'July',      8  => 'August',    9  => 'September',
+                10 => 'October',   11 => 'November',  12 => 'December',
+                1  => 'January',   2  => 'February',  3  => 'March',
+            ];
+
+            $finalData = [];
+
+            foreach ($students as $studentDetail) {
+                $stuId        = $studentDetail->srno;
+                $studentMarks = $allMarks[$stuId] ?? collect();
+
+                // ── Marks ─────────────────────────────────────────────────────────
+                $examsData = [];
+
+                foreach ($mainSubjects as $subject) {
+                    $subId         = $subject->id;
+                    $oralSubject   = $oralSubjects[$subId]        ?? null;
+                    $oralSubjectId = $oralSubject ? $oralSubject->id : null;
+                    $allExamsTotal = 0;
+                    $examInfo      = [];
+
+                    foreach ($exams as $examId => $examName) {
+                        $examMarks = $studentMarks[$examId] ?? collect();
+
+                        $mainRow = $examMarks[$subId]                          ?? null;
+                        $oralRow = $oralSubjectId ? ($examMarks[$oralSubjectId] ?? null) : null;
+
+                        if (!$mainRow && !$oralRow) {
+                            continue;
+                        }
+
+                        $writtenMarks    = $mainRow ? ($mainRow->marks    ?? 0) : 0;
+                        $writtenMaxMarks = $mainRow ? ($mainRow->max_marks ?? 0) : 0;
+                        $oralMarksVal    = $oralRow ? ($oralRow->marks    ?? 0) : 0;
+                        $oralMaxMarks    = $oralRow ? ($oralRow->max_marks ?? 0) : 0;
+
+                        $totalMarks    = $writtenMarks + $oralMarksVal;
+                        $totalMaxMarks = $writtenMaxMarks + $oralMaxMarks;
+
+                        $allExamsTotal += $totalMarks;
+
+                        $grade = $this->resolveGradeFirstSecond(
+                            $totalMarks, $totalMaxMarks, $subId, $examId, $allGrades
                         );
-                    }),
-                    'attendance' => $this->firstSecondAttendance($session->id, $studentDetail->srno),
+
+                        $examInfo[] = [
+                            'exam_id'           => $examId,
+                            'exam'              => $examName,
+                            'written_marks'     => ($mainRow && $mainRow->attendance == 1) ? $writtenMarks : 'Abs',
+                            'written_max_marks' => $writtenMaxMarks,
+                            'oral_marks'        => ($oralRow && $oralRow->attendance == 1) ? $oralMarksVal : 'Abs',
+                            'oral_max_marks'    => $oralMaxMarks,
+                            'total_marks'       => $totalMarks,
+                            'max_marks'         => $totalMaxMarks,
+                            'grade'             => $grade,
+                        ];
+                    }
+
+                    $examsData[] = [
+                        'id'            => $subId,
+                        'subject'       => $subject->subject,
+                        'by_m_g'        => $subject->by_m_g,
+                        'priority'      => $subject->priority,
+                        'subSubjectId'  => $subject->subject_id,
+                        'exam-info'     => $examInfo,
+                        'allExamsTotal' => $allExamsTotal,
+                    ];
+                }
+
+                // ── Attendance (in-memory) ────────────────────────────────────────
+                $stuAttendance = $attendanceByStudent[$stuId] ?? collect();
+                $monthlyData   = [];
+                $totalMeetings = 0;
+                $totalAttended = 0;
+
+                foreach ($monthNames as $monthNumber => $monthName) {
+                    $scheduled = $scheduleByMonth[$monthNumber]->total ?? 0;
+                    $attended  = $stuAttendance[$monthNumber]->total   ?? 0;
+
+                    $monthlyData[] = [
+                        'month'                 => $monthName,
+                        'month_number'          => $monthNumber,
+                        'total_meetings'        => $scheduled * 2,
+                        'attended_meetings'     => $attended  * 2,
+                        'attendance_percentage' => $scheduled > 0
+                                                    ? round(($attended / $scheduled) * 100, 2)
+                                                    : 0,
+                    ];
+
+                    $totalMeetings += $scheduled;
+                    $totalAttended += $attended;
+                }
+
+                $finalData[] = [
+                    'student_info' => $studentDetail,
+                    'exams'        => $examsData,
+                    'attendance'   => [
+                        'student_id'         => $stuId,
+                        'session_id'         => $sessionId,
+                        'monthly_attendance' => $monthlyData,
+                        'summary'            => [
+                            'total_meetings'                => $totalMeetings * 2,
+                            'total_attended'                => $totalAttended * 2,
+                            'overall_attendance_percentage' => $totalMeetings > 0
+                                                                ? round(($totalAttended / $totalMeetings) * 100, 2)
+                                                                : 0,
+                        ],
+                    ],
                 ];
-            });
+            }
 
             return response()->json([
-                'status' => 'success',
+                'status'  => 'success',
                 'session' => $session,
-                'data' => $finalData,
-                'logo' => [
-                    'school_logo' => config('myconfig.mylogo'),
-                    'principal_sign' => config('myconfig.mysignature'),
-                    'result_date_message' => $request->dateMessage ?? '',
+                'data'    => $finalData,
+                'logo'    => [
+                    'school_logo'           => config('myconfig.mylogo'),
+                    'principal_sign'        => config('myconfig.mysignature'),
+                    'result_date_message'   => $request->dateMessage    ?? '',
                     'session_start_message' => $request->sessionMessage ?? '',
                 ],
             ]);
+
         } catch (\Exception $e) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to export report',
+                'status'  => 'error',
+                'message' => 'Failed to export report.',
             ], 500);
         }
     }
@@ -2613,12 +3499,12 @@ class StdMarksController extends Controller
                 'required',
                 'exists:section_masters,id,active,1',
             ],
-            'std_id' => 'required',
+            'std' => 'required',
         ]);
         $exam = $request->exam;
         $classId = $request->class;
         $sectionId = $request->section;
-        $students = $request->std_id;
+        $students = $request->std;
 
         return redirect()->route('marks.marks-report.pg-class-exam-wise.print')->with('exam', $exam)->with('class', $classId)->with('section', $sectionId)->with('students', $students);
     }
@@ -2637,12 +3523,12 @@ class StdMarksController extends Controller
                     'message' => $validator->errors(),
                 ], 400);
             }
-
-            $sessionId = (int) $request->session;
+            $current_session = Session::get('marks_current_session');
+            $sessionId = $current_session->id;
             $examId = $request->exam;
             $classId = $request->class;
             $sectionId = $request->section;
-            $studentIds = explode(',', $request->std_id);
+            $studentId = $request->std_id;
             $fields = [
                 'stu_main_srno.session_id',
                 'session_masters.session as session_name',
@@ -2662,13 +3548,14 @@ class StdMarksController extends Controller
                 'parents_detail.f_name',
                 'parents_detail.m_name',
             ];
-
-            $students = StudentMasterController::getMarksheetStdWithNames(false, $fields)
-                ->whereIn('stu_main_srno.srno', $studentIds)
-                ->where('stu_main_srno.class', $classId)
-                ->where('stu_main_srno.section', $sectionId)
-                ->where('stu_main_srno.session_id', $sessionId)
-                ->get();
+            $studentQuery = StudentMasterController::getMarksheetStdWithNames(false, $fields)
+            ->where('stu_main_srno.class', $classId)
+            ->where('stu_main_srno.section', $sectionId)
+            ->where('stu_main_srno.session_id', $sessionId);
+            if (!empty($studentId) && $studentId != 'all') {
+                $studentQuery->where('stu_main_srno.srno', $studentId);
+            }
+            $students = $studentQuery->get();
 
             if ($students->isNotEmpty()) {
                 $exam = ExamMasterController::getAllExam(['id', 'exam'], ['id' => $examId]);

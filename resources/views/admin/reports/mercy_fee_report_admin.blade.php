@@ -1,88 +1,105 @@
 @extends('admin.index')
 
 @section('sub-content')
-    <div class="container-fluid">
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card border-0 bg-white">
 
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card border-0 bg-white">
-                    <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between">
-                        <h5 class="mb-0 mt-0">{{ __('Fee Report (Mercy)') }}</h5>
-                        <a href="{{ route('admin.reports') }}" class="btn bg-light btn-sm" ><span class="mdi mdi-chevron-left me-2"></span>Back</a>
-                    </div>
+                <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between">
+                    <h5 class="mb-0 mt-0">{{ __('Fee Report (Mercy)') }}</h5>
+                    <a href="{{ route('admin.reports') }}" class="btn bg-light btn-sm">
+                        <span class="mdi mdi-chevron-left me-2"></span>Back
+                    </a>
+                </div>
 
-                    <div class="card-body">
-                        <form action="" method="get" id="class-form">
-                            <div class="row mt-2">
-                                <div class="form-group col-md-6">
-                                    <label for="session_id" class="mt-2">Session <span
-                                            class="text-danger">*</span></label>
-                                    <select name="session_id" id="session_id" class="form-control" required>
-                                        <option value="">Select session</option>
-                                        @if (count($sessions) > 0)
-                                            @foreach ($sessions as $key => $session)
-                                                <option value="{{ $key }}"
-                                                    {{ old('session_id') == $key ? 'selected' : '' }}>{{ $session }}
-                                                </option>
-                                            @endforeach
-                                        @else
-                                            <option value="">No Session Found</option>
-                                        @endif
-                                    </select>
+                <div class="card-body">
 
-                                    <span class="invalid-feedback form-invalid fw-bold session-error" role="alert">
+                    {{-- ── Filter Form ─────────────────────────────────────── --}}
+                    <form id="fee-report-form" novalidate>
+                        <div class="row mt-2">
 
-                                    </span>
-
-                                    <img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader"
-                                        id="loader" style="display:none; width:10%;">
-                                </div>
-                                <div class="form-group col-md-6">
-                                    <label for="fee_type" class="mt-2">Fee Type <span class="text-danger">*</span></label>
-                                    <select name="fee_type" id="fee_type" class="form-control mx-1" required>
-                                        <option value="">Select Fee Type</option>
-                                        <option value="1">Academic Fee</option>
-                                        <option value="2">transport Fee</option>
-                                    </select>
-                                    <span class="invalid-feedback form-invalid fw-bold fee-type-error"
-                                        role="alert"></span>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="form-group col-md-4">
-                                    <label for="report_type" class="mt-2">Report Type <span
-                                            class="text-danger">*</span></label>
-                                    <select name="report_type" id="report_type" class="form-control mx-1" required>
-                                        <option value="">Select Report Type</option>
-                                        <option value="1">Summary Report</option>
-                                        <option value="2">Detailed Report</option>
-                                    </select>
-                                    <span class="invalid-feedback form-invalid fw-bold report-type-error"
-                                        role="alert"></span>
-                                </div>
-                                <div class="form-group col-md-4">
-                                    <label for="start-date" class="mt-2">Start Date<span
-                                            class="text-danger">*</span></label>
-                                    <input type="date" value="" id="start-date" class="form-control mx-1">
-                                    <span class="invalid-feedback form-invalid fw-bold start-date-error"
-                                        role="alert"></span>
-                                </div>
-                                <div class="form-group col-md-4">
-                                    <label for="end-date" class="mt-2">End Date<span class="text-danger">*</span></label>
-                                    <input type="date" value="" id="end-date" class="form-control mx-1">
-                                    <span class="invalid-feedback form-invalid fw-bold end-date-error"
-                                        role="alert"></span>
-                                </div>
+                            {{-- Session --}}
+                            <div class="form-group col-md-6">
+                                <label for="session_id" class="mt-2">
+                                    Session <span class="text-danger">*</span>
+                                </label>
+                                <select name="session_id" id="session_id" class="form-control" required>
+                                    <option value="">Select Session</option>
+                                    @if (count($sessions) > 0)
+                                        @foreach ($sessions as $key => $session)
+                                            <option value="{{ $key }}" {{ old('session_id') == $key ? 'selected' : '' }}>
+                                                {{ $session }}
+                                            </option>
+                                        @endforeach
+                                    @else
+                                        <option value="" disabled>No Session Found</option>
+                                    @endif
+                                </select>
+                                <span class="invalid-feedback fw-bold" id="session-error" role="alert"></span>
                             </div>
 
-                            <div class="mt-3">
-                                <button class="btn btn-primary" type="button" id="show-report">Show Fee Report</button>
-                                <span class="fst-italic fw-bold text-decoration-underline" id="summary-report"></span>
+                            {{-- Fee Type --}}
+                            <div class="form-group col-md-6">
+                                <label for="fee_type" class="mt-2">Fee Type <span class="text-danger">*</span>
+                                </label>
+                                <select name="fee_type" id="fee_type" class="form-control" required>
+                                    <option value="">Select Fee Type</option>
+                                    <option value="1">Academic Fee</option>
+                                    <option value="2">Transport Fee</option>
+                                </select>
+                                <span class="invalid-feedback fw-bold" id="fee-type-error" role="alert"></span>
                             </div>
-                        </form>
-                        <div class="super-div">
-                            <table class="table">
-                                <thead>
+
+                        </div>
+
+                        <div class="row">
+
+                            {{-- Report Type --}}
+                            <div class="form-group col-md-4">
+                                <label for="report_type" class="mt-2">Report Type <span class="text-danger">*</span>
+                                </label>
+                                <select name="report_type" id="report_type" class="form-control" required>
+                                    <option value="">Select Report Type</option>
+                                    <option value="1">Summary Report</option>
+                                    <option value="2">Detailed Report</option>
+                                </select>
+                                <span class="invalid-feedback fw-bold" id="report-type-error" role="alert"></span>
+                            </div>
+
+                            {{-- Start Date --}}
+                            <div class="form-group col-md-4">
+                                <label for="start_date" class="mt-2">Start Date</label>
+                                <input type="date" id="start_date" class="form-control">
+                                <span class="invalid-feedback fw-bold" id="start-date-error" role="alert"></span>
+                            </div>
+
+                            {{-- End Date --}}
+                            <div class="form-group col-md-4">
+                                <label for="end_date" class="mt-2">End Date</label>
+                                <input type="date" id="end_date" class="form-control">
+                                <span class="invalid-feedback fw-bold" id="end-date-error" role="alert"></span>
+                            </div>
+
+                        </div>
+
+                        <div class="mt-3 d-flex align-items-center gap-2">
+                            <button type="button" id="btn-show-report" class="btn btn-primary">
+                                Show Fee Report
+                            </button>
+                            <img src="{{ config('myconfig.myloader') }}" alt="Loading…" id="loader" style="display:none; width:40px;">
+                        </div>
+
+                        {{-- Summary result --}}
+                        <div id="summary-report" class="mt-2 fst-italic fw-bold text-decoration-underline"
+                            style="display:none;"></div>
+                    </form>
+
+                    {{-- ── Results ─────────────────────────────────────────── --}}
+                    <div id="report-container" class="mt-4" style="display:none;">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover align-middle">
+                                <thead class="table-light">
                                     <tr>
                                         <th>S.No.</th>
                                         <th>Pay Date</th>
@@ -94,218 +111,264 @@
                                         <th>Name</th>
                                         <th>Father's Name</th>
                                         <th>Amount (Rs.)</th>
-
                                     </tr>
                                 </thead>
-                                <tbody id="report-body">
-                                </tbody>
+                                <tbody id="report-body"></tbody>
                             </table>
-                            <div id="std-pagination" class="mt-2"></div>
-                            <div class="export-div">
-                                <button type="button" class="btn btn-info" id="export-button">Export</button>
-                            </div>
                         </div>
-
+                        <div id="admin-pagination" class="mt-2"></div>
+                        <div class="mt-3">
+                            <button type="button" id="btn-export" class="btn btn-info">
+                                Export Excel
+                            </button>
+                        </div>
                     </div>
 
-                </div>
+                </div>{{-- /card-body --}}
             </div>
         </div>
     </div>
+</div>
 @endsection
+
 @section('admin-scripts')
-    <script>
-        $(document).ready(function() {
-           $('.super-div').hide();
+<script>
+$(document).ready(function () {
 
-            function getReport(page = 1) {
-                let sessionId = $('#session_id').val();
-                let feeTypeId = $('#fee_type').val();
-                let reportTypeId = $('#report_type').val();
-                let startDateId = $('#start-date').val();
-                let endDateId = $('#end-date').val();
+    // ── Selectors ──────────────────────────────────────────────────────────────
+    const loader          = $('#loader');
+    const summaryReport   = $('#summary-report');
+    const reportContainer = $('#report-container');
+    const reportBody      = $('#report-body');
+    const pagination      = $('#admin-pagination');
 
-                if ($('#class-form').valid()) {
-                    // $('.super-div').show();
-                    $.ajax({
-                        url: '{{ route('admin.reports.feeReportMercyAdmin') }}',
-                        type: 'GET',
-                        dataType: 'JSON',
-                        data: {
-                            session: sessionId,
-                            feeType: feeTypeId,
-                            reportType: reportTypeId,
-                            startDate: startDateId,
-                            endDate: endDateId,
-                            page: page,
+    // ── Helpers ────────────────────────────────────────────────────────────────
+    function showLoader()  { loader.show(); }
+    function hideLoader()  { loader.hide(); }
 
-                        },
-                        success: function(response) {
-                            let tableHtml = '';
-                            if (response.data) {
-                                if (reportTypeId == 1) {
-                                    $('.super-div').hide();
-                                    $('#summary-report').show().html('Summery Amount is :' + response
-                                        .data[0].summeryAmount);
-                                } else {
-                                    $('#summary-report').hide().html('');
-                                    $('.super-div').show();
-                                    const startIndex = (response.pagination.current_page - 1) * response
-                                        .pagination.per_page;
+    function clearErrors() {
+        ['#session-error', '#fee-type-error', '#report-type-error', '#start-date-error', '#end-date-error']
+            .forEach(id => $(id).text('').hide());
+    }
 
-                                    // Separate students into junior and senior sections
-                                    let juniorStudents = [];
-                                    let seniorStudents = [];
-                                    let juniorTotal = 0;
-                                    let seniorTotal = 0;
+    function showError(id, message) {
+        $(id).text(message).show();
+    }
 
-                                    // Group students
-                                    Object.keys(response.data).forEach(key => {
-                                        if (key === 'grandTotal') return;
-                                        const studentData = response.data[key];
-                                        if (studentData.school == 1) {
-                                            juniorStudents.push(studentData);
-                                            juniorTotal += parseFloat(studentData.feeDetails
-                                                .amount || 0);
-                                        } else {
-                                            seniorStudents.push(studentData);
-                                            seniorTotal += parseFloat(studentData.feeDetails
-                                                .amount || 0);
-                                        }
-                                    });
+    function getFilters() {
+        return {
+            session:    $('#session_id').val(),
+            feeType:    $('#fee_type').val(),
+            reportType: $('#report_type').val(),
+            startDate:  $('#start_date').val(),
+            endDate:    $('#end_date').val(),
+        };
+    }
 
-                                    // Display Junior Section
-                                    if (juniorStudents.length > 0) {
-                                        tableHtml += `<tr class="fw-bold">
-                                            <td colspan="10" class="text-start text-danger">Junior Section</td>
-                                        </tr>`;
+    function validateFilters(filters) {
+        let valid = true;
+        clearErrors();
 
-                                        juniorStudents.forEach((studentData, index) => {
-                                            tableHtml += `<tr>
-                                                <td>${startIndex + index + 1}</td>
-                                                <td>${studentData.feeDetails.pay_date || '-'}</td>
-                                                <td>${studentData.feeDetails.ref_slip_no || '-'}</td>
-                                                <td>${studentData.feeDetails.recp_no || '-'}</td>
-                                                <td>${studentData.feeDetails.srno || '-'}</td>
-                                                <td>${studentData.class_name || '-'}</td>
-                                                <td>${studentData.section_name || '-'}</td>
-                                                <td>${studentData.name || '-'}</td>
-                                                <td>${studentData.f_name || '-'}</td>
-                                                <td>${studentData.feeDetails.amount || 0}</td>
-                                            </tr>`;
-                                        });
-                                        // Add Junior Section Total
-                                        tableHtml += `<tr class="fw-bold">
-                                                <td colspan="9" class="text-end">Junior Section Total:</td>
-                                                <td>${juniorTotal}</td>
-                                            </tr>`;
-                                    }
+        if (!filters.session) {
+            showError('#session-error', 'Please select a session.');
+            valid = false;
+        }
+        if (!filters.feeType) {
+            showError('#fee-type-error', 'Please select a fee type.');
+            valid = false;
+        }
+        if (!filters.reportType) {
+            showError('#report-type-error', 'Please select a report type.');
+            valid = false;
+        }
+        if (filters.startDate && filters.endDate && filters.startDate > filters.endDate) {
+            showError('#start-date-error', 'Start date must be less than or equal to end date.');
+            valid = false;
+        }
 
-                                    // Display Senior Section
-                                    if (seniorStudents.length > 0) {
-                                        tableHtml += `<tr class="fw-bold">
-                                            <td colspan="10" class="text-start text-danger">Senior Section</td>
-                                        </tr>`;
+        return valid;
+    }
 
-                                        seniorStudents.forEach((studentData, index) => {
-                                            tableHtml += `<tr>
-                                            <td>${startIndex + juniorStudents.length + index + 1}</td>
-                                            <td>${studentData.feeDetails.pay_date || '-'}</td>
-                                            <td>${studentData.feeDetails.ref_slip_no || '-'}</td>
-                                            <td>${studentData.feeDetails.recp_no || '-'}</td>
-                                            <td>${studentData.feeDetails.srno || '-'}</td>
-                                            <td>${studentData.class_name || '-'}</td>
-                                            <td>${studentData.section_name || '-'}</td>
-                                            <td>${studentData.name || '-'}</td>
-                                            <td>${studentData.f_name || '-'}</td>
-                                            <td>${studentData.feeDetails.amount || 0}</td>
-                                        </tr>`;
-                                        });
-                                        // Add Senior Section Total
-                                        tableHtml += `<tr class="fw-bold">
-                                                <td colspan="9" class="text-end">Senior Section Total:</td>
-                                                <td>${seniorTotal}</td>
-                                            </tr>`;
-                                    }
+    // ── Build Table HTML ───────────────────────────────────────────────────────
+    function buildTableHtml(data, paginationData) {
+        const startIndex = paginationData?.current_page
+            ? (paginationData.current_page - 1) * paginationData.per_page
+            : 0;
 
-                                    // Add grand total row
-                                    tableHtml += `<tr class="fw-bold">
-                                        <td colspan="9" class="text-end">Grand Total:</td>
-                                        <td>${response.data.grandTotal}</td>
-                                    </tr>`;
-                                }
+        let juniorStudents = [];
+        let seniorStudents = [];
+        let juniorTotal    = 0;
+        let seniorTotal    = 0;
 
-                            } else {
-                                tableHtml =
-                                    '<tr><td colspan="10" class="text-center fst-italic fw-bold text-decoration-underline text-danger">No Records Found</td></tr>';
-                            }
-
-                            // Update pagination using the pagination object
-                            updatePaginationControls(response.pagination);
-                            $('#report-body').html(tableHtml);
-                        },
-                        complete: function() {
-                            loader.hide();
-                        },
-                        error: function(data, xhr) {
-                            let message = data.responseJSON.message;
-
-                            if (message.session) {
-                                $('.session-error').show().html(message.session);
-                            }
-                            if (message.feeType) {
-                                $('.fee-type-error').show().html(message.feeType);
-                            }
-                            if (message.reportType) {
-                                $('.report-type-error').show().html(message.reportType);
-                            }
-                            if (message.startDate) {
-                                $('.start-date-error').show().html(message.startDate);
-                            }
-                            if (message.endDate) {
-                                $('.end-date-error').show().html(message.endDate);
-                            }
-                            console.log(xhr);
-
-                        },
-                    });
-                }
+        // Split into junior/senior in one pass
+        Object.keys(data).forEach(key => {
+            if (key === 'grandTotal') return;
+            const row = data[key];
+            if (row.school == 1) {
+                juniorStudents.push(row);
+                juniorTotal += parseFloat(row.feeDetails?.amount || 0);
+            } else {
+                seniorStudents.push(row);
+                seniorTotal += parseFloat(row.feeDetails?.amount || 0);
             }
-
-            $('#show-report').click(function() {
-                getReport();
-
-            });
-
-            $('#class_id, #srno-type, #section_id').change(function() {
-                $('.super-div').hide();
-
-            });
-
-            $(document).on('click', '#std-pagination .page-link', function(e) {
-                e.preventDefault();
-                let page = $(this).data('page');
-                getReport(page);
-            });
-
-            /*
-             * excel file
-             */
-
-            $('#export-button').on('click', function() {
-                let sessionId = $('#session_id').val();
-                let feeTypeId = $('#fee_type').val();
-                let reportTypeId = $('#report_type').val();
-                let startDateId = $('#start-date').val();
-                let endDateId = $('#end-date').val();
-                const exportUrl = "{{ route('admin.reports.adminMercyFee.excel') }}?session=" +
-                    sessionId +
-                    "&feeType=" + feeTypeId + "&reportType=" + reportTypeId + "&startDate=" + startDateId +
-                    "&endDate=" + endDateId;
-                window.location.href = exportUrl;
-            });
-
-
         });
-    </script>
+
+        //counter declared outside so it mutates correctly across both sections
+        let counter = startIndex + 1;
+        let html    = '';
+
+        const buildRow = (studentData) => {
+            const row = `
+                <tr>
+                    <td>${counter}</td>
+                    <td>${studentData.feeDetails?.pay_date    || '-'}</td>
+                    <td>${studentData.feeDetails?.ref_slip_no || '-'}</td>
+                    <td>${studentData.feeDetails?.recp_no     || '-'}</td>
+                    <td>${studentData.feeDetails?.srno        || '-'}</td>
+                    <td>${studentData.class_name              || '-'}</td>
+                    <td>${studentData.section_name            || '-'}</td>
+                    <td>${studentData.name                    || '-'}</td>
+                    <td>${studentData.f_name                  || '-'}</td>
+                    <td>${studentData.feeDetails?.amount      || 0}</td>
+                </tr>`;
+            counter++; //  increment after using, outside template literal
+            return row;
+        };
+
+        // ── Junior Section ────────────────────────────────────────────────────────
+        if (juniorStudents.length > 0) {
+            html += `<tr class="fw-bold">
+                        <td colspan="10" class="text-start text-danger">Junior Section</td>
+                    </tr>`;
+
+            juniorStudents.forEach(row => { html += buildRow(row); });
+
+            html += `<tr class="fw-bold">
+                        <td colspan="9" class="text-end">Junior Section Total:</td>
+                        <td>${juniorTotal.toFixed(2)}</td>
+                    </tr>`;
+        }
+
+        // ── Senior Section ────────────────────────────────────────────────────────
+        if (seniorStudents.length > 0) {
+            html += `<tr class="fw-bold">
+                        <td colspan="10" class="text-start text-danger">Senior Section</td>
+                    </tr>`;
+
+            seniorStudents.forEach(row => { html += buildRow(row); });
+
+            html += `<tr class="fw-bold">
+                        <td colspan="9" class="text-end">Senior Section Total:</td>
+                        <td>${seniorTotal.toFixed(2)}</td>
+                    </tr>`;
+        }
+
+        // ── Grand Total ───────────────────────────────────────────────────────────
+        if (data.grandTotal !== undefined) {
+            html += `<tr class="fw-bold table-warning">
+                        <td colspan="9" class="text-end">Grand Total:</td>
+                        <td>${data.grandTotal}</td>
+                    </tr>`;
+        }
+
+        return html || `<tr>
+            <td colspan="10" class="text-center fst-italic fw-bold text-danger">No Records Found</td>
+        </tr>`;
+    }
+
+    // ── Fetch Report ───────────────────────────────────────────────────────────
+    function getReport(page = 1) {
+        const filters = getFilters();
+        if (!validateFilters(filters)) return;
+
+        showLoader();
+        reportBody.html('');
+        summaryReport.hide().html('');
+        reportContainer.hide();
+
+        $.ajax({
+            url: '{{ route('admin.reports.feeReportMercyAdmin') }}',
+            type: 'GET',
+            dataType: 'JSON',
+            data: { ...filters, page },
+            success(response) {
+                if (!response.data) {
+                    reportBody.html(
+                        '<tr><td colspan="10" class="text-center text-danger fw-bold">No Records Found</td></tr>'
+                    );
+                    reportContainer.show();
+                    return;
+                }
+
+                if (filters.reportType == 1) {
+                    // Summary
+                    summaryReport
+                        .html('Summary Amount: <strong>' + (response.data[0]?.summeryAmount ?? 'N/A') + '</strong>')
+                        .show();
+                    reportContainer.hide();
+                } else {
+                    // Detailed
+                    reportBody.html(buildTableHtml(response.data, response.pagination));
+                    adminUpdatePaginationControls(response.pagination);
+                    reportContainer.show();
+                }
+            },
+            error(xhr) {
+                const message = xhr.responseJSON?.message ?? {};
+
+                if (typeof message === 'object') {
+                    if (message.session)    showError('#session-error',     message.session[0]);
+                    if (message.feeType)    showError('#fee-type-error',    message.feeType[0]);
+                    if (message.reportType) showError('#report-type-error', message.reportType[0]);
+                    if (message.startDate)  showError('#start-date-error',  message.startDate[0]);
+                    if (message.endDate)    showError('#end-date-error',    message.endDate[0]);
+                } else {
+                    reportBody.html(
+                        '<tr><td colspan="10" class="text-center text-danger">Server error. Please try again.</td></tr>'
+                    );
+                    reportContainer.show();
+                }
+            },
+            complete() { hideLoader(); }
+        });
+    }
+
+    // ── Export Excel ───────────────────────────────────────────────────────────
+    function exportExcel() {
+        const filters = getFilters();
+        if (!validateFilters(filters)) return;
+
+        const params = new URLSearchParams({
+            session:    filters.session,
+            feeType:    filters.feeType,
+            reportType: filters.reportType,
+            startDate:  filters.startDate,
+            endDate:    filters.endDate,
+        });
+
+        window.location.href = `{{ route('admin.reports.adminMercyFee.excel') }}?${params.toString()}`;
+    }
+
+    // ── Event Bindings ─────────────────────────────────────────────────────────
+    $('#btn-show-report').on('click', () => getReport(1));
+
+    $(document).on('click', '#admin-pagination .page-link', function (e) {
+        e.preventDefault();
+        const page = $(this).data('page');
+        if (page) getReport(page);
+    });
+
+    $('#btn-export').on('click', exportExcel);
+
+    // Reset report on filter change
+    $('#session_id, #fee_type, #report_type, #start_date, #end_date').on('change', function () {
+        reportContainer.hide();
+        reportBody.html('');
+        summaryReport.hide().html('');
+        pagination.html('');
+        clearErrors();
+    });
+
+});
+</script>
 @endsection

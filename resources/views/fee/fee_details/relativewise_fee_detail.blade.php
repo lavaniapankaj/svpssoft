@@ -13,79 +13,44 @@
                         <form id="class-section-form">
                             <div class="row">
                                 <div class="form-group col-md-6">
-                                    <label for="back_class_id" class="mt-2">Class <span
-                                            class="text-danger">*</span></label>
-                                    <input type="hidden" id="initialClassId"
-                                        value="{{ old('initialClassId', request()->get('class_id') !== null ? request()->get('class_id') : '') }}">
-                                    <select name="class" id="back_class_id" class="form-control " required>
-                                        <option value="">All Class</option>
+                                     <label for="fee_class_id" class="mt-2">Class <span class="text-danger">*</span></label>
+                                    <select name="class" id="fee_class_id" class="form-control" {{ count($classes) == 0 ? 'disabled' : 'required' }}>
+                                        @if (count($classes) > 0)
+                                            <option value="all">All Class</option>
+                                            @foreach ($classes as $key => $class)
+                                                <option value="{{ $key }}" {{ request()->get('class') == $key ? 'selected' : '' }}>{{ $class }}</option>
+                                            @endforeach
+                                        @else
+                                            <option value="" selected disabled>No Class Found</option>
+                                        @endif
                                     </select>
-                                    <span class="invalid-feedback form-invalid fw-bold" id="class-error"
-                                        role="alert"></span>
+                                    <span class="invalid-feedback form-invalid fw-bold" id="class-error" role="alert"></span>
 
                                 </div>
 
 
                                 <div class="form-group col-md-6">
-                                    <label for="back_section_id" class="mt-2">Section <span
-                                            class="text-danger">*</span></label>
-                                    <input type="hidden" id="initialSectionId"
-                                        value="{{ old('initialSectionId', request()->get('section_id') !== null ? request()->get('section_id') : '') }}">
-                                    <select name="section" id="back_section_id" class="form-control  " required>
-                                        <option value="">All Section</option>
-                                    </select>
-                                    <span class="invalid-feedback form-invalid fw-bold" id="section-error"
-                                        role="alert"></span>
+                                     <label for="fee_section_id" class="mt-2">Section <span class="text-danger">*</span></label>
+                                    <select name="section" id="fee_section_id" class="form-control" required></select>
+                                    <span class="invalid-feedback form-invalid fw-bold" id="section-error" role="alert"></span>
                                 </div>
                             </div>
                             <div class="row">
                                 <div class="form-group col-md-6">
-                                    <input type="hidden" name="current_session" value='' id="current_session">
-                                    <label for="back_std_id" class="mt-2">Student <span
-                                            class="text-danger">*</span></label>
-                                    <select name="std_id" id="back_std_id" class="form-control " required>
-                                        <option value="">All Students</option>
-                                    </select>
-                                    <span class="invalid-feedback form-invalid fw-bold" id="std-error"
-                                        role="alert"></span>
+                                    <label for="fee_student_id" class="mt-2">Student <span class="text-danger">*</span></label>
+                                    <select name="std_id" id="fee_student_id" class="form-control " required></select>
+                                    <span class="invalid-feedback form-invalid fw-bold" id="std-error" role="alert"></span>
                                 </div>
                             </div>
                             <div class="mt-3">
-                                <button type="button" class="btn btn-primary" id="show-btn">Show</button><img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader"
-                                id="loader" style="display:none; width:10%;">
+                                <button type="button" class="btn btn-primary" id="show-details">Show</button>
+                                <span>
+                                    <img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader" id="loader" style="display:none; width:5%;">
+                                </span>
                             </div>
 
                         </form>
-                        {{-- <div class="table mt-4">
-                            <table class="table table-striped table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th colspan="3">Academic</th>
-                                        <th colspan="3">Transport</th>
-                                    </tr>
-                                    <tr>
-                                        <th>Total</th>
-                                        <th>Paid</th>
-                                        <th>Due</th>
-                                        <th>Total</th>
-                                        <th>Paid</th>
-                                        <th>Due</th>
-                                    </tr>
-
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>{{ $feeMaster }}</td>
-                                        <td>{{ $totalAcademic }}</td>
-                                        <td>{{ $academicDue }}</td>
-                                        <td>{{ $std }}</td>
-                                        <td>{{ $totalTrans }}</td>
-                                        <td>{{ $transDue }}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div> --}}
-                        <div id="std-fee-due-table" class="table-responsive">
+                        <div id="complete-fee-table" class="table-responsive mt-5" style="display: none;">
                             <table class="table table-striped table-bordered">
                                 <thead>
                                     <th>Class</th>
@@ -107,8 +72,13 @@
 
                                 </tbody>
                             </table>
-                            <div class="export-div">
-                                <button type="button" class="btn btn-info" id="export-button">Export</button>
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <div class="export-div" style="display: none;">
+                                    <button type="button" class="btn btn-info" id="export-button">
+                                        <i class="bx bx-download"></i> Export to Excel
+                                    </button>
+                                </div>
+                                <div id="due-std-pagination"></div>
                             </div>
                         </div>
                     </div>
@@ -119,207 +89,248 @@
 @endsection
 @section('fee-scripts')
     <script>
-        // var initialClassId = '{{ old('class') }}';
-        // var initialSectionId = '{{ old('section') }}';
-
         $(document).ready(function() {
-            let sessionId = $('#current_session').val();
-            let classId = $('#back_class_id');
-            let sectionId = $('#back_section_id');
-            let loader = $('#loader');
-            let stdId = $('#back_std_id');
 
+            let page = 1;
+            let classId = $('#fee_class_id');
+            let sectionId = $('#fee_section_id');
 
-            classSectionWithAll(fetchStudentsForSession, fetchStudents);
-
-            function fetchStudentsForSession() {
-                let selectedSession = sessionId;
-                let allClassesValue = classId.find('option:first').val();
-                let allSectionsValue = sectionId.find('option:first').val();
-                fetchStudents(allSectionsValue);
-            }
-
-
-            function fetchStudents(sectionIds) {
-                if (!sectionIds) {
-                    return;
-                }
-                loader.show();
-                $.ajax({
-                    url: siteUrl + '/std-name-father',
-                    type: 'GET',
-                    dataType: 'JSON',
-                    data: {
-                        session_id: sessionId,
-                        class_id: classId.val(),
-                        section_id: sectionIds,
-                    },
-                    success: function(data) {
-                        // Clear the dropdown at the start
-                        stdId.empty();
-
-                        let allStdIds = [];
-                        if (data && data.length > 0) {
-                            if (sectionIds.includes(',')) {
-                                // Populate allStdIds
-                                $.each(data, function(id, value) {
-                                    allStdIds.push(value.srno);
-                                });
-
-                                // Add "All Students" option
-                                stdId.append('<option value="' + allStdIds.join(',') +
-                                    '" selected>All Students</option>');
-                            } else {
-                                // Add individual student options
-                                $.each(data, function(id, value) {
-                                    allStdIds.push(value.srno);
-                                    stdId.append('<option value="' + value.srno + '">' + value
-                                        .rollno + '.' + value.student_name + '/SH. ' + value
-                                        .f_name + '</option>');
-                                });
-
-                                // Add "All Students" option as the first option
-                                stdId.prepend('<option value="' + allStdIds.join(',') +
-                                    '" selected>All Students</option>');
-                            }
-                        } else {
-                            // If no students are found, add "No Student Found" message
-                            stdId.empty();
-                            stdId.append('<option value="">No Student Found</option>');
-                        }
-                    },
-                    complete: function() {
-                        loader.hide();
-                    },
-                    error: function(data) {
-                        console.error('Error fetching students:', data.responseJSON ? data.responseJSON
-                            .message : 'Unknown error');
+            if (classId.val() && classId.val() != '') {
+                getFeeAllSections(classId.val(), function() {
+                    let selectedSection = sectionId.val();
+                    if (!selectedSection || selectedSection == '') {
+                        sectionId.val('all');
+                        selectedSection = 'all';
                     }
+                    getFeeAllStudents(classId.val(), selectedSection);
                 });
             }
-            // Fetch students on class and section change
-            classId.on('change', fetchStudentsForSession);
-            sectionId.on('change', function() {
-                let selectedSession = sessionId;
-                let allClassesValue = classId.val();
-                let allSectionsValue = sectionId.val();
-                fetchStudents(allSectionsValue);
-                // fetchStudents()
+
+            classId.change(function() {
+                let selectedClass = $(this).val();
+                page = 1;
+                $('#complete-fee-table').hide();
+                $('#complete-fee-table table tbody').html('');
+                $('#due-std-pagination').html('');
+                $('.export-div').hide();
+
+                getFeeAllSections(selectedClass, function() {
+                    sectionId.val('all');
+                    getFeeAllStudents(selectedClass, 'all');
+                });
             });
-            sectionId.on('change', fetchStudents());
+
+            sectionId.change(function() {
+                page = 1;
+                $('#complete-fee-table').hide();
+                $('#complete-fee-table table tbody').html('');
+                $('#due-std-pagination').html('');
+                $('.export-div').hide();
+
+                getFeeAllStudents(classId.val(), $(this).val());
+            });
+
+            $('#fee_student_id').change(function() {
+                page = 1;
+                $('#complete-fee-table').hide();
+                $('#complete-fee-table table tbody').html('');
+                $('#due-std-pagination').html('');
+                $('.export-div').hide();
+            });
 
 
-            // Export table to Excel
+            function loadFeeReport(pageNum) {
+                page = pageNum;
+                let selectedClassVal = classId.val();
+                let selectedSectionVal = sectionId.val();
+                let st = $('#fee_student_id').val();
 
-            let stdSelect = $('#back_std_id');
-            let stdFeeDueTable = $('#std-fee-due-table');
-            let relativeStdFeeDueTable = $('#relative-std-fee-due-table');
-            stdFeeDueTable.hide();
-            relativeStdFeeDueTable.hide();
+                if(selectedClassVal && selectedSectionVal && st) {
+                    $('#complete-fee-table').show();
 
-            $('#show-btn').on('click', function() {
-                let sessionID = $('#current_session').val();
-                if (sessionID && classId.val() && sectionId.val() && stdSelect.val()) {
+                    if (typeof loader !== 'undefined') {
+                        loader.show();
+                    }
 
-                    stdFeeDueTable.show();
                     $.ajax({
-                        url: '{{ route('fee.fee-entry.academicFeeDueAmount') }}',
+                        url: "{{ route('fee.std-due-fee-report.relaive-wise.get') }}",
                         type: 'POST',
                         dataType: 'JSON',
                         headers: {
                             'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                         },
                         data: {
-                            srno: stdSelect.val(),
-                            current_session: sessionID,
-                            class: classId.val(),
-                            section: sectionId.val(),
+                            class: selectedClassVal,
+                            section: selectedSectionVal,
+                            srno: st,
+                            page: page,
                         },
                         success: function(response) {
                             let stdHtml = '';
-                            let relativestdHtml = '';
 
-                            // Process student data
-                            const students = response.data;
-                            if (students.length > 0) {
-
-                                $.each(students, function(index, student) {
-                                    $.each(student.sessions, function(index, session) {
-                                        if (session.session_id == sessionId) {
-                                            stdHtml += `<tr>
-                                            <td>${session.class}</td>
-                                            <td>${session.section}</td>
-                                            <td>${student.student_name}</td>
-                                            <td>${student.father_name}</td>
-                                            <td>${session.payable_amount}</td>
-                                            <td>${session.paid_amount}</td>
-                                            <td>${session.due_amount}</td>
-                                            <td>${session.transport.payable_amount}</td>
-                                            <td>${session.transport.paid_amount}</td>
-                                            <td>${session.transport.due_amount}</td>
-                                            <td>N/A</td>
-                                            <td>N/A</td>
-                                            <td>N/A</td>
-                                            <td><a href='${siteUrl}/fee/individual-fee-details/${student.srno}/${session.session_id}/${session.class_id}/${session.section_id}'  class="btn btn-sm btn-icon p-1"> <i class="mdi mdi-eye mx-1" data-bs-toggle="tooltip"
+                            if (response.status === 'success' && response.data && response.data.length > 0) {
+                                response.data.forEach(value => {
+                                    stdHtml += `<tr>
+                                        <td>${value.class}</td>
+                                        <td>${value.section}</td>
+                                        <td>${value.student_name}</td>
+                                        <td>${value.father_name}</td>
+                                        <td>${value.academic_total_payable}</td>
+                                        <td>${value.academic_total_paid}</td>
+                                        <td>${value.academic_total_due}</td>
+                                        <td>${value.transport_total_payable}</td>
+                                        <td>${value.transport_total_paid}</td>
+                                        <td>${value.transport_total_due}</td>
+                                        <td>N/A</td>
+                                        <td>N/A</td>
+                                        <td>N/A</td>
+                                        <td><a href='${siteUrl}/fee/individual-fee-details/${value.srno}/${value.session_id}/${value.class_id}/${value.section_id}'  class="btn btn-sm btn-icon p-1"> <i class="mdi mdi-eye mx-1" data-bs-toggle="tooltip"
                                                                 data-bs-offset="0,4" data-bs-placement="top" title="View"></i></a></td>
-                                        </tr>`;
-                                        }
-                                    });
+                                    </tr>`;
 
-
-                                    // Process relatives data
-                                    if (student.relatives && student.relatives.length > 0) {
-                                        $.each(student.relatives, function(index,
-                                            relative) {
-                                            // const encodedSrno = encodeURIComponent(relative.srno);
+                                    /* Process relatives data*/
+                                    if (value.relatives && value.relatives.length > 0) {
+                                        value.relatives.forEach(relative => {
                                             stdHtml += `<tr class="table-warning">
-                                        <td>${relative.class}</td>
-                                        <td>${relative.section}</td>
-                                        <td>${relative.student_name}</td>
-                                        <td>${relative.father_name}</td>
-                                        <td>${relative.payable_amount}</td>
-                                        <td>${relative.paid_amount}</td>
-                                        <td>${relative.due_amount}</td>
-                                        <td>${relative.transport.payable_amount}</td>
-                                        <td>${relative.transport.paid_amount}</td>
-                                        <td>${relative.transport.due_amount}</td>
-                                        <td>N/A</td>
-                                        <td>N/A</td>
-                                        <td>N/A</td>
-                                        <td><a href='${siteUrl}/fee/individual-fee-details/${relative.srno}/${relative.session_id}/${relative.class_id}/${relative.section_id}' class="btn btn-sm btn-icon p-1"> <i class="mdi mdi-eye mx-1" data-bs-toggle="tooltip"
-                                                                data-bs-offset="0,4" data-bs-placement="top" title="View"></i></a></td>
+                                                <td>${relative.class}</td>
+                                                <td>${relative.section}</td>
+                                                <td>${relative.student_name}</td>
+                                                <td>${relative.father_name}</td>
+                                                <td>${relative.academic_total_payable}</td>
+                                                <td>${relative.academic_total_paid}</td>
+                                                <td>${relative.academic_total_due}</td>
+                                                <td>${relative.transport_total_payable}</td>
+                                                <td>${relative.transport_total_paid}</td>
+                                                <td>${relative.transport_total_due}</td>
+                                                <td>N/A</td>
+                                                <td>N/A</td>
+                                                <td>N/A</td>
+                                                <td><a href='${siteUrl}/fee/individual-fee-details/${relative.srno}/${relative.session_id}/${relative.class_id}/${relative.section_id}' class="btn btn-sm btn-icon p-1"> <i class="mdi mdi-eye mx-1" data-bs-toggle="tooltip"
+                                                               data-bs-offset="0,4" data-bs-placement="top" title="View"></i></a></td>
                                         </tr>`;
                                         });
                                     }
                                 });
-                                if (stdHtml === '') {
-                                    stdHtml = '<tr><td colspan="14">No Student found</td></tr>';
-                                }
+
+                                // Show export button when data is available
+                                $('.export-div').show();
                             } else {
-                                stdHtml = '<tr><td colspan="14">No Student found</td></tr>';
+                                stdHtml = '<tr><td colspan="15" class="text-center">No Student Record Found</td></tr>';
+                                // Hide export button when no data
+                                $('.export-div').hide();
                             }
-                            $('#std-fee-due-table table tbody').html(stdHtml);
+
+                            $('#complete-fee-table table tbody').html(stdHtml);
+
+                            if (response.pagination) {
+                                dueUpdatePaginationControls(response.pagination);
+                            } else {
+                                $('#due-std-pagination').html('');
+                            }
+                        },
+                        complete: function() {
+                            if (typeof loader !== 'undefined') {
+                                loader.hide();
+                            }
                         },
                         error: function(xhr) {
-                            console.error(xhr.responseText);
+                            if (typeof loader !== 'undefined') {
+                                loader.hide();
+                            }
+                            let errorMsg = 'Error loading data';
+                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                errorMsg = xhr.responseJSON.message;
+                            }
+                            $('#complete-fee-table table tbody').html(`<tr><td colspan="12" class="text-center text-danger">${errorMsg}</td></tr>`);
+                            $('#due-std-pagination').html('');
+                            $('.export-div').hide();
                         }
                     });
-                }else{
-                    stdFeeDueTable.hide();
                 }
+            }
+
+            $('#show-details').click(function() {
+                page = 1;
+                loadFeeReport(1);
             });
 
-            $('#export-button').on('click', function() {
-                let session = $('#current_session').val();
-                let stdSelect = $('#back_std_id').val();
-                const exportUrl = "{{ route('fee.fee-detail-relaive-wise-excel') }}?srno=" +
-                    stdSelect + "&current_session=" + session + "&class=" + classId.val() + "&section=" +
-                    sectionId.val();
+            $(document).on('click', '#due-std-pagination .page-link', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                let clickedPage = parseInt($(this).data('page'));
+                if (clickedPage && clickedPage > 0) {
+                    $('html, body').animate({
+                        scrollTop: $("#complete-fee-table").offset().top - 100
+                    }, 300);
+
+                    loadFeeReport(clickedPage);
+                }
+
+                return false;
+            });
+
+            // Export button click handler
+            $('#export-button').click(function() {
+                let selectedClassVal = classId.val();
+                let selectedSectionVal = sectionId.val();
+                let st = $('#fee_student_id').val();
+
+                if(!selectedClassVal || !selectedSectionVal || !st) {
+                    return;
+                }
+
+                // Show loading state
+                let $btn = $(this);
+                let originalText = $btn.html();
+                $btn.prop('disabled', true).html('<i class="bx bx-loader bx-spin"></i> Exporting...');
+                // Build export URL with parameters
+                let exportUrl = "{{ route('fee.fee-detail-relaive-wise-excel') }}" +
+                    '?class=' + encodeURIComponent(selectedClassVal) +
+                    '&section=' + encodeURIComponent(selectedSectionVal) +
+                    '&srno=' + encodeURIComponent(st);
+
+                // Trigger download
                 window.location.href = exportUrl;
-            });
 
-            $('#back_std_id, #back_class_id, #back_section_id').on('change', function() {
-                stdFeeDueTable.hide();
+                // Reset button after delay
+                setTimeout(function() {
+                    $btn.prop('disabled', false).html(originalText);
+                }, 2000);
+                // First check if data exists
+                /* $.ajax({
+                    url: "{{ route('fee.fee-detail-relaive-wise-excel') }}",
+                    type: 'GET',
+                    data: {
+                        class: selectedClassVal,
+                        section: selectedSectionVal,
+                        srno: st,
+                    },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            // Data exists, proceed with download
+                            // Build export URL with parameters
+                            let exportUrl = "{{ route('fee.fee-detail-relaive-wise-excel') }}" +
+                                '?class=' + encodeURIComponent(selectedClassVal) +
+                                '&section=' + encodeURIComponent(selectedSectionVal) +
+                                '&srno=' + encodeURIComponent(st);
+                                window.location.href = exportUrl;
+                            // Reset button after a delay
+                            setTimeout(function() {
+                                $btn.prop('disabled', false).html(originalText);
+                            }, 2000);
+                        } else {
+                            $btn.prop('disabled', false).html(originalText);
+                        }
+                    },
+                    error: function(xhr) {
+                        let errorMsg = 'No data available to export';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMsg = xhr.responseJSON.message;
+                        }
+                        $btn.prop('disabled', false).html(originalText);
+                    }
+                }); */
             });
         });
     </script>

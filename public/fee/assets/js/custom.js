@@ -22,10 +22,7 @@ $('#section_id').change(function () {
                 let options = '<option value="">Select Students</option>';
                 if (students.length > 0) {
                     $.each(students, function (index, student) {
-                        options += '<option value="' + student.srno + '">' +
-                            student.rollno + '. ' + student.student_name +
-                            '/SH. ' +
-                            student.f_name + '</option>';
+                        options += '<option value="' + student.srno + '">' + student.rollno + '. ' + student.student_name + student.f_name + '</option>';
                     });
                 } else {
                     options += '<option value="">No students found</option>';
@@ -676,228 +673,6 @@ function updatePaginationControls(data) {
     }
     paginationContainer.html(paginationHtml);
 }
-// for due report section
-// function dueReportSection() {
-//     let classId = $('#back_class_id');
-//     let sectionId = $('#back_section_id');
-//     let sessionId = $('#current_session').val();
-//     let stdId = $('#back_std_id');
-//     let loader = $('#loader');
-//     let reportType = $('#report');
-
-//     // Initial state - hide table
-//     $('#complete-fee-table').hide();
-//     $('#no-records-message').hide();
-
-//     classSectionWithAll(fetchStudentsForSession, fetchStudents);
-
-//     function fetchStudentsForSession() {
-//         let allSectionsValue = sectionId.find('option:first').val();
-//         fetchStudents(allSectionsValue);
-//     }
-
-//     // Reset table and hide it
-//     function resetTable() {
-//         $('#complete-fee-table').hide();
-//         $('#complete-fee-table table tbody').html('');
-//         $('#no-records-message').hide();
-//         $('#std-pagination').html(''); // Clear pagination
-//     }
-
-//     function studentTable(st, page = 1) {
-//         let reportTypeValue = reportType.val();
-
-//         if (!classId.val() || !sectionId.val() || !st || !reportTypeValue) {
-//             console.warn('Missing required field: class, section, student, or report.');
-//             resetTable();
-//             return;
-//         }
-
-//         loader.show();
-
-//         $.ajax({
-//             url: siteUrl + '/fee/student-without-ssid',
-//             type: 'POST',
-//             dataType: 'JSON',
-//             headers: {
-//                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-//             },
-//             data: {
-//                 session: sessionId,
-//                 class: classId.val(),
-//                 section: sectionId.val(),
-//                 srno: st,
-//                 page: page,
-//             },
-//             success: function (data) {
-//                 let stdHtml = '';
-//                 const isAllStudents = st.includes(',');
-//                 const isAllSections = sectionId.val().includes(',');
-
-//                 if (data.data.length > 0) {
-//                     let hasValidRecords = false;
-
-//                     data.data.forEach(value => {
-//                         let isValidateIsAll = isAllSections === false ?
-//                             (st === value.student.srno.toString()) && (sectionId.val() == value.student.section.toString()) :
-//                             (st === value.student.srno.toString());
-
-//                         if (isAllStudents || isValidateIsAll) {
-//                             const firstInst = value.installments.first_inst;
-//                             const transFirstInst = value.trans_installments.first_inst || [];
-
-//                             // Calculate amounts for academic fee
-//                             const academicInstAmount = firstInst.reduce((total, inst) => total + (inst.amount || 0), 0);
-
-//                             // Calculate amounts for transport fee
-//                             const transportInstAmount = transFirstInst.reduce((total, inst) => total + (inst.amount || 0), 0);
-
-//                             // Calculate due amounts
-//                             const academicDue = reportTypeValue == 'complete' ?
-//                                 (value.payable_amount ?? 0) - (value.paid_amount ?? 0) :
-//                                 (value.inst_1 ?? 0) - academicInstAmount;
-
-//                             const transportDue = value.transport == 1 ?
-//                                 (reportTypeValue == 'complete' ?
-//                                     (value.trans_payable_amount ?? 0) - (value.trans_paid_amount ?? 0) :
-//                                     (value.trans_inst_1 ?? 0) - transportInstAmount) : 0;
-
-//                             const totalDue = academicDue + transportDue;
-
-//                             // Only include the student if there's a due amount
-//                             if ((reportTypeValue === 'complete' && totalDue > 0) || (reportTypeValue === 'firstInstDue' && totalDue > 0)) {
-//                                 hasValidRecords = true;
-//                                 stdHtml += `<tr>
-//                                     <td>${value.class_name}</td>
-//                                     <td>${value.section_name}</td>
-//                                     <td>${value.student_name}</td>
-//                                     <td>${value.father_name}</td>
-//                                     <td>${reportTypeValue == 'firstInstDue' ? value.inst_1 : value.payable_amount}</td>
-//                                     <td>${reportTypeValue == 'firstInstDue' ? academicInstAmount : value.paid_amount}</td>
-//                                     <td>${academicDue}</td>
-//                                     <td>${value.transport == 1 ? (reportTypeValue == 'firstInstDue' ? (value.trans_1st_inst ?? 0) : (value.trans_payable_amount ?? 0)) : 0}</td>
-//                                     <td>${value.transport == 1 ? (reportTypeValue == 'firstInstDue' ? transportInstAmount : (value.trans_paid_amount ?? 0)) : 0}</td>
-//                                     <td>${transportDue}</td>
-//                                     <td>${totalDue}</td>
-//                                     <td><a href='${siteUrl}/fee/back-session/individual-fee-details/${value.student.srno}/${value.student.session_id}/${value.student.class}/${value.student.section}' class="btn btn-sm btn-icon p-1">
-//                                         <i class="mdi mdi-eye mx-1" data-bs-toggle="tooltip" data-bs-offset="0,4" data-bs-placement="top" title="View"></i>
-//                                     </a></td>
-//                                 </tr>`;
-//                             }
-//                         }
-//                     });
-
-//                     if (!hasValidRecords) {
-//                         stdHtml = '<tr><td colspan="12">No Student Record Found</td></tr>';
-//                     }
-//                 } else {
-//                     stdHtml = '<tr><td colspan="12">No Student Record Found</td></tr>';
-//                 }
-
-//                 $('#complete-fee-table table tbody').html(stdHtml);
-//                 $('#complete-fee-table').show();
-//                 updatePaginationControls(data.pagination);
-//             },
-//             complete: function () {
-//                 loader.hide();
-//             },
-//             error: function (data) {
-//                 console.error('Error fetching students:', data.responseJSON ? data.responseJSON.message : 'Unknown error');
-//                 loader.hide();
-//             }
-//         });
-//     }
-
-//     function fetchStudents(sectionIds) {
-//         loader.show();
-
-//         $.ajax({
-//             url: siteUrl + '/std-name-father',
-//             type: 'GET',
-//             dataType: 'JSON',
-//             data: {
-//                 class_id: classId.val(),
-//                 section_id: sectionIds,
-//                 session_id: sessionId,
-//             },
-//             success: function (data) {
-//                 stdId.empty();
-//                 let allStdIds = [];
-
-//                 if (sectionIds.includes(',')) {
-//                     // Always populate allStdIds
-//                     $.each(data, function (id, value) {
-//                         allStdIds.push(value.srno);
-//                     });
-//                     // Add "All Students" option
-//                     stdId.append('<option value="' + allStdIds.join(',') + '" selected>All Students</option>');
-//                 } else {
-//                     // Add individual student options
-//                     $.each(data, function (id, value) {
-//                         allStdIds.push(value.srno);
-//                         stdId.append('<option value="' + value.srno + '">' + value.rollno + '. ' + value.student_name + '/SH. ' + value.f_name + '</option>');
-//                     });
-//                     stdId.prepend('<option value="' + allStdIds.join(',') + '" selected>All Students</option>');
-//                 }
-
-//                 // Reset the table when students are reloaded
-//                 resetTable();
-//             },
-//             complete: function () {
-//                 loader.hide();
-//             },
-//             error: function (data) {
-//                 console.error('Error fetching students:', data.responseJSON ? data.responseJSON.message : 'Unknown error');
-//                 loader.hide();
-//             }
-//         });
-//     }
-
-//     // Pagination click handler
-//     $(document).on('click', '#std-pagination .page-link', function (e) {
-//         e.preventDefault();
-//         var st = stdId.val();
-//         var page = $(this).data('page');
-//         studentTable(st, page);
-//     });
-
-//     // When section changes - reset and hide table
-//     sectionId.change(function () {
-//         resetTable();
-//         fetchStudents($(this).val());
-//     });
-
-//     // When student changes - reset and hide table
-//     stdId.change(function () {
-//         resetTable();
-//     });
-
-//     // When report type changes - reset and hide table
-//     reportType.change(function () {
-//         resetTable();
-//     });
-
-//     // When class changes - reset and hide table
-//     classId.change(function () {
-//         resetTable();
-//     });
-
-//     // Show details button - validates and displays the report
-//     $('#show-details').click(function () {
-//         let reportTypeValue = reportType.val();
-//         let selectedStudents = stdId.val();
-
-//         if (!classId.val() || !sectionId.val() || !selectedStudents || !reportTypeValue) {
-//             resetTable();
-//             $('#no-records-message').show();
-//             return;
-//         }
-
-//         $('#no-records-message').hide();
-//         studentTable(selectedStudents);
-//     });
-// }
-
 
 function dueReportSection() {
     let classId = $('#back_class_id');
@@ -1302,5 +1077,306 @@ function newDueReportSection() {
 
         $('#no-records-message').hide();
         studentTable(selectedStudents);
+    });
+}
+
+
+/* ================================================================= */
+/* ================================================================= */
+
+/** Date 17-01-2026 */
+
+function getFeeAllSections(classId, callback) {
+    const loader = $('#loader');
+    const sectionSelect = $('#fee_section_id');
+
+    // Reset section dropdown if no class selected
+    if (!classId) {
+        sectionSelect.prop('disabled', true).html('<option value="">Select class first</option>');
+        return;
+    }
+
+    loader.show();
+    sectionSelect.prop('disabled', true).html('<option value="">Loading sections...</option>');
+    $.ajax({
+        url: siteUrl + '/fee/sections',
+        type: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        },
+        data: { class_id: classId },
+        dataType: 'json',
+
+        success: function (response) {
+            sectionSelect.empty();
+            if (response.status == 'success' && response.data == 'all') {
+                sectionSelect.append('<option value="all">All Sections</option>');
+                sectionSelect.prop('disabled', false);
+            }else if (response.status == 'success' && response.data && Object.keys(response.data).length > 0) {
+                sectionSelect.append('<option value="all">All Sections</option>');
+                $.each(response.data, function (id, name) {
+                    sectionSelect.append(`<option value="${id}">${name}</option>`);
+                });
+                sectionSelect.prop('disabled', false);
+            } else {
+                sectionSelect.html('<option value="">No sections found</option>').prop('disabled', true);
+            }
+            // Execute callback after sections are loaded
+            if (typeof callback === 'function') {
+                callback();
+            }
+        },
+        error: function () {
+            sectionSelect.html('<option value="">No sections found</option>').prop('disabled', true);
+            if (typeof callback === 'function') {
+                callback();
+            }
+        },
+        complete: function () {
+            loader.hide();
+        }
+    });
+}
+
+/** Get all students */
+function getFeeAllStudents(classId, sectionId) {
+
+    const loader = $('#loader');
+    const studentSelect = $('#fee_student_id');
+
+    // Reset student dropdown if no class or section selected
+    if (!classId && !sectionId) {
+        studentSelect.prop('disabled', true).html('<option value="">Select class and section first</option>');
+        return;
+    }
+
+    loader.show();
+    studentSelect.prop('disabled', true).html('<option value="">Loading students...</option>');
+    $.ajax({
+        url: siteUrl + '/fee/students',
+        type: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        },
+        data: { class_id: classId, section_id: sectionId },
+        dataType: 'json',
+
+        success: function (response) {
+            studentSelect.empty();
+            if (response.status == 'success' && response.data == 'all') {
+                studentSelect.append('<option value="all">All Students</option>');
+                studentSelect.prop('disabled', false);
+                return;
+            }
+            if (response.status == 'success' && response.data && response.data.length > 0) {
+                studentSelect.append('<option value="all">All Students</option>');
+                $.each(response.data, function (id, st) {
+                    studentSelect.append(`<option value="${st.srno}">${st.display_name}</option>`);
+                });
+                studentSelect.prop('disabled', false);
+            } else {
+                studentSelect.html('<option value="">No students found</option>').prop('disabled', true);
+            }
+        },
+        error: function () {
+            studentSelect.html('<option value="">No students found</option>').prop('disabled', true);
+        },
+        complete: function () {
+            loader.hide();
+        }
+    });
+}
+
+
+/* Update pagination controls function */
+function dueUpdatePaginationControls(data) {
+    var paginationHtml = '';
+    var paginationContainer = $('#due-std-pagination');
+
+    if (data.last_page > 1) {
+        paginationHtml += '<nav aria-label="Page navigation"><ul class="pagination justify-content-center">';
+
+        // Previous button
+        if (data.current_page > 1) {
+            paginationHtml += `<li class="page-item">
+                <a class="page-link" href="javascript:void(0);" data-page="${data.current_page - 1}">
+                    <i class="tf-icon bx bx-chevron-left"></i>
+                </a>
+            </li>`;
+        } else {
+            paginationHtml += `<li class="page-item disabled">
+                <span class="page-link">
+                    <i class="tf-icon bx bx-chevron-left"></i>
+                </span>
+            </li>`;
+        }
+
+        // First page
+        if (data.current_page > 3) {
+            paginationHtml += `<li class="page-item">
+                <a class="page-link" href="javascript:void(0);" data-page="1">1</a>
+            </li>`;
+            if (data.current_page > 4) {
+                paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+        }
+
+        // Page numbers around current page
+        let startPage = Math.max(1, data.current_page - 2);
+        let endPage = Math.min(data.last_page, data.current_page + 2);
+
+        for (let i = startPage; i <= endPage; i++) {
+            if (i == data.current_page) {
+                paginationHtml += `<li class="page-item active">
+                    <span class="page-link">${i}</span>
+                </li>`;
+            } else {
+                paginationHtml += `<li class="page-item">
+                    <a class="page-link" href="javascript:void(0);" data-page="${i}">${i}</a>
+                </li>`;
+            }
+        }
+
+        // Last page
+        if (data.current_page < data.last_page - 2) {
+            if (data.current_page < data.last_page - 3) {
+                paginationHtml += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
+            }
+            paginationHtml += `<li class="page-item">
+                <a class="page-link" href="javascript:void(0);" data-page="${data.last_page}">${data.last_page}</a>
+            </li>`;
+        }
+
+        // Next button
+        if (data.current_page < data.last_page) {
+            paginationHtml += `<li class="page-item">
+                <a class="page-link" href="javascript:void(0);" data-page="${data.current_page + 1}">
+                    <i class="tf-icon bx bx-chevron-right"></i>
+                </a>
+            </li>`;
+        } else {
+            paginationHtml += `<li class="page-item disabled">
+                <span class="page-link">
+                    <i class="tf-icon bx bx-chevron-right"></i>
+                </span>
+            </li>`;
+        }
+
+        paginationHtml += '</ul></nav>';
+
+        // Add page info
+        paginationHtml += `<div class="text-center mt-2">
+            <small class="text-muted">Showing ${data.from} to ${data.to} of ${data.total} entries</small>
+        </div>`;
+    }
+
+    paginationContainer.html(paginationHtml);
+}
+
+/* Date - 07-02-2026 */
+
+/* Get Sections - without all */
+function getFeeWithoutAllSections(classId, callback) {
+    const loader = $('#loader');
+    const sectionSelect = $('#fee_section_id');
+
+    // Reset section dropdown if no class selected
+    if (!classId) {
+        sectionSelect.prop('disabled', true).html('<option value="">Select class first</option>');
+        return;
+    }
+
+    loader.show();
+    sectionSelect.prop('disabled', true).html('<option value="">Loading sections...</option>');
+    $.ajax({
+        url: siteUrl + '/fee/sections',
+        type: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        },
+        data: { class_id: classId },
+        dataType: 'json',
+
+        success: function (response) {
+            sectionSelect.empty();
+            if (response.status == 'success' && response.data == 'all') {
+                sectionSelect.append('<option value="all">All Sections</option>');
+                sectionSelect.prop('disabled', false);
+            }else if (response.status == 'success' && response.data && Object.keys(response.data).length > 0) {
+                sectionSelect.append('<option value="">Select Section</option>');
+                $.each(response.data, function (id, name) {
+                    sectionSelect.append(`<option value="${id}">${name}</option>`);
+                });
+                sectionSelect.prop('disabled', false);
+            } else {
+                sectionSelect.html('<option value="">No sections found</option>').prop('disabled', true);
+            }
+            // Execute callback after sections are loaded
+            if (typeof callback === 'function') {
+                callback();
+            }
+        },
+        error: function () {
+            sectionSelect.html('<option value="">No sections found</option>').prop('disabled', true);
+            if (typeof callback === 'function') {
+                callback();
+            }
+        },
+        complete: function () {
+            loader.hide();
+        }
+    });
+}
+
+/** Get without all students */
+function getFeeStudentsWithoutAll(classId, sectionId) {
+
+    const loader = $('#loader');
+    const studentSelect = $('#fee_student_id');
+
+    // Reset student dropdown if no class or section selected
+    if (!classId && !sectionId) {
+        studentSelect.prop('disabled', true).html('<option value="">Select class and section first</option>');
+        return;
+    }
+    if (!sectionId) {
+        studentSelect.prop('disabled', true).html('<option value="">Select section first</option>');
+        return;
+    }
+
+    loader.show();
+    studentSelect.prop('disabled', true).html('<option value="">Loading students...</option>');
+    $.ajax({
+        url: siteUrl + '/fee/students',
+        type: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        },
+        data: { class_id: classId, section_id: sectionId },
+        dataType: 'json',
+
+        success: function (response) {
+            studentSelect.empty();
+            if (response.status == 'success' && response.data == 'all') {
+                studentSelect.append('<option value="all">All Students</option>');
+                studentSelect.prop('disabled', false);
+                return;
+            }
+            if (response.status == 'success' && response.data && response.data.length > 0) {
+                studentSelect.append('<option value="">Select Student</option>');
+                $.each(response.data, function (id, st) {
+                    studentSelect.append(`<option value="${st.srno}">${st.display_name}</option>`);
+                });
+                studentSelect.prop('disabled', false);
+            } else {
+                studentSelect.html('<option value="">No students found</option>').prop('disabled', true);
+            }
+        },
+        error: function () {
+            studentSelect.html('<option value="">No students found</option>').prop('disabled', true);
+        },
+        complete: function () {
+            loader.hide();
+        }
     });
 }

@@ -2,16 +2,17 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
 use App\Http\Controllers\Admin\ClassMasterController;
+use App\Http\Controllers\Controller;
 use App\Models\Admin\ClassMaster;
 use App\Models\Admin\SectionMaster;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Unique;
-use Illuminate\Support\Facades\Session;
 
 class SectionMasterController extends Controller
 {
@@ -146,7 +147,8 @@ class SectionMasterController extends Controller
      */
     public static function getAllSection($fields = [], $whereAttb = '',  $where = [], $orderBy = [], $limit = 10, $paginate = false)
     {
-        $query = SectionMaster::query()->where('active', 1);
+        // $query = SectionMaster::query()->where('active', 1);
+        $query = DB::table('section_masters')->where('active', 1);
 
         if (!empty($fields) && is_array($fields)) {
 
@@ -221,6 +223,77 @@ class SectionMasterController extends Controller
                 'status' => 'error',
                 'message' => "Failed to get sections"
             ], 500);
+        }
+    }
+
+    /**
+     * Get Section according to the class for ajax request (In case of all class).
+     */
+    public static function getAllClassSectionsAjax(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'class_id' => 'required',
+            ]);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $validator->errors()
+                ], 200);
+            }
+            $classId = $request->class_id;
+            $fields = ['id', 'section'];
+            if (!empty($classId)) {
+                /* In case if the classId as all */
+                if ($classId == 'all') {
+                    $sections = self::getAllSection();
+                    if (!empty($sections)) {
+                        return response()->json([
+                            'status' => 'success',
+                            'message' => "All class sections",
+                            'data' => 'all',
+                        ], 200);
+                    } else {
+                        return response()->json([
+                            'status' => 'error',
+                            'message' => "No sections found for the provided classes.",
+                        ], 200);
+                    }
+                }else {
+                    $classExists = DB::table('class_masters')->where('id', $classId)->where('active', 1)->exists();
+                    if (!$classExists) {
+                        return response()->json([
+                            'status' => 'error',
+                            'message' => "The selected class is invalid or inactive.",
+                        ], 200);
+                    }else {
+                        $where['class_id'] = $classId;
+                        $sections = self::getAllSection($fields, 'where',  $where, []);
+                        if (!empty($sections)) {
+                            return response()->json([
+                                'status' => 'success',
+                                'message' => "Class sections",
+                                'data' => $sections,
+                            ], 200);
+                        } else {
+                            return response()->json([
+                                'status' => 'error',
+                                'message' => "No sections found for the provided class.",
+                            ], 200);
+                        }
+                    }
+                }
+            }else {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Something went wrong, please try again.",
+                ], 200);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => "Something went wrong, please try again."
+            ], 200);
         }
     }
 

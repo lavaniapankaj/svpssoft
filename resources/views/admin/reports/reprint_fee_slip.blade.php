@@ -24,10 +24,8 @@
                                     </span>
                                 </div>
                                 <div class="form-group col-md-6">
-                                    <label for="feeNo" class="mt-2">Enter Fee Slip No. <span
-                                            class="text-danger">*</span></label>
-                                    <input type="text" name="feeNo" id="feeNo" class="form-control mx-1"
-                                        value="" required>
+                                    <label for="feeNo" class="mt-2">Enter Fee Slip No. <span class="text-danger">*</span></label>
+                                    <input type="text" name="feeNo" id="feeNo" class="form-control mx-1" value="" required>
                                     <span class="invalid-feedback form-invalid fw-bold feeNo-error" role="alert"></span>
                                 </div>
                             </div>

@@ -1,4 +1,5 @@
 @extends('admin.index')
+
 @section('sub-content')
     <div class="container-fluid">
         <div class="row">
@@ -6,337 +7,411 @@
                 <div class="card border-0 bg-white">
                     <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between">
                         <h5 class="mb-0 mt-0">{{ __('SR Register') }}</h5>
-                        <a href="{{ route('admin.reports') }}" class="btn bg-light btn-sm"><span
-                                class="mdi mdi-chevron-left me-2"></span>Back</a>
+                        <a href="{{ route('admin.reports') }}" class="btn bg-light btn-sm">
+                            <span class="mdi mdi-chevron-left me-2"></span>Back
+                        </a>
                     </div>
+
                     <div class="card-body">
-                        <form id="report-form">
+                        <form id="report-form" novalidate>
                             <div class="row mt-2">
                                 <div class="form-group col-md-6">
-                                    <label for="session_id" class="mt-2">Session <span
-                                            class="text-danger">*</span></label>
+                                    <label for="session_id" class="mt-2">
+                                        Session <span class="text-danger">*</span>
+                                    </label>
                                     <select name="session_id" id="session_id"
                                         class="form-control @error('session_id') is-invalid @enderror" required>
                                         <option value="">Select session</option>
-                                        @if (count($sessions) > 0)
-                                            @foreach ($sessions as $key => $session)
-                                                <option value="{{ $key }}"
-                                                    {{ old('session_id') == $key ? 'selected' : '' }}>{{ $session }}
-                                                </option>
-                                            @endforeach
-                                        @else
-                                            <option value="">No Session Found</option>
-                                        @endif
+                                        @forelse ($sessions as $key => $session)
+                                            <option value="{{ $key }}"
+                                                {{ old('session_id') == $key ? 'selected' : '' }}>
+                                                {{ $session }}
+                                            </option>
+                                        @empty
+                                            <option value="" disabled>No Session Found</option>
+                                        @endforelse
                                     </select>
                                     @error('session_id')
-                                        <span class="invalid-feedback form-invalid fw-bold" role="alert">
-                                            {{ $message }}
-                                        </span>
+                                        <span class="invalid-feedback fw-bold" role="alert">{{ $message }}</span>
                                     @enderror
                                 </div>
+
                                 <div class="form-group col-md-6">
-                                    <label for="std-type" class="mt-2">Student Type <span
-                                            class="text-danger">*</span></label>
+                                    <label for="std-type" class="mt-2">
+                                        Student Type <span class="text-danger">*</span>
+                                    </label>
                                     <select name="std_type" id="std-type" class="form-control" required>
                                         <option value="1,2,4,5">All</option>
                                         <option value="1">Present</option>
                                         <option value="4">TC Issued</option>
                                         <option value="5">Left Out</option>
                                     </select>
-                                    <span class="invalid-feedback form-invalid fw-bold" role="alert"></span>
                                 </div>
                             </div>
-                            <div class="mt-3">
-                                <button class="btn btn-primary" type="button" id="show-report">Show Report</button> <img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader"
-                                        id="loader" style="display:none; width:5%;">
+
+                            <div class="mt-3 d-flex align-items-center gap-2">
+                                <button class="btn btn-primary" type="button" id="show-report">
+                                    Show Report
+                                </button>
+                                <img src="{{ config('myconfig.myloader') }}"
+                                    alt="Loading…"
+                                    id="loader"
+                                    class="loader"
+                                    style="display:none; width:5%;">
                             </div>
                         </form>
-                        <div id="super-div" class="mt-2">
-                            <p id="total-records">Total Records : 0</p>
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Sr. No.</th>
-                                        <th>Class</th>
-                                        <th>Student Name</th>
-                                        <th>Father's Name</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="student-report-body">
-                                    <!-- Student Report Data will be loaded here -->
-                                </tbody>
-                            </table>
-                            <div id="std-pagination"></div>
-                            <div class="table mt-4" id="prev_record">
+
+                        {{-- ─── Results Container ─── --}}
+                        <div id="super-div" class="mt-2" style="display:none;">
+                            <p id="total-records" class="mb-1">Total Records: 0</p>
+
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover mb-1">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Sr. No.</th>
+                                            <th>Class</th>
+                                            <th>Student Name</th>
+                                            <th>Father's Name</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="student-report-body">
+                                        {{-- Populated via AJAX --}}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div id="admin-pagination" class="mb-4"></div>
+
+                            {{-- ─── Previous Details ─── --}}
+                            <div id="prev_record" style="display:none;">
                                 <h4 class="text-danger fw-bold">Previous Details</h4>
-                                <table id="example" class="table table-striped table-bordered">
-                                    <thead id="previous-header">
-                                    </thead>
-                                    <tbody id="previous-body"></tbody>
-                                </table>
+                                <div id="prev-loader" class="text-center py-3" style="display:none;">
+                                    <img src="{{ config('myconfig.myloader') }}" alt="Loading…" style="width:5%;">
+                                </div>
+                                <div id="prev-content">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-bordered">
+                                            <thead id="previous-header"></thead>
+                                            <tbody id="previous-body"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
-                            {{-- Current Details   --}}
-                            <div class="table table-responsive" id="current_details">
+
+                            {{-- ─── Current Details ─── --}}
+                            <div id="current_details" style="display:none;">
                                 <h4 class="text-danger fw-bold">Current Details</h4>
-                                <table id="example" class="table table-striped table-bordered">
-                                    <thead id="st-details-body">
-                                    </thead>
-                                    <tbody id="st-details-body"></tbody>
-                                </table>
-                                <table id="example" class="table table-striped table-bordered">
-                                    <thead id="parent-details-body">
-                                    </thead>
-                                    <tbody id="parent-details-body"></tbody>
-                                </table>
-                                <table id="example" class="table table-striped table-bordered">
-                                    <thead id="academic-details-body">
-                                    </thead>
-                                    <tbody id="academic-details-body"></tbody>
-                                </table>
+                                <div id="current-loader" class="text-center py-3" style="display:none;">
+                                    <img src="{{ config('myconfig.myloader') }}" alt="Loading…" style="width:5%;">
+                                </div>
+                                <div id="current-content">
+                                    <div class="table-responsive mb-3">
+                                        <table class="table table-striped table-bordered">
+                                            <thead id="st-details-head"></thead>
+                                            <tbody id="st-details-body"></tbody>
+                                        </table>
+                                    </div>
+
+                                    <div class="table-responsive mb-3">
+                                        <table class="table table-striped table-bordered">
+                                            <thead id="parent-details-head"></thead>
+                                            <tbody id="parent-details-body"></tbody>
+                                        </table>
+                                    </div>
+
+                                    <div class="table-responsive mb-3">
+                                        <table class="table table-striped table-bordered">
+                                            <thead id="academic-details-head"></thead>
+                                            <tbody id="academic-details-body"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
+                        </div>{{-- /#super-div --}}
+
+                    </div>{{-- /.card-body --}}
+                </div>{{-- /.card --}}
             </div>
         </div>
     </div>
 @endsection
+
 @section('admin-scripts')
-    <script>
-        $(document).ready(function() {
-            let view = $('#edit-section-editBtn');
-            let totalRecords = 0;
-            // let view = $('.show');
-            let prevRecord = $('#prev_record');
-            let currentDetail = $('#current_details');
-            let stdFormConatiner = $('#super-div');
-            var loader = $('#loader');
-            prevRecord.hide();
-            currentDetail.hide();
-            stdFormConatiner.hide();
-            function getStdTbale(page = 1) {
-                let stdType = $('#std-type').val();
-                let sessionId = $('#session_id').val();
-                stdFormConatiner.show();
-                loader.show();
-                $.ajax({
-                    url: '{{ route('admin.reports.reportSrRegisterWise') }}',
-                    type: 'GET',
-                    dataType: 'JSON',
-                    data: {
-                        session_id: sessionId,
-                        type: stdType,
-                        page: page,
-                    },
-                    success: function(response) {
-                        let tableHtml = '';
-                        if (response.data.data && Array.isArray(response.data.data)) {
-                            response.data.data.forEach(function(student, index) {
-                                tableHtml += `<tr>
-                            <td>${student.srno ?? ''}</td>
-                            <td>${student.class_name ?? ''}</td>
-                            <td>${student.name ?? ''}</td>
-                            <td>${student.f_name ?? ''}</td>
-                            <td>
-                                <a href="#" class="btn btn-sm btn-icon p-1" id="edit-section-editBtn" data-id-session="${sessionId}" data-id="${student.prev_srno}" data-id-srno="${student.srno}">
-                                    <i class="mdi mdi-eye" data-bs-toggle="tooltip" data-bs-offset="0,4" data-bs-placement="top" title="View" id="view-btn"></i>
-                                </a>
-                            </td>
-                        </tr>`;
-                            });
-                        }
-                        if (tableHtml === '') {
-                            tableHtml = '<tr><td colspan="5">No data found</td></tr>';
-                            prevRecord.hide();
-                            currentDetail.hide();
-                        }
-                        totalRecords = response.data.total;
-                        $('#total-records').text('Total Records : ' + totalRecords);
-                        $('#student-report-body').html(tableHtml);
-                        updatePaginationControls(response.data);
-                    },
-                    complete: function() {
-                        loader.hide();
-                    },
-                    error: function(xhr) {
-                        console.log(xhr);
-                    },
-                });
-            }
-            $('#show-report').click(function() {
-                if ($('#report-form').valid()) {
-                    getStdTbale();
+<script>
+$(function () {
+
+    /* ── Fetch student list ───────────────────────────────────── */
+    function getStdTable(page) {
+        page = page || 1;
+        var sessionId = $('#session_id').val();
+        var stdType   = $('#std-type').val();
+
+        $('#super-div').show();
+        $('#loader').show();
+
+        $.ajax({
+            url      : '{{ route('admin.reports.reportSrRegisterWise') }}',
+            type     : 'GET',
+            dataType : 'json',
+            data     : { session_id: sessionId, type: stdType, page: page },
+
+            success: function (response) {
+                var students = (response && response.data && response.data.data) ? response.data.data : [];
+                var html = '';
+
+                if (students.length) {
+                    $.each(students, function (index, student) {
+                        html +=
+                            '<tr>' +
+                                '<td>' + (student.srno       || '') + '</td>' +
+                                '<td>' + (student.class_name || '') + '</td>' +
+                                '<td>' + (student.name       || '') + '</td>' +
+                                '<td>' + (student.f_name     || '') + '</td>' +
+                                '<td>' +
+                                    '<a href="#"' +
+                                        ' class="btn btn-sm btn-icon p-1 view-student-btn"' +
+                                        ' data-session="' + sessionId + '"' +
+                                        ' data-srno="'    + student.srno + '">' +
+                                        '<i class="mdi mdi-eye"' +
+                                            ' data-bs-toggle="tooltip"' +
+                                            ' data-bs-placement="top"' +
+                                            ' title="View"></i>' +
+                                    '</a>' +
+                                '</td>' +
+                            '</tr>';
+                    });
                 } else {
-                    stdFormConatiner.hide();
+                    html = '<tr><td colspan="5" class="text-center">No data found</td></tr>';
+                    $('#prev_record').hide();
+                    $('#current_details').hide();
                 }
-            });
-            $('#session_id, #std-type').change(() => {
-                stdFormConatiner.hide();
-            });
-            $(document).on('click', '#std-pagination .page-link', function(e) {
-                e.preventDefault();
-                let page = $(this).data('page');
-                getStdTbale(page);
-                prevRecord.hide();
-                currentDetail.hide();
-            });
-            function getStCurrentDetails(srno) {
-                $.ajax({
-                    url: '{{ route('admin.reports.tcStCurrentDetails') }}',
-                    method: 'GET',
-                    data: {
-                        srno: srno
-                    },
-                    dataType: 'JSON',
-                    success: function(response) {
-                        if (response.status === 'success') {
-                            // Process each table in the response
-                            response.tables.forEach(table => {
-                                let tableHtml = '';
-                                let headerHtml = '';
-                                // Create table headers
-                                headerHtml = '<tr>';
-                                table.headers.forEach(header => {
-                                    headerHtml += `<th>${header}</th>`;
-                                });
-                                headerHtml += '</tr>';
-                                // Create table rows with data
-                                if (table.title === 'Attendance') {
-                                    // Handle attendance date separately
-                                    if (table.data && table.data.date) {
-                                        $('#last-attendance-date').text(table.data.date);
-                                    } else {
-                                        $('#last-attendance-date').text('No date available');
-                                    }
-                                    // Skip the rest of the processing for attendance
-                                    return;
-                                }
-                                tableHtml = '<tr>';
-                                if (table.data.length > 0) {
-                                    const rowData = table.data[0];
-                                    switch (table.title) {
-                                        case 'Student Details':
-                                            tableHtml += `
-                                                <td>${rowData.srno}</td>
-                                                <td>${rowData.name}</td>
-                                                <td>${rowData.dob}</td>
-                                                <td>${rowData.address}</td>
-                                                <td>${rowData.category}</td>
-                                                <td>${rowData.email}</td>
-                                                <td>${rowData.mobile}</td>
-                                            `;
-                                            break;
-                                        case 'Parent Details':
-                                            tableHtml += `
-                                                    <td>${rowData.father_name}</td>
-                                                    <td>${rowData.mother_name}</td>
-                                                    <td>${rowData.address}</td>
-                                                    <td>${rowData.father_mobile ?? 'N/A'}</td>
-                                                    <td>${rowData.mother_mobile ?? 'N/A'}</td>
-                                                    <td>${rowData.father_occupation}</td>
-                                                    <td>${rowData.mother_occupation}</td>
-                                                `;
-                                            break;
-                                        case 'Academic Details':
-                                            tableHtml += `
-                                                <td>${rowData.session}</td>
-                                                <td>${rowData.class}</td>
-                                                <td>${rowData.section}</td>
-                                                <td>${rowData.rollno}</td>
-                                                <td>${rowData.gender}</td>
-                                                <td>${rowData.religion}</td>
-                                                <td>${rowData.admission_date ?? 'N/A'}</td>
-                                            `;
-                                            break;
-                                    }
-                                    tableHtml += '</tr>';
-                                }
-                                // Insert the headers and data into appropriate tables
-                                switch (table.title) {
-                                    case 'Student Details':
-                                        $('#st-details-body').html(headerHtml + tableHtml);
-                                        break;
-                                    case 'Parent Details':
-                                        $('#parent-details-body').html(headerHtml + tableHtml);
-                                        break;
-                                    case 'Academic Details':
-                                        $('#academic-details-body').html(headerHtml +
-                                            tableHtml);
-                                        break;
-                                }
-                            });
-                        } else {
-                            console.error('Error in API response:', response);
-                        }
-                    },
-                    error: function(xhr) {
-                        alert('Failed to retrieve data. Please try again.');
-                    }
-                });
+
+                var total = (response && response.data && response.data.total) ? response.data.total : 0;
+                $('#total-records').text('Total Records: ' + total);
+                $('#student-report-body').html(html);
+
+                // Global pagination helper
+                adminUpdatePaginationControls(response.data);
+
+                // Reset detail panels on new list load
+                $('#prev_record').hide();
+                $('#current_details').hide();
+            },
+
+            error: function (xhr) {
+                console.error('SR Register list error:', xhr);
+                $('#student-report-body').html(
+                    '<tr><td colspan="5" class="text-center text-danger">Failed to load data. Please try again.</td></tr>'
+                );
+            },
+
+            complete: function () {
+                $('#loader').hide();
             }
-            // Previous Records
-            function getPreviousRecords(srno, session) {
-                $.ajax({
-                    url: '{{ route('admin.reports.tcStPreviousDetails') }}', // The API endpoint
-                    method: 'GET',
-                    data: {
-                        srno: srno,
-                        session: session,
-                    }, // Pass srno as part of the GET request
-                    dataType: 'JSON',
-                    success: function(response) {
-                        let tblheaders = '';
-                        let tblbody = '';
-                        // Ensure the response is structured as expected
-                        if (response.status === 'success') {
-                            if (response.tables[2]) {
-                                let headers = response.tables[2].headers;
-                                let data = response.tables[2].data;
-                                // Generate table headers
-                                tblheaders = '<tr>';
-                                $.each(headers, function(index, header) {
-                                    tblheaders +=
-                                        `<th>${header}</th>`; // Wrap headers with <th>
-                                });
-                                tblheaders += '</tr>';
-                                // Generate table body rows
-                                $.each(data, function(index, item) {
-                                    tblbody += `<tr>
-                                        <td>${item.session}</td>
-                                        <td>${item.class}</td>
-                                        <td>${item.section}</td>
-                                        <td>${item.rollno}</td>
-                                        <td>${item.gender}</td>
-                                        <td>${item.religion}</td>
-                                        <td>${item.admission_date ?? 'N/A'}</td>
-                                    </tr>`;
-                                });
-                                // Populate the table in HTML
-                                $('#previous-header').html(tblheaders); // Append table headers
-                                $('#previous-body').html(tblbody); // Append table body
-                            } else {
-                                $('#previous-header').html("No previous record.");
-                                $('#previous-body').html("");
-                            }
-                        } else {
-                            console.log('No data found for the given SRNO');
-                        }
-                    },
-                    error: function(xhr) {
-                        alert('Failed to retrieve data. Please try again.');
-                    }
-                });
-            }
-            $(document).on('click', '#edit-section-editBtn', function() {
-                var prevsrno = $(this).data("id");
-                var srno = $(this).data("id-srno");
-                var session = $(this).data("id-session");
-                prevRecord.show();
-                currentDetail.show();
-                getPreviousRecords(srno, session);
-                getStCurrentDetails(srno);
-            });
         });
-    </script>
+    }
+
+    /* ── Fetch current student details ───────────────────────── */
+    function getStCurrentDetails(srno) {
+        $('#current-loader').show();
+        $('#current-content').hide();
+
+        $.ajax({
+            url      : '{{ route('admin.reports.tcStCurrentDetails') }}',
+            type     : 'GET',
+            dataType : 'json',
+            data     : { srno: srno },
+
+            success: function (response) {
+                if (response.status !== 'success') {
+                    console.error('Current details error:', response);
+                    return;
+                }
+
+                $.each(response.tables, function (i, table) {
+                    if (table.title === 'Attendance') {
+                        var date = (table.data && table.data.date) ? table.data.date : 'No date available';
+                        $('#last-attendance-date').text(date);
+                        return; // continue $.each
+                    }
+
+                    if (!table.data || !table.data.length) return;
+
+                    var rowData    = table.data[0];
+                    var headerHtml = '<tr>';
+                    $.each(table.headers, function (j, header) {
+                        headerHtml += '<th>' + header + '</th>';
+                    });
+                    headerHtml += '</tr>';
+
+                    var rowHtml = '<tr>';
+
+                    switch (table.title) {
+                        case 'Student Details':
+                            rowHtml +=
+                                '<td>' + (rowData.srno      || '') + '</td>' +
+                                '<td>' + (rowData.name      || '') + '</td>' +
+                                '<td>' + (rowData.dob       || '') + '</td>' +
+                                '<td>' + (rowData.address   || '') + '</td>' +
+                                '<td>' + (rowData.category  || '') + '</td>' +
+                                '<td>' + (rowData.email     || '') + '</td>' +
+                                '<td>' + (rowData.mobile    || '') + '</td>';
+                            rowHtml += '</tr>';
+                            $('#st-details-head').html(headerHtml);
+                            $('#st-details-body').html(rowHtml);
+                            break;
+
+                        case 'Parent Details':
+                            rowHtml +=
+                                '<td>' + (rowData.father_name       || '')    + '</td>' +
+                                '<td>' + (rowData.mother_name       || '')    + '</td>' +
+                                '<td>' + (rowData.address           || '')    + '</td>' +
+                                '<td>' + (rowData.father_mobile     || 'N/A') + '</td>' +
+                                '<td>' + (rowData.mother_mobile     || 'N/A') + '</td>' +
+                                '<td>' + (rowData.father_occupation || '')    + '</td>' +
+                                '<td>' + (rowData.mother_occupation || '')    + '</td>';
+                            rowHtml += '</tr>';
+                            $('#parent-details-head').html(headerHtml);
+                            $('#parent-details-body').html(rowHtml);
+                            break;
+
+                        case 'Academic Details':
+                            rowHtml +=
+                                '<td>' + (rowData.session        || '')    + '</td>' +
+                                '<td>' + (rowData.class          || '')    + '</td>' +
+                                '<td>' + (rowData.section        || '')    + '</td>' +
+                                '<td>' + (rowData.rollno         || '')    + '</td>' +
+                                '<td>' + (rowData.gender         || '')    + '</td>' +
+                                '<td>' + (rowData.religion       || '')    + '</td>' +
+                                '<td>' + (rowData.admission_date || 'N/A') + '</td>';
+                            rowHtml += '</tr>';
+                            $('#academic-details-head').html(headerHtml);
+                            $('#academic-details-body').html(rowHtml);
+                            break;
+                    }
+                });
+            },
+
+            error: function (xhr) {
+                console.error('Current details AJAX error:', xhr);
+                alert('Failed to retrieve current details. Please try again.');
+            },
+
+            complete: function () {
+                $('#current-loader').hide();
+                $('#current-content').show();
+            }
+        });
+    }
+
+    /* ── Fetch previous records ───────────────────────────────── */
+    function getPreviousRecords(srno, session) {
+        $('#prev-loader').show();
+        $('#prev-content').hide();
+
+        $.ajax({
+            url      : '{{ route('admin.reports.tcStPreviousDetails') }}',
+            type     : 'GET',
+            dataType : 'json',
+            data     : { srno: srno, session: session },
+
+            success: function (response) {
+                if (response.status !== 'success') {
+                    console.error('Previous records error:', response);
+                    $('#previous-header').html('');
+                    $('#previous-body').html('<tr><td class="text-center">No previous record found.</td></tr>');
+                    return;
+                }
+
+                var table = (response.tables && response.tables[2]) ? response.tables[2] : null;
+
+                if (!table) {
+                    $('#previous-header').html('');
+                    $('#previous-body').html('<tr><td class="text-center">No previous record.</td></tr>');
+                    return;
+                }
+
+                var headerHtml = '<tr>';
+                $.each(table.headers, function (i, header) {
+                    headerHtml += '<th>' + header + '</th>';
+                });
+                headerHtml += '</tr>';
+
+                var bodyHtml = '';
+                $.each(table.data, function (i, item) {
+                    bodyHtml +=
+                        '<tr>' +
+                            '<td>' + (item.session        || '')    + '</td>' +
+                            '<td>' + (item.class          || '')    + '</td>' +
+                            '<td>' + (item.section        || '')    + '</td>' +
+                            '<td>' + (item.rollno         || '')    + '</td>' +
+                            '<td>' + (item.gender         || '')    + '</td>' +
+                            '<td>' + (item.religion       || '')    + '</td>' +
+                            '<td>' + (item.admission_date || 'N/A') + '</td>' +
+                        '</tr>';
+                });
+
+                $('#previous-header').html(headerHtml);
+                $('#previous-body').html(bodyHtml || '<tr><td colspan="7" class="text-center">No records found.</td></tr>');
+            },
+
+            error: function (xhr) {
+                console.error('Previous records AJAX error:', xhr);
+                alert('Failed to retrieve previous records. Please try again.');
+            },
+
+            complete: function () {
+                $('#prev-loader').hide();
+                $('#prev-content').show();
+            }
+        });
+    }
+
+    /* ── Event: Show Report button ────────────────────────────── */
+    $('#show-report').on('click', function () {
+        if ($('#session_id').val() === '') {
+            alert('Please select a session.');
+            return;
+        }
+        getStdTable(1);
+    });
+
+    /* ── Event: Filter change → reset results ─────────────────── */
+    $('#session_id, #std-type').on('change', function () {
+        $('#super-div').hide();
+        $('#prev_record').hide();
+        $('#current_details').hide();
+    });
+
+    /* ── Event: Pagination click ──────────────────────────────── */
+    $(document).on('click', '#admin-pagination .page-link', function (e) {
+        e.preventDefault();
+        var page = $(this).data('page');
+        if (page) {
+            getStdTable(page);
+        }
+    });
+
+    /* ── Event: View student button ───────────────────────────── */
+    $(document).on('click', '.view-student-btn', function (e) {
+        e.preventDefault();
+        var srno    = $(this).data('srno');
+        var session = $(this).data('session');
+
+        $('#prev_record').show();
+        $('#current_details').show();
+
+        getPreviousRecords(srno, session);
+        getStCurrentDetails(srno);
+
+        // Scroll smoothly to the previous details section
+        $('html, body').animate({
+            scrollTop: $('#prev_record').offset().top - 20
+        }, 500);
+    });
+
+});
+</script>
 @endsection

@@ -23,6 +23,8 @@ use App\Http\Controllers\Admin\ClassMasterController;
 use App\Http\Controllers\Admin\StateMasterController;
 use Illuminate\Support\Facades\Session;
 
+use function Symfony\Component\String\s;
+
 class StudentMasterController extends Controller
 {
     /**
@@ -395,7 +397,6 @@ class StudentMasterController extends Controller
     public function edit(string $id)
     {
         if ($id) {
-            # code...
             $student = StudentMaster::findOrFail($id);
             if ($student !== null) {
                 # code...
@@ -840,27 +841,100 @@ class StudentMasterController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => $validator->errors()
-                ], 400);
+                ], 200);
             }
-            //code...
-            // $baseQuery = self::getStdWithNames(true)->get();
-            $baseQuery = self::getStdWithNames(false)->get();
-            $std = $baseQuery->where('srno', $request->srno)->first();
+
+            /** Join tables */
+            $fields = [
+                'stu_main_srno.id',
+                'stu_main_srno.srno',
+                'stu_main_srno.session_id',
+                'stu_main_srno.relation_code',
+                'stu_main_srno.prev_srno',
+                'stu_detail.name as student_name',
+                'parents_detail.f_name',
+                'parents_detail.m_name',
+                'class_masters.class as class_name',
+                'section_masters.section as section_name',
+                'stu_main_srno.ssid',
+            ];
+            $session = session('current_session')->id;
+            $where = [
+                'where' => [
+                    'stu_main_srno.srno' => $request->srno,
+                    'stu_main_srno.active' => 1,
+                    'stu_main_srno.session_id' => $session,
+                    'stu_main_srno.ssid' => 1,
+                ],
+            ];
+            $joins = [
+                [
+                    'table' => 'stu_detail',
+                    'first' => 'stu_main_srno.srno',
+                    'operator' => '=',
+                    'second' => 'stu_detail.srno',
+                    'type' => 'left'
+                ],
+                [
+                    'table' => 'parents_detail',
+                    'first' => 'stu_main_srno.srno',
+                    'operator' => '=',
+                    'second' => 'parents_detail.srno',
+                    'type' => 'left'
+                ],
+                [
+                    'table' => 'class_masters',
+                    'first' => 'stu_main_srno.class',
+                    'operator' => '=',
+                    'second' => 'class_masters.id',
+                    'type' => 'left'
+                ],
+                [
+                    'table' => 'section_masters',
+                    'first' => 'stu_main_srno.section',
+                    'operator' => '=',
+                    'second' => 'section_masters.id',
+                    'type' => 'left'
+                ],
+            ];
+
+            $orderBy = [
+                'class_masters.sort' => 'asc',
+                'stu_main_srno.section' => 'asc',
+                'stu_detail.name' => 'asc',
+                'stu_main_srno.rollno' => 'asc',
+            ];
+            /* $baseQuery = self::getStdWithNames(false)->get();
+            $std = $baseQuery->where('srno', $request->srno)->first(); */
+            $std = self::getOnlyStQuery($where, $fields, $joins, $orderBy)->first();
             if (!empty($std)) {
                 $data = [$std];
-                $relatives = $baseQuery->where('relation_code', $std->relation_code)->where('srno', '!=', $std->srno)->whereNotNull('relation_code')->all();
-                if (!empty($relatives)) {
-                    $data = array_merge($data, $relatives);
+                $relativesWhere =  [
+                    'where' => [
+                        'stu_main_srno.relation_code' => $std->relation_code,
+                        'stu_main_srno.active' => 1,
+                    ],
+                    'whereNotNull' => [
+                        'stu_main_srno.relation_code',
+                    ],
+                    'whereNot' => [
+                        'stu_main_srno.srno' => $std->srno,
+                    ],
+                ];
+                // $relatives = $baseQuery->where('relation_code', $std->relation_code)->where('srno', '!=', $std->srno)->whereNotNull('relation_code')->all();
+                $relatives = self::getOnlyStQuery($relativesWhere, $fields, $joins, $orderBy)->get();
+                if (!empty($relatives) && $relatives->count() > 0) {
+                    // Convert collection to array and merge
+                    $data = array_merge($data, $relatives->toArray());
                     return response()->json([
                         'status' => 'success',
-                        'message' => "Student With All Relatives ",
+                        'message' => "Student With All Relatives",
                         'data' => $data
                     ], 200);
                 } else {
-                    # code...
                     return response()->json([
                         'status' => 'success',
-                        'message' => "Student Without Relatives ",
+                        'message' => "Student Without Relatives",
                         'data' => $data
                     ], 200);
                 }
@@ -868,8 +942,8 @@ class StudentMasterController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Failed to get students"
-            ], 500);
+                'message' => "Failed to get students."
+            ], 200);
         }
     }
 
@@ -1273,8 +1347,6 @@ class StudentMasterController extends Controller
     {
         try {
             $response = $this->getStdNameFather($request);
-            // dd($response);
-
             if ($response->getStatusCode() !== 200) {
                 return response()->json([
                     'status' => 'error',
@@ -1337,8 +1409,7 @@ class StudentMasterController extends Controller
 
             fclose($output);
 
-            return response($csvContent, 200)->header('Content-Type', 'text/csv')
-                ->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
+            return response($csvContent, 200)->header('Content-Type', 'text/csv')->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -1372,13 +1443,6 @@ class StudentMasterController extends Controller
             ->leftJoin('section_masters', 'stu_main_srno.section', '=', 'section_masters.id')
             ->leftJoin('state_masters', 'stu_detail.state_id', '=', 'state_masters.id')
             ->leftJoin('district_masters', 'stu_detail.district_id', '=', 'district_masters.id');
-        // ->where('session_masters.active', 1)
-        // ->where('stu_detail.active', 1)
-        // ->where('parents_detail.active', 1)
-        // ->where('class_masters.active', 1)
-        // ->where('section_masters.active', 1)
-        // ->where('state_masters.active', 1)
-        // ->where('district_masters.active', 1);
         if ($isAllActive == false) {
             $query->where('session_masters.active', 1)
                 ->where('stu_detail.active', 1)
@@ -1509,7 +1573,10 @@ class StudentMasterController extends Controller
             'whereIn' => ['stu_main_srno.ssid' => [1, 2, 4, 5]],
             'where' => ['stu_main_srno.active' => 1],
         ] : [
-            'where' => ['stu_main_srno.active' => 1],
+            'where' => [
+                'stu_main_srno.active' => 1,
+                'stu_main_srno.ssid' => 1,
+            ],
 
         ];
         $orderBy = ['class_masters.sort' => 'asc', 'stu_main_srno.rollno' => 'asc'];
@@ -1620,6 +1687,21 @@ class StudentMasterController extends Controller
                     } elseif ($field == 'whereBetween') {
                         /* For 'whereBetween', handle differently */
                         $query->whereBetween(key($value), $value[key($value)]);
+                    }  elseif ($field == 'whereNull') {
+                        /* Handle whereNull - value should be array of column names */
+                        foreach ($value as $column) {
+                            $query->whereNull($column);
+                        }
+                    } elseif ($field == 'whereNotNull') {
+                        /* Handle whereNotNull - value should be array of column names */
+                        foreach ($value as $column) {
+                            $query->whereNotNull($column);
+                        }
+                    } elseif ($field == 'whereNot') {
+                        /* Handle whereNot - value should be array of column => value pairs */
+                        foreach ($value as $secondField => $secondValue) {
+                            $query->where($secondField, '!=', $secondValue);
+                        }
                     } elseif ($field == 'customWhere') {
                         /* Custom closure support */
                         foreach ($value as $closure) {
@@ -1654,4 +1736,424 @@ class StudentMasterController extends Controller
         return $query;
     }
 
+
+
+    /* Date 14-02-2026 */
+
+    public function getStudentReportWithRelative(Request $request)
+    {
+        try {
+            // ------------------------------------------------------------------ //
+            //  1. Validate incoming request
+            // ------------------------------------------------------------------ //
+            $validator = Validator::make($request->all(), [
+                'class'   => 'required|exists:class_masters,id,active,1',
+                'section' => 'required|exists:section_masters,id,active,1',
+                'std'     => 'required',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => $validator->errors(),
+                ], 200);
+            }
+
+            $currentSessionId = session('std_current_session')->id;
+            $class            = $request->class;
+            $section          = $request->section;
+            $stdInput         = $request->std; // 'all' OR a single srno
+
+            // ------------------------------------------------------------------ //
+            //  2. Base query builder — reusable for both main + relative fetching
+            //     NOTE: No class/section filter here so relatives from other
+            //           classes are included
+            // ------------------------------------------------------------------ //
+            $baseQuery = DB::table('stu_main_srno')
+                ->leftJoin('stu_detail',       'stu_main_srno.srno',      '=', 'stu_detail.srno')
+                ->leftJoin('parents_detail',   'stu_main_srno.srno',      '=', 'parents_detail.srno')
+                ->leftJoin('class_masters',    'stu_main_srno.class',     '=', 'class_masters.id')
+                ->leftJoin('section_masters',  'stu_main_srno.section',   '=', 'section_masters.id')
+                ->leftJoin('state_masters',    'stu_detail.state_id',     '=', 'state_masters.id')
+                ->leftJoin('district_masters', 'stu_detail.district_id',  '=', 'district_masters.id')
+                ->select([
+                    'stu_main_srno.srno',
+                    'stu_main_srno.rollno',
+                    'stu_main_srno.relation_code',
+                    'class_masters.class',
+                    'section_masters.section',
+                    'stu_detail.name            as student_name',
+                    'stu_detail.mobile          as student_mobile',
+                    'stu_detail.email           as student_email',
+                    'stu_detail.dob',
+                    'stu_detail.address',
+                    'state_masters.name         as state_name',
+                    'district_masters.name      as district_name',
+                    'parents_detail.f_name      as father_name',
+                    'parents_detail.m_name      as mother_name',
+                    'parents_detail.f_mobile    as father_mobile',
+                    'parents_detail.m_mobile    as mother_mobile',
+                ])
+                ->where('stu_main_srno.session_id', $currentSessionId)
+                ->where('stu_main_srno.ssid',   1)
+                ->where('stu_main_srno.active', 1);
+
+            // ------------------------------------------------------------------ //
+            //  3. Fetch MAIN students — filtered by class + section
+            // ------------------------------------------------------------------ //
+            $mainQuery = (clone $baseQuery)->where('stu_main_srno.class', $class)->where('stu_main_srno.section', $section)->orderBy('stu_main_srno.rollno', 'asc');
+
+            if ($stdInput !== 'all') {
+                $mainQuery->where('stu_main_srno.srno', $stdInput);
+            }
+
+            $students = $mainQuery->get()->keyBy('srno');
+
+            if ($students->isEmpty()) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'No student found with the provided srno(s).',
+                ], 200);
+            }
+
+            // ------------------------------------------------------------------ //
+            //  4. Collect all unique relation_codes from the main students
+            //     then fetch ALL relatives in ONE query — across any class/section
+            // ------------------------------------------------------------------ //
+            $relationCodes = $students->pluck('relation_code')->filter()   // remove nulls/empty
+                ->unique()->values()->toArray();
+
+            // Fetch all relatives that share a relation_code with any main student
+            // but are NOT already in the main students list (different class/section)
+            $relatives = collect();
+
+            if (!empty($relationCodes)) {
+                $relatives = (clone $baseQuery)->whereIn('stu_main_srno.relation_code', $relationCodes)->whereNotIn('stu_main_srno.srno', $students->keys()->toArray())->get()->keyBy('srno');
+            }
+
+            // ------------------------------------------------------------------ //
+            //  5. Group everything in PHP — zero extra DB queries
+            // ------------------------------------------------------------------ //
+            $processedSrnos = []; // hash map for O(1) lookups
+            $resultData     = [];
+
+            foreach ($students as $student) {
+
+                if (isset($processedSrnos[$student->srno])) {
+                    continue;
+                }
+
+                /* Find relatives that share this student's relation_code */
+                $studentRelatives = collect();
+
+                if (!empty($student->relation_code)) {
+                    /* Relatives from OTHER classes (fetched separately) */
+                    $studentRelatives = $relatives->filter(fn($r) => $r->relation_code === $student->relation_code);
+
+                    /* Relatives from the SAME class/section */
+                    $sameClassRelatives = $students->filter(
+                        fn($s) => $s->relation_code === $student->relation_code && $s->srno !== $student->srno && !isset($processedSrnos[$s->srno])
+                    );
+
+                    $studentRelatives = $studentRelatives->merge($sameClassRelatives)->values();
+                }
+
+                $resultData[] = [
+                    'student'   => $student,
+                    'relatives' => $studentRelatives,
+                ];
+
+                /* Mark main student as processed */
+                $processedSrnos[$student->srno] = true;
+
+                /* Mark same-class relatives as processed so they don't appear as primary */
+                foreach ($students as $s) {
+                    if (!empty($s->relation_code) && $s->relation_code === $student->relation_code && $s->srno !== $student->srno) {
+                        $processedSrnos[$s->srno] = true;
+                    }
+                }
+            }
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Students with their relatives fetched successfully.',
+                'data'    => $resultData,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Something went wrong, please try again.',
+            ], 200);
+        }
+    }
+
+    /* Student Report with full details */
+    public function getStudentFullDetailsReport(Request $request)
+    {
+        try {
+            // ------------------------------------------------------------------ //
+            //  1. Validate incoming request
+            // ------------------------------------------------------------------ //
+            $validator = Validator::make($request->all(), [
+                'class'   => 'required|exists:class_masters,id,active,1',
+                'section' => 'required|exists:section_masters,id,active,1',
+                'page'    => 'required|integer|min:1',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => $validator->errors(),
+                ], 200);
+            }
+
+            $currentSessionId = session('std_current_session')->id;
+            $class            = $request->class;
+            $section          = $request->section;
+            $page             = $request->page;
+            $perPage          = 20;
+
+            // ------------------------------------------------------------------ //
+            //  2. Build and paginate query
+            // ------------------------------------------------------------------ //
+            $fields = [
+                'stu_main_srno.srno',
+                'stu_main_srno.rollno',
+                'stu_main_srno.admission_date',
+                'stu_main_srno.gender',
+                'stu_main_srno.religion',
+                'class_masters.class',
+                'section_masters.section',
+                'stu_detail.name            as student_name',
+                'stu_detail.mobile          as student_mobile',
+                'stu_detail.email           as student_email',
+                'stu_detail.dob',
+                'stu_detail.address',
+                'stu_detail.category_id',
+                'parents_detail.f_name      as father_name',
+                'parents_detail.m_name      as mother_name',
+                'parents_detail.g_father    as grand_father_name',
+                'parents_detail.f_mobile    as father_mobile',
+                'parents_detail.m_mobile    as mother_mobile',
+            ];
+
+            $result = DB::table('stu_main_srno')
+                ->leftJoin('stu_detail',      'stu_main_srno.srno',    '=', 'stu_detail.srno')
+                ->leftJoin('parents_detail',  'stu_main_srno.srno',    '=', 'parents_detail.srno')
+                ->leftJoin('class_masters',   'stu_main_srno.class',   '=', 'class_masters.id')
+                ->leftJoin('section_masters', 'stu_main_srno.section', '=', 'section_masters.id')
+                ->select($fields)
+                ->where('stu_main_srno.class',      $class)
+                ->where('stu_main_srno.section',    $section)
+                ->where('stu_main_srno.session_id', $currentSessionId)
+                ->where('stu_main_srno.ssid',   1)
+                ->where('stu_main_srno.active', 1)
+                ->orderBy('stu_main_srno.rollno', 'asc')
+                ->paginate($perPage, ['*'], 'page', $page);
+
+            // ------------------------------------------------------------------ //
+            //  3. Build pagination meta
+            // ------------------------------------------------------------------ //
+            $paginateData = [
+                'total'        => $result->total(),
+                'per_page'     => $result->perPage(),
+                'current_page' => $result->currentPage(),
+                'last_page'    => $result->lastPage(),
+                'from'         => $result->firstItem(),  // handles edge cases automatically
+                'to'           => $result->lastItem(),   // handles edge cases automatically
+            ];
+
+            if ($result->isEmpty()) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'No students found.',
+                ], 200);
+            }
+
+            return response()->json([
+                'status'   => 'success',
+                'message'  => 'Students fetched successfully.',
+                'data'     => $result->items(),  // only the records, not the whole paginator object
+                'paginate' => $paginateData,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Something went wrong, please try again.',
+            ], 200);
+        }
+    }
+
+    /* Student Report With Full Details - CSV */
+    public function getStudentFullDetailsReportCSV(Request $request)
+    {
+        try {
+            // ------------------------------------------------------------------ //
+            //  1. Validate incoming request
+            // ------------------------------------------------------------------ //
+            $validator = Validator::make($request->all(), [
+                'class'   => 'required|exists:class_masters,id,active,1',
+                'section' => 'required|exists:section_masters,id,active,1',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => $validator->errors(),
+                ], 200);
+            }
+
+            $currentSessionId = session('std_current_session')->id;
+            $class            = $request->class;
+            $section          = $request->section;
+
+            // ------------------------------------------------------------------ //
+            //  2. Fetch all students — no pagination for CSV export
+            // ------------------------------------------------------------------ //
+            $fields = [
+                'stu_main_srno.srno',
+                'stu_main_srno.rollno',
+                'stu_main_srno.admission_date',
+                'stu_main_srno.gender',
+                'stu_main_srno.religion',
+                'class_masters.class',
+                'section_masters.section',
+                'stu_detail.name            as student_name',
+                'stu_detail.mobile          as student_mobile',
+                'stu_detail.email           as student_email',
+                'stu_detail.dob',
+                'stu_detail.address',
+                'stu_detail.category_id',
+                'parents_detail.f_name      as father_name',
+                'parents_detail.m_name      as mother_name',
+                'parents_detail.g_father    as grand_father_name',
+                'parents_detail.f_mobile    as father_mobile',
+                'parents_detail.m_mobile    as mother_mobile',
+            ];
+
+            $students = DB::table('stu_main_srno')
+                ->leftJoin('stu_detail',      'stu_main_srno.srno',    '=', 'stu_detail.srno')
+                ->leftJoin('parents_detail',  'stu_main_srno.srno',    '=', 'parents_detail.srno')
+                ->leftJoin('class_masters',   'stu_main_srno.class',   '=', 'class_masters.id')
+                ->leftJoin('section_masters', 'stu_main_srno.section', '=', 'section_masters.id')
+                ->select($fields)
+                ->where('stu_main_srno.class',      $class)
+                ->where('stu_main_srno.section',    $section)
+                ->where('stu_main_srno.session_id', $currentSessionId)
+                ->where('stu_main_srno.ssid',   1)
+                ->where('stu_main_srno.active', 1)
+                ->orderBy('stu_main_srno.rollno', 'asc')
+                ->get();
+
+            if ($students->isEmpty()) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'No students found.',
+                ], 200);
+            }
+
+            // ------------------------------------------------------------------ //
+            //  3. Label helper closures
+            // ------------------------------------------------------------------ //
+            $genderLabel = function ($val) {
+                return match ((int) $val) {
+                    1 => 'Male',
+                    2 => 'Female',
+                    3 => "Other's",
+                    default => '',
+                };
+            };
+
+            $religionLabel = function ($val) {
+                return match ((int) $val) {
+                    1 => 'Hindu',
+                    2 => 'Muslim',
+                    3 => 'Christian',
+                    4 => 'Sikh',
+                    default => '',
+                };
+            };
+
+            $categoryLabel = function ($val) {
+                return match ((int) $val) {
+                    1 => 'General',
+                    2 => 'OBC',
+                    3 => 'SC',
+                    4 => 'ST',
+                    5 => 'BC',
+                    default => '',
+                };
+            };
+
+            // ------------------------------------------------------------------ //
+            //  4. Write CSV to memory stream
+            // ------------------------------------------------------------------ //
+            $output = fopen('php://memory', 'w');
+
+            if ($output === false) {
+                throw new \Exception('Failed to open output stream.');
+            }
+
+            // Column headers
+            fputcsv($output, [
+                'Roll No.',
+                'Class',
+                'Section',
+                'Admission Date',
+                'SRNO',
+                'Name',
+                "Father's Name",
+                "Mother's Name",
+                "Grand Father's Name",
+                'DOB',
+                'Address',
+                'Contact 1',
+                'Contact 2',
+                'Gender',
+                'Religion',
+                'Category',
+            ]);
+
+            // Data rows — field names match the query aliases exactly
+            foreach ($students as $row) {
+                fputcsv($output, [
+                    $row->rollno,
+                    $row->class,
+                    $row->section,
+                    $row->admission_date,
+                    $row->srno,
+                    $row->student_name,
+                    $row->father_name,
+                    $row->mother_name,
+                    $row->grand_father_name,
+                    $row->dob,
+                    $row->address,
+                    $row->father_mobile,
+                    $row->mother_mobile,
+                    $genderLabel($row->gender),
+                    $religionLabel($row->religion),
+                    $categoryLabel($row->category_id),
+                ]);
+            }
+
+            rewind($output);
+            $csvContent = stream_get_contents($output);
+            fclose($output);
+
+            // ------------------------------------------------------------------ //
+            //  5. Return CSV download response
+            // ------------------------------------------------------------------ //
+            $fileName = 'student_report_' . date('Y-m-d') . '.csv';
+
+            return response($csvContent, 200)->header('Content-Type', 'text/csv')->header('Content-Disposition', 'attachment; filename="' . $fileName . '"');
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Something went wrong, please try again.',
+            ], 200);
+        }
+    }
 }

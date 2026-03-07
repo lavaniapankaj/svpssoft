@@ -18,25 +18,52 @@
         @endif
         <div class="row">
             <div class="col-md-12">
-                <div class="card border-0 bg-white">
-                    <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between"><h5 class="mb-0 mt-0">{{ 'Transport Fee Entry' }}</h5>
-                        <a href="{{ route('fee.fee-entry.index') }}" class="btn bg-light btn-sm" ><span class="mdi mdi-chevron-left me-2"></span>Back</a>
+                <div class="card">
+                    <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between">
+                        {{ 'Academic Fee Entry' }}
+                        <a href="{{ route('fee.fee-entry.index') }}" class="btn bg-light btn-sm"><span class="mdi mdi-chevron-left me-2"></span>Back</a>
                     </div>
                     <div class="card-body">
                         <!-- Student Fee History Table -->
-                        <div id="std-fee-due-table" class="table-responsive" style="display: none;">
+                        <div id="std-fee-due-table" class="table-responsive mb-4" style="display: none;">
+                            <h5 class="mb-3">Student Fee History</h5>
                             <table class="table table-striped table-bordered">
-                                <thead>
-                                    <th>Session</th>
-                                    <th>Class</th>
-                                    <th>Payable Amount (₹)</th>
-                                    <th>Paid Amount (₹)</th>
-                                    <th>Due Amount (₹)</th>
-                                    <th>Click to Submit</th>
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Session</th>
+                                        <th>Class</th>
+                                        <th>Payable Amount (₹)</th>
+                                        <th>Paid Amount (₹)</th>
+                                        <th>Due Amount (₹)</th>
+                                        <th>Action</th>
+                                    </tr>
                                 </thead>
                                 <tbody></tbody>
                             </table>
                         </div>
+
+                        <!-- Relatives Fee Table -->
+                        <div id="relative-std-fee-due-table" class="table-responsive mb-4" style="display: none;">
+                            <h5 class="mb-3">Relatives Fee Records</h5>
+                            <table class="table table-striped table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>SRNO</th>
+                                        <th>Name</th>
+                                        <th>Father's Name</th>
+                                        <th>Mother's Name</th>
+                                        <th>Class</th>
+                                        <th>Section</th>
+                                        <th>Payable Amount (₹)</th>
+                                        <th>Paid Amount (₹)</th>
+                                        <th>Due Amount (₹)</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+
+                        <!-- Fee Entry Form -->
                         <form id="class-section-form" method="POST">
                             @csrf
                             <div class="row">
@@ -52,32 +79,33 @@
                                             <option value="" selected disabled>No Class Found</option>
                                         @endif
                                     </select>
-                                    <span class="invalid-feedback form-invalid fw-bold" id="class-error" role="alert"></span>
+                                    <span class="invalid-feedback d-block fw-bold" id="class-error" role="alert"></span>
                                 </div>
-
                                 <div class="form-group col-md-6">
                                     <label for="fee_section_id" class="mt-2">Section <span class="text-danger">*</span></label>
                                     <select name="section" id="fee_section_id" class="form-control" required>
                                         <option value="">Select Section</option>
                                     </select>
-                                    <span class="invalid-feedback form-invalid fw-bold" id="section-error" role="alert"></span>
-
+                                    <span class="invalid-feedback d-block fw-bold" id="section-error" role="alert"></span>
                                 </div>
                             </div>
+
                             <div class="row">
                                 <div class="form-group col-md-6">
                                     <label for="fee_student_id" class="mt-2">Student <span class="text-danger">*</span></label>
                                     <select name="std_id" id="fee_student_id" class="form-control" required>
                                         <option value="">Select Student</option>
                                     </select>
-                                    <span class="invalid-feedback form-invalid fw-bold" id="std-error" role="alert"></span>
+                                    <span class="invalid-feedback d-block fw-bold" id="std-error" role="alert"></span>
                                 </div>
-                                <div class="form-group col-md-3">
+
+                                <div class="form-group col-md-6">
                                     <label for="fee_date" class="mt-2">Enter Date <span class="text-danger">*</span></label>
-                                    <input type="date" name="fee_date" id="fee_date" class="form-control " value="{{ old('fee_date') }}" required>
-                                    <span class="invalid-feedback form-invalid fw-bold" id="fee-date-error" role="alert"></span>
+                                    <input type="date" name="fee_date" id="fee_date" class="form-control" value="{{ old('fee_date') }}" required>
+                                    <span class="invalid-feedback d-block fw-bold" id="fee-date-error" role="alert"></span>
                                 </div>
                             </div>
+
                             <div class="row">
                                 <div class="form-group col-md-6">
                                     <label for="fee_mode" class="mt-2">Payment Mode <span class="text-danger">*</span></label>
@@ -88,57 +116,70 @@
                                         <option value="3" {{ old('fee_mode') == 3 ? 'selected' : '' }}>Bank Transfer</option>
                                         <option value="4" {{ old('fee_mode') == 4 ? 'selected' : '' }}>Other</option>
                                     </select>
-                                    <span class="invalid-feedback form-invalid fw-bold" id="fee-mode-error" role="alert"></span>
+                                    <span class="invalid-feedback d-block fw-bold" id="fee-mode-error" role="alert"></span>
                                 </div>
                                 <div class="form-group col-md-6">
                                     <label for="payment_note" class="mt-2">Payment Note <span class="text-danger">*</span></label>
                                     <textarea name="payment_note" id="payment_note" class="form-control" rows="3" required>{{ old('payment_note') }}</textarea>
-                                    <span class="invalid-feedback form-invalid fw-bold" id="payment-note-error" role="alert"></span>
+                                    <span class="invalid-feedback d-block fw-bold" id="payment-note-error" role="alert"></span>
                                 </div>
                             </div>
+
                             <div class="row">
                                 <div class="form-group col-md-6">
                                     <label for="total_amount" class="mt-2">Enter Total Amount <span class="text-danger">*</span></label>
-                                    <input type="text" name="total_amount" id="total_amount" class="form-control " value="{{ old('total_amount') }}" required>
+                                    <input type="number" step="0.01" name="total_amount" id="total_amount" class="form-control" value="{{ old('total_amount') }}" required>
+                                    <span class="text-danger fw-bold d-block" id="total-amount-error" role="alert"></span>
                                 </div>
+
                                 <div class="form-group col-md-6">
                                     <label for="ref_slip" class="mt-2">Enter Ref. Slip No. <span class="text-danger">*</span></label>
-                                    <input type="text" name="ref_slip" id="ref_slip" class="form-control " value="{{ old('ref_slip') }}" required>
-                                    <span class="invalid-feedback form-invalid fw-bold" id="ref-slip-error" role="alert"></span>
+                                    <input type="text" name="ref_slip" id="ref_slip" class="form-control" value="{{ old('ref_slip') }}" required>
+                                    <span class="invalid-feedback d-block fw-bold" id="ref-slip-error" role="alert"></span>
                                 </div>
                             </div>
-                            <div class="mx-2 my-2 p-3 row bg-warning bg-opacity-10 border border-warning rounded">
-                                <div class="row">
 
+                            <!-- Fee Breakup Section -->
+                            <div class="mx-2 my-3 p-3 bg-warning bg-opacity-10 border border-warning rounded">
+                                <h6 class="mb-3">Fee Breakup</h6>
+                                <div class="row">
                                     <div class="form-group col-md-4">
-                                        <input type="hidden" name="transport" value="2">
+                                        <label for="admission_fee" class="mt-2">Admission Fee</label>
+                                        <input type="number" step="0.01" name="admission_fee" id="admission_fee" class="form-control" value="{{ old('admission_fee') }}">
+                                        <span class="text-danger fw-bold d-block small" id="admission-fee-due"></span>
+                                        <span class="invalid-feedback d-block fw-bold" id="admission-fee-error" role="alert"></span>
+                                    </div>
+                                    <div class="form-group col-md-4">
                                         <label for="first_inst_fee" class="mt-2">Ist Installment</label>
-                                        <input type="text" name="first_inst_fee" id="first_inst_fee"
-                                            class="form-control " value="{{ old('first_inst_fee') }}">
-                                        <span class="text-danger fw-bold" id="first-inst-fee-due"></span>
-                                        <span class="invalid-feedback form-invalid fw-bold" id="first-inst-fee-error" role="alert"></span>
+                                        <input type="number" step="0.01" name="first_inst_fee" id="first_inst_fee" class="form-control" value="{{ old('first_inst_fee') }}">
+                                        <span class="text-danger fw-bold d-block small" id="first-inst-fee-due"></span>
+                                        <span class="invalid-feedback d-block fw-bold" id="first-inst-fee-error" role="alert"></span>
                                     </div>
                                     <div class="form-group col-md-4">
                                         <label for="second_inst_fee" class="mt-2">IInd Installment</label>
-                                        <input type="text" name="second_inst_fee" id="second_inst_fee"
-                                            class="form-control " value="{{ old('second_inst_fee') }}">
-                                        <span class="text-danger fw-bold" id="second-inst-fee-due"></span>
-                                        <span class="invalid-feedback form-invalid fw-bold" id="second-inst-fee-error" role="alert"></span>
+                                        <input type="number" step="0.01" name="second_inst_fee" id="second_inst_fee" class="form-control" value="{{ old('second_inst_fee') }}">
+                                        <span class="text-danger fw-bold d-block small" id="second-inst-fee-due"></span>
+                                        <span class="invalid-feedback d-block fw-bold" id="second-inst-fee-error" role="alert"></span>
                                     </div>
                                 </div>
                                 <div class="row">
-
                                     <div class="form-group col-md-6">
                                         <label for="complete_fee" class="mt-2">Complete Fee</label>
-                                        <input type="text" name="complete_fee" id="complete_fee" class="form-control " value="{{ old('complete_fee') }}">
-                                        <span class="text-danger fw-bold" id="complete-fee-due"></span>
-                                        <span class="invalid-feedback form-invalid fw-bold" id="complete-fee-error" role="alert"></span>
+                                        <input type="number" step="0.01" name="complete_fee" id="complete_fee" class="form-control" value="{{ old('complete_fee') }}">
+                                        <span class="text-danger fw-bold d-block small" id="complete-fee-due"></span>
+                                        <span class="invalid-feedback d-block fw-bold" id="complete-fee-error" role="alert"></span>
                                     </div>
-
+                                    <div class="form-group col-md-6">
+                                        <label for="mercy_fee" class="mt-2">Mercy Fee</label>
+                                        <input type="number" step="0.01" name="mercy_fee" id="mercy_fee" class="form-control" value="{{ old('mercy_fee') }}">
+                                        <span class="text-danger fw-bold d-block small" id="mercy-fee-due"></span>
+                                        <span class="invalid-feedback d-block fw-bold" id="mercy-fee-error" role="alert"></span>
+                                    </div>
                                 </div>
                             </div>
+
                             <div class="mt-3 d-flex align-items-center">
-                                <button type="button" id="submit-transport-fee" class="btn btn-primary me-3">
+                                <button type="button" id="submit-academic-fee" class="btn btn-primary me-3">
                                     <i class="mdi mdi-check-circle me-1"></i> Submit Fee Entry
                                 </button>
                                 <button type="button" id="reset-form-btn" class="btn btn-secondary">
@@ -155,135 +196,6 @@
         </div>
     </div>
 @endsection
-{{-- @section('fee-scripts')
-    <script>
-        $(document).ready(function() {
-            let initialClassId = $('#class_id').val();
-            let initialSectionId = $('#initialSectionId').val();
-            getClassSection(initialClassId, initialSectionId);
-            var stdSelect = $('#std_id');
-            var stdFeeDueTable = $('#std-fee-due-table');
-            stdFeeDueTable.hide();
-            stdSelect.change(function() {
-                // Hide and clear table
-                $('#std-fee-due-table').hide();
-                $('#std-fee-due-table table tbody').html('');
-                // Optionally clear fee input fields and due labels
-                $('#first_inst_fee, #second_inst_fee, #complete_fee').val('');
-                $('#class-error').hide().html('');
-                $('#section-error').hide().html('');
-                $('#session-error').hide().html('');
-                $('#std-error').hide().html('');
-                $('#fee-date-error').hide().html('');
-                $('#ref-slip-error').hide().html('');
-                $('#first-inst-fee-error').hide().html('');
-                $('#second-inst-fee-error').hide().html('');
-                $('#complete-fee-error').hide().html('');
-                $('#not-applicable-error').hide().html();
-
-                let session = $('#current_session').val();
-                let classSelect = $('#class_id').val();
-                let sectionSelect = $('#section_id').val();
-                SingleStTransportFeeDue(classSelect, sectionSelect, stdSelect.val());
-                stdFeeDueTable.show();
-                $.ajax({
-                    url: '{{ route('fee.fee-entry.academicFeeDueAmount') }}',
-                    type: 'POST',
-                    dataType: 'JSON',
-                    headers: {
-                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                    },
-                    data: {
-                        srno: stdSelect.val(),
-                        current_session: session,
-                        class: classSelect,
-                        section: sectionSelect,
-                    },
-
-                    success: function(response) {
-                        let stdHtml = '';
-                        // Process student data
-                        const students = response.data;
-                        $.each(students, function(index, student) {
-                            $.each(student.sessions, function(index, session) {
-                                stdHtml += `<tr>
-                                    <td>${session.session}</td>
-                                    <td>${session.class}</td>
-                                    <td>${session.transport.payable_amount}</td>
-                                    <td>${session.transport.paid_amount}</td>
-                                    <td>${session.transport.due_amount}</td>
-                                    <td><a href='${session.session_id == $('#current_session').val() ? '#' :`${siteUrl}/fee/back-session-transport-fee-entry/${session.session_id}/${student.srno}/${session.class_id}/${session.section_id}`}'>Click to Submit Now</a></td>
-                                </tr>`;
-                            });
-                        });
-                        if (stdHtml == '') {
-                            stdHtml = '<tr><td colspan = "6">No Student found</td></tr>';
-                        }
-                        $('#std-fee-due-table table tbody').html(stdHtml);
-
-                    },
-                    error: function(xhr) {
-                        console.error(xhr.responseText);
-                    }
-                });
-            });
-
-            // Reset student dropdown and table when class or section changes
-            $('#class_id, #section_id').change(function() {
-                // Clear student dropdown
-                $('#std_id').html('<option value="">Select Students</option>');
-
-                // Hide and clear table
-                $('#std-fee-due-table').hide();
-                $('#std-fee-due-table table tbody').html('');
-
-                // Optionally clear fee input fields and due labels
-                $('#first_inst_fee, #second_inst_fee, #complete_fee').val('');
-                $('#first-inst-fee-due, #second-inst-fee-due, #complete-fee-due').text('');
-            });
-
-
-            function SingleStTransportFeeDue(classSelect, sectionSelect, stsrno) {
-                // Clear previous content
-                $('#first-inst-fee-due').text('');
-                $('#second-inst-fee-due').text('');
-                $('#complete-fee-due').text('');
-                $.ajax({
-                    url: '{{ route('fee.single.st.transport.feeDue') }}',
-                    type: 'POST',
-                    dataType: 'JSON',
-                    headers: {
-                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                    },
-                    data: {
-                        std_id: stsrno,
-                        class: classSelect,
-                        section: sectionSelect,
-                    },
-                    success: function(response) {
-                        // Insert new due values
-                        if (response.firstInstFeeDueTotal !== undefined) {
-                            $('#first-inst-fee-due').text(`Due: ₹${response.firstInstFeeDueTotal}`);
-                        }
-                        if (response.secondInstFeeDueTotal !== undefined) {
-                            $('#second-inst-fee-due').text(`Due: ₹${response.secondInstFeeDueTotal}`);
-                        }
-                        if (response.completeFeeDueTotal > 0) {
-                            $('#complete-fee-due').text(`Due: ₹${response.completeFeeDueTotal}`);
-                        }
-
-                    },
-                    error: function(xhr) {
-                        console.error(xhr.responseText);
-                    }
-                });
-            }
-
-        });
-    </script>
-@endsection --}}
-
-
 
 @section('fee-scripts')
     <script>
@@ -294,6 +206,8 @@
 
             let studentFeeTable = $('#std-fee-due-table');
             let studentFeeTableBody = $('#std-fee-due-table table tbody');
+            let stRelativeFeeTable = $('#relative-std-fee-due-table');
+            let stRelativeFeeTableBody = $('#relative-std-fee-due-table table tbody');
 
             // Initialize on page load
             if (classId.val() && classId.val() != '') {
@@ -315,6 +229,7 @@
                 resetFeeInputs();
                 resetDueAmounts();
                 studentId.val('').html('<option value="">Select Student</option>');
+
                 if (selectedClass) {
                     getFeeWithoutAllSections(selectedClass, function() {
                         sectionId.val('');
@@ -351,7 +266,7 @@
             });
 
             // Auto-calculate total amount
-            $('#first_inst_fee, #second_inst_fee, #complete_fee').on('input', function() {
+            $('#admission_fee, #first_inst_fee, #second_inst_fee, #complete_fee, #mercy_fee').on('input', function() {
                 calculateTotalAmount();
             });
 
@@ -361,11 +276,13 @@
             });
 
             function calculateTotalAmount() {
+                const admissionFee = parseFloat($('#admission_fee').val()) || 0;
                 const firstInstFee = parseFloat($('#first_inst_fee').val()) || 0;
                 const secondInstFee = parseFloat($('#second_inst_fee').val()) || 0;
                 const completeFee = parseFloat($('#complete_fee').val()) || 0;
+                const mercyFee = parseFloat($('#mercy_fee').val()) || 0;
 
-                const total = firstInstFee + secondInstFee + completeFee;
+                const total = admissionFee + firstInstFee + secondInstFee + completeFee + mercyFee;
                 $('#total_amount').val(total > 0 ? total.toFixed(2) : '');
             }
 
@@ -376,7 +293,7 @@
                 }
 
                 $.ajax({
-                    url: '{{ route("fee.fee-entry.transport.get") }}',
+                    url: '{{ route("fee.fee-entry.academic.get") }}',
                     type: 'POST',
                     dataType: 'JSON',
                     headers: {'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')},
@@ -384,6 +301,7 @@
                     success: function(response) {
                         if (response.status === 'success' && response.data) {
                             displayStudentFeeData(response.data);
+                            displayRelativesFeeData(response.data.relatives);
                         } else {
                             resetTables();
                             showError('Failed to load fee data: ' + (response.message || 'Unknown error'));
@@ -405,7 +323,7 @@
                     $.each(data.sessions, function(index, session) {
                         const isCurrentSession = session.session_id == currentSessionId;
                         const rowClass = isCurrentSession ? 'table-warning' : '';
-                        const actionLink = isCurrentSession ? '#' : `${siteUrl}/fee/back-session-transport-fee-entry/${session.session_id}/${data.srno}/${session.class_id}/${session.section_id}`;
+                        const actionLink = isCurrentSession ? '#' : `${siteUrl}/fee/back-session-fee-entry/${session.session_id}/${data.srno}/${session.class_id}/${session.section_id}`;
                         const actionText = isCurrentSession ? '<span class="badge bg-warning text-dark">Current Session</span>' : `<a href="${actionLink}" class="btn btn-sm btn-primary">Click to Submit</a>`;
 
                         stdHtml += `<tr class="${rowClass}">
@@ -425,16 +343,43 @@
                 }
             }
 
+            function displayRelativesFeeData(relatives) {
+                if (relatives && relatives.length > 0) {
+                    let relativestdHtml = '';
+                    $.each(relatives, function(index, relative) {
+                        relativestdHtml += `<tr>
+                            <td>${relative.srno || '-'}</td>
+                            <td>${relative.student_name || '-'}</td>
+                            <td>${relative.father_name || '-'}</td>
+                            <td>${relative.mother_name || '-'}</td>
+                            <td>${relative.class || '-'}</td>
+                            <td>${relative.section || '-'}</td>
+                            <td class="text-end">₹${parseFloat(relative.payable_amount || 0).toFixed(2)}</td>
+                            <td class="text-end">₹${parseFloat(relative.paid_amount || 0).toFixed(2)}</td>
+                            <td class="text-end fw-bold ${relative.due_amount > 0 ? 'text-danger' : 'text-success'}">₹${parseFloat(relative.due_amount || 0).toFixed(2)}</td>
+                        </tr>`;
+                    });
+                    stRelativeFeeTableBody.html(relativestdHtml);
+                    stRelativeFeeTable.show();
+                } else {
+                    stRelativeFeeTable.hide();
+                    stRelativeFeeTableBody.html('');
+                }
+            }
+
             function SingleStFeeDue(classSelect, sectionSelect, stsrno) {
                 resetDueAmounts();
 
                 $.ajax({
-                    url: '{{ route('fee.single.st.transport.feeDue') }}',
+                    url: '{{ route('fee.single.st.feeDue') }}',
                     type: 'POST',
                     dataType: 'JSON',
                     headers: {'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')},
                     data: {std_id: stsrno, class: classSelect, section: sectionSelect},
                     success: function(response) {
+                        if (response.admissionFeeTotal !== undefined && response.admissionFeeTotal > 0) {
+                            $('#admission-fee-due').html(`<i class="mdi mdi-danger-outline"></i> Due: ₹${parseFloat(response.admissionFeeTotal).toFixed(2)}`);
+                        }
                         if (response.firstInstFeeDueTotal !== undefined) {
                             $('#first-inst-fee-due').html(`<i class="mdi mdi-danger-outline"></i> Due: ₹${parseFloat(response.firstInstFeeDueTotal).toFixed(2)}`);
                         }
@@ -443,6 +388,9 @@
                         }
                         if (response.completeFeeDueTotal > 0) {
                             $('#complete-fee-due').html(`<i class="mdi mdi-danger-outline"></i> Due: ₹${parseFloat(response.completeFeeDueTotal).toFixed(2)}`);
+                        }
+                        if (response.mercyFeeDueTotal > 0) {
+                            $('#mercy-fee-due').html(`<i class="mdi mdi-danger-outline"></i> Due: ₹${parseFloat(response.mercyFeeDueTotal).toFixed(2)}`);
                         }
                     },
                     error: function(xhr) {
@@ -482,9 +430,11 @@
                 }
 
                 // Fee breakup validation
+                const admissionFee = parseFloat($('#admission_fee').val()) || 0;
                 const firstInstFee = parseFloat($('#first_inst_fee').val()) || 0;
                 const secondInstFee = parseFloat($('#second_inst_fee').val()) || 0;
                 const completeFee = parseFloat($('#complete_fee').val()) || 0;
+                const mercyFee = parseFloat($('#mercy_fee').val()) || 0;
                 const totalFees = admissionFee + firstInstFee + secondInstFee + completeFee + mercyFee;
 
                 if (totalFees === 0) {
@@ -505,6 +455,8 @@
             function resetTables() {
                 studentFeeTable.hide();
                 studentFeeTableBody.html('');
+                stRelativeFeeTable.hide();
+                stRelativeFeeTableBody.html('');
             }
 
             function resetFeeInputs() {
@@ -534,7 +486,7 @@
                 });
             }
 
-            $('#submit-transport-fee').click(function(e) {
+            $('#submit-academic-fee').click(function(e) {
                 e.preventDefault();
 
                 if (!validationsCheck()) {
@@ -542,10 +494,9 @@
                 }
 
                 $('#loader').show();
-                $('#submit-transport-fee').prop('disabled', true).html('<i class="mdi mdi-loading mdi-spin me-1"></i> Processing...');
+                $('#submit-academic-fee').prop('disabled', true).html('<i class="mdi mdi-loading mdi-spin me-1"></i> Processing...');
 
                 let formData = {
-                    transport: 2,
                     class: classId.val(),
                     section: sectionId.val(),
                     std_id: studentId.val(),
@@ -554,9 +505,11 @@
                     payment_note: $('#payment_note').val(),
                     total_amount: $('#total_amount').val(),
                     ref_slip: $('#ref_slip').val(),
+                    admission_fee: $('#admission_fee').val(),
                     first_inst_fee: $('#first_inst_fee').val(),
                     second_inst_fee: $('#second_inst_fee').val(),
                     complete_fee: $('#complete_fee').val(),
+                    mercy_fee: $('#mercy_fee').val(),
                 };
 
                 $.ajax({
@@ -567,7 +520,7 @@
                     headers: {'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')},
                     success: function(response) {
                         $('#loader').hide();
-                        $('#submit-transport-fee').prop('disabled', false).html('<i class="mdi mdi-check-circle me-1"></i> Submit Fee Entry');
+                        $('#submit-academic-fee').prop('disabled', false).html('<i class="mdi mdi-check-circle me-1"></i> Submit Fee Entry');
 
                         if (response.status == 'success') {
                             Swal.fire({
@@ -593,7 +546,7 @@
                     },
                     error: function(xhr) {
                         $('#loader').hide();
-                        $('#submit-transport-fee').prop('disabled', false).html('<i class="mdi mdi-check-circle me-1"></i> Submit Fee Entry');
+                        $('#submit-academic-fee').prop('disabled', false).html('<i class="mdi mdi-check-circle me-1"></i> Submit Fee Entry');
 
                         if (xhr.responseJSON && xhr.responseJSON.errors) {
                             const errors = xhr.responseJSON.errors;
@@ -606,9 +559,11 @@
                                 'payment_note': '#payment-note-error',
                                 'ref_slip': '#ref-slip-error',
                                 'total_amount': '#total-amount-error',
+                                'admission_fee': '#admission-fee-error',
                                 'first_inst_fee': '#first-inst-fee-error',
                                 'second_inst_fee': '#second-inst-fee-error',
                                 'complete_fee': '#complete-fee-error',
+                                'mercy_fee': '#mercy-fee-error'
                             };
 
                             Object.keys(errors).forEach(function(field) {

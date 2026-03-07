@@ -2,114 +2,98 @@
 @section('sub-content')
     <div class="container-fluid">
         @if (Session::has('success'))
-            @section('scripts')
+            @push('st-swal-scripts')
                 <script>
-                    swal("Good job!", "{{ Session::get('success') }}", "success").then(() => {
-                        $('#std-form').hide();
-                        location.reload();
-                    });
+                    swal("Successful", "{{ Session::get('success') }}", "success")
                 </script>
-            @endsection
+            @endpush
         @endif
 
         @if (Session::has('error'))
-            @section('scripts')
+            @push('st-swal-scripts')
                 <script>
-                    swal("Oops...", "{{ Session::get('error') }}", "error");
+                    swal("Error", "{{ Session::get('error') }}", "error")
                 </script>
-            @endsection
+            @endpush
         @endif
+
         <div class="row justify-content-center">
             <div class="col-md-14">
                 <div class="card border-0 bg-white">
                     <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between">
-                        <h5 class="mb-0 mt-0">{{ 'Relative Wise' }}</h5>
-                        <a href="{{ route('student.student-report-relative-wise') }}" class="btn bg-light btn-sm" ><span class="mdi mdi-chevron-left me-2"></span>Back</a>
-
+                        <h5 class="mb-0 mt-0">Relative Wise</h5>
+                        <a href="{{ route('student.student-report-relative-wise') }}" class="btn bg-light btn-sm">
+                            <span class="mdi mdi-chevron-left me-2"></span>Back
+                        </a>
                     </div>
                     <div class="card-body">
                         <form method="get" action="">
                             <div class="row">
+                                {{-- Class --}}
                                 <div class="form-group col-md-4">
-                                    <label for="class_id" class="mt-2">Class <span class="text-danger">*</span></label>
-                                    <input type="hidden" name="current_session" value='' id="current_session">
-                                    <select name="class_id" id="class_id"
-                                        class="form-control mx-1 @error('class_id') is-invalid @enderror" required>
-                                        <option value="">Select Class</option>
+                                    <label for="st_class_id" class="mt-2">Class <span class="text-danger">*</span></label>
+                                    <select name="class" id="st_class_id" class="form-control"
+                                        {{ count($classes) == 0 ? 'disabled' : 'required' }}>
                                         @if (count($classes) > 0)
+                                            <option value="">Select Class</option>
                                             @foreach ($classes as $key => $class)
                                                 <option value="{{ $key }}"
-                                                    {{ old('class') == $key ? 'selected' : '' }}>{{ $class }}
+                                                    {{ request()->get('class') == $key ? 'selected' : '' }}>
+                                                    {{ $class }}
                                                 </option>
                                             @endforeach
                                         @else
-                                            <option value="">No Class Found</option>
+                                            <option value="" selected disabled>No Class Found</option>
                                         @endif
                                     </select>
-                                    @error('class_id')
-                                        <span class="invalid-feedback form-invalid fw-bold" role="alert">
-                                            {{ $message }}
-                                        </span>
-                                    @enderror
+                                    <span class="invalid-feedback form-invalid fw-bold" id="class-error" role="alert"></span>
                                 </div>
+
+                                {{-- Section --}}
                                 <div class="form-group col-md-4">
-                                    <label for="section_id" class="mt-2">Section<span class="text-danger">*</span></label>
-                                    <input type="hidden" id="initialSectionId" name="initialSectionId"
-                                        value="{{ old('section_id') }}">
-                                    <select name="section_id" id="section_id"
-                                        class="form-control mx-1 @error('section_id') is-invalid @enderror" required>
+                                    <label for="st_section_id" class="mt-2">Section <span class="text-danger">*</span></label>
+                                    <select name="section" id="st_section_id" class="form-control" required>
                                         <option value="">Select Section</option>
                                     </select>
-                                    @error('section_id')
-                                        <span class="invalid-feedback form-invalid fw-bold" role="alert">
-                                            {{ $message }}
-                                        </span>
-                                    @enderror
+                                    <span class="invalid-feedback form-invalid fw-bold" id="section-error" role="alert"></span>
                                 </div>
+                                {{-- Student --}}
                                 <div class="form-group col-md-4">
-                                    <label for="std_id" class="mt-2">Student<span class="text-danger">*</span></label>
-                                    <input type="hidden" id="initialStdId" name="initialStdId"
-                                        value="{{ old('initialStdId', request()->get('std_id') !== null ? request()->get('std_id') : '') }}">
-                                    <select name="std_id" id="std_id"
-                                        class="form-control mx-1 @error('std_id') is-invalid @enderror" required>
+                                    <label for="st_student_id" class="mt-2">Student <span class="text-danger">*</span></label>
+                                    <select name="std" id="st_student_id" class="form-control" required>
                                         <option value="">Select Student</option>
                                     </select>
-                                    @error('std_id')
-                                        <span class="invalid-feedback form-invalid fw-bold" role="alert">
-                                            {{ $message }}
-                                        </span>
-                                    @enderror
-                                </div>
-                                <img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader" id="loader"
-                                    style="display:none; width:10%;">
-                                <div class="mt-3">
-                                    <button type="button" id="show-deatils" class="btn btn-sm btn-primary">Show
-                                        Details</button>
+                                    <span class="invalid-feedback form-invalid fw-bold" id="std-error" role="alert"></span>
                                 </div>
                             </div>
-                            <div class="row mt-4">
-                                <div class="table" id="std-container" style="display: none;">
-                                    <table id="example" class="table table-striped table-bordered">
-                                        <thead>
-                                            <tr>
-                                                <th>Class</th>
-                                                <th>Section</th>
-                                                <th>SRNO</th>
-                                                <th>Name</th>
-                                                <th>Father's Name</th>
-                                                <th>Mother's Name</th>
-                                                <th>Father's Mobile</th>
-                                                <th>Address</th>
-                                                <th>State</th>
-                                                <th>District</th>
-                                                <th>Phone Number</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="">
-                                        </tbody>
-                                    </table>
 
-                                </div>
+                            <div class="mt-3">
+                                <button type="button" id="show-report" class="btn btn-primary">Show Report</button>
+                                <span class="text-danger fw-bold ms-2" id="no-data"></span>
+                                <img src="{{ config('myconfig.myloader') }}" alt="Loading..."
+                                    id="loader" style="display:none; width:5%;">
+                            </div>
+
+                            <div class="table mt-3" id="report-table" style="display: none;">
+                                <table id="example" class="table table-striped table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Class</th>
+                                            <th>Section</th>
+                                            <th>SRNO</th>
+                                            <th>Roll No</th>
+                                            <th>Name</th>
+                                            <th>Father's Name</th>
+                                            <th>Mother's Name</th>
+                                            <th>Father's Mobile</th>
+                                            <th>Mother's Mobile</th>
+                                            <th>Address</th>
+                                            <th>State</th>
+                                            <th>District</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="report-body"></tbody>
+                                </table>
                             </div>
                         </form>
                     </div>
@@ -118,159 +102,195 @@
         </div>
     </div>
 @endsection
+
 @section('std-scripts')
     <script>
-        $(document).ready(function() {
-            const classFirst = $('#class_id');
-            const sectionFirst = $('#section_id');
-            const sessionSelect = $('#current_session').val();
-            const stdSelect = $('#std_id');
-            const stdContainer = $('#std-container');
-            const stdTableBody = $('#std-container table tbody');
-            const showDetailsButton = $('#show-deatils');
+        $(document).ready(function () {
 
-            // Initial Setup
-            getClassSection(classFirst.val(), $('#initialSectionId').val());
+            // ------------------------------------------------------------------ //
+            //  Cached selectors
+            // ------------------------------------------------------------------ //
+            const reportTable   = $('#report-table');
+            const reportBody    = $('#report-body');
+            const noData        = $('#no-data');
+            const loader        = $('#loader');
+            const classSelect   = $('#st_class_id');
+            const sectionSelect = $('#st_section_id');
+            const studentSelect = $('#st_student_id');
+            let dataTable       = null; // DataTable instance
 
-            // Helper: Populate Dropdown
-            function populateDropdowns(data, dropdown) {
-                dropdown.empty();
-                // dropdown.empty().append('<option value="">Select Student</option>');
-                if (data && data.length) {
-                    let allStdIds = [];
-                    $.each(data, function(id, value) {
-                        allStdIds.push(value.srno);
-                        dropdown.append(
-                            `<option value="${value.srno}">${value.rollno}. ${value.student_name}/SH. ${value.f_name}</option>`
-                        );
-                    });
-                    dropdown.prepend(`<option value="${allStdIds}" selected>All</option>`);
+            // ------------------------------------------------------------------ //
+            //  Helper: destroy DataTable, hide report, clear rows
+            // ------------------------------------------------------------------ //
+            function resetReport() {
+                if (dataTable) {
+                    dataTable.destroy();
+                    dataTable = null;
                 }
+                reportTable.hide();
+                reportBody.html('');
+                noData.text('');
             }
 
-            // Fetch Student Name & Father Details
-            function fetchStdNameFather(classId, sectionId) {
-                if (classId && sectionId) {
-                    $.ajax({
-                        url: '{{ route('stdNameFather.get') }}',
-                        type: 'GET',
-                        dataType: 'JSON',
-                        data: {
-                            class_id: classId,
-                            section_id: sectionId,
-                            session_id: sessionSelect
-                        },
-                        success: function(data) {
-                            populateDropdowns(data, stdSelect);
-                        },
-                        error: function(xhr) {
-                            console.error('Error fetching student details:', xhr);
-                        }
-                    });
-                }
+            // ------------------------------------------------------------------ //
+            //  On page load: restore dropdown chain from URL params if present
+            // ------------------------------------------------------------------ //
+            if (classSelect.val()) {
+                getStudentWithoutAllSections(classSelect.val(), function () {
+                    var savedSection = '{{ request()->get("section") }}';
+                    if (savedSection) {
+                        sectionSelect.val(savedSection).trigger('change');
+                    }
+                });
             }
 
-            // Populate Student & Relative Details Table
+            // ------------------------------------------------------------------ //
+            //  Class change
+            // ------------------------------------------------------------------ //
+            classSelect.on('change', function () {
+                resetReport();
+                sectionSelect.html('<option value="">Select Section</option>');
+                studentSelect.html('<option value="">Select Student</option>');
+
+                if ($(this).val()) {
+                    getStudentWithoutAllSections($(this).val(), function () {});
+                }
+            });
+
+            // ------------------------------------------------------------------ //
+            //  Section change
+            // ------------------------------------------------------------------ //
+            sectionSelect.on('change', function () {
+                resetReport();
+                studentSelect.html('<option value="">Select Student</option>');
+
+                if (classSelect.val() && $(this).val()) {
+                    getStAllStudents(classSelect.val(), $(this).val());
+                }
+            });
+
+            // ------------------------------------------------------------------ //
+            //  Student change
+            // ------------------------------------------------------------------ //
+            studentSelect.on('change', function () {
+                resetReport();
+            });
+
+            // ------------------------------------------------------------------ //
+            //  Show Report button click
+            // ------------------------------------------------------------------ //
+            $('#show-report').on('click', function () {
+                const classVal   = classSelect.val();
+                const sectionVal = sectionSelect.val();
+                const stdVal     = studentSelect.val();
+
+                if (!classVal) {
+                    noData.text('Please select a class.');
+                    return;
+                }
+                if (!sectionVal) {
+                    noData.text('Please select a section.');
+                    return;
+                }
+                if (!stdVal) {
+                    noData.text('Please select a student.');
+                    return;
+                }
+
+                fetchStdWithRelative();
+            });
+
+            // ------------------------------------------------------------------ //
+            //  Build table rows from API response
+            // ------------------------------------------------------------------ //
+            function buildRow(record, isRelative) {
+                const rowClass = isRelative ? 'class="relative-row table-warning"' : '';
+                return `
+                    <tr ${rowClass}>
+                        <td>${record.class        ?? 'N/A'}</td>
+                        <td>${record.section      ?? 'N/A'}</td>
+                        <td>${record.srno         ?? 'N/A'}</td>
+                        <td>${record.rollno       ?? 'N/A'}</td>
+                        <td>${record.student_name ?? 'N/A'}</td>
+                        <td>${record.father_name  ?? 'N/A'}</td>
+                        <td>${record.mother_name  ?? 'N/A'}</td>
+                        <td>${record.father_mobile ?? 'N/A'}</td>
+                        <td>${record.mother_mobile ?? 'N/A'}</td>
+                        <td>${record.address      ?? 'N/A'}</td>
+                        <td>${record.state_name   ?? 'N/A'}</td>
+                        <td>${record.district_name ?? 'N/A'}</td>
+                    </tr>
+                `;
+            }
+
+            // ------------------------------------------------------------------ //
+            //  Populate table
+            // ------------------------------------------------------------------ //
             function populateStudentTable(data) {
-                if (Array.isArray(data) && data.length > 0) {
-                    let rowsHtml = '';
+                resetReport();
 
-                    // Iterate over the data array
-                    data.forEach(entry => {
-                        const student = entry.student; // Main student object
-                        const relatives = entry.relatives ||
-                    []; // Relatives array (fallback to empty array if null/undefined)
-
-                        // Add the main student's row
-                        rowsHtml += `
-                            <tr>
-                                <td>${student.class_name || 'N/A'}</td>
-                                <td>${student.section_name || 'N/A'}</td>
-                                <td>${student.srno || 'N/A'}</td>
-                                <td>${student.student_name || 'N/A'}</td>
-                                <td>SH. ${student.f_name || 'N/A'}</td>
-                                <td>${student.m_name || 'N/A'}</td>
-                                <td>${student.f_mobile || 'N/A'}</td>
-                                <td>${student.address || 'N/A'}</td>
-                                <td>${student.state_name || 'N/A'}</td>
-                                <td>${student.district_name || 'N/A'}</td>
-                                <td>${student.m_mobile || 'N/A'}</td>
-                            </tr>
-                        `;
-
-                        // Add rows for relatives (if any)
-                        relatives.forEach(relative => {
-                            rowsHtml += `
-                                <tr class="relative-row table-warning">
-                                    <td>${relative.class_name || 'N/A'}</td>
-                                    <td>${relative.section_name || 'N/A'}</td>
-                                    <td>${relative.srno || 'N/A'}</td>
-                                    <td>${relative.student_name || 'N/A'}</td>
-                                    <td>SH. ${relative.f_name || 'N/A'}</td>
-                                    <td>${relative.m_name || 'N/A'}</td>
-                                    <td>${relative.f_mobile || 'N/A'}</td>
-                                    <td>${relative.address || 'N/A'}</td>
-                                    <td>${relative.state_name || 'N/A'}</td>
-                                    <td>${relative.district_name || 'N/A'}</td>
-                                    <td>${relative.m_mobile || 'N/A'}</td>
-                                </tr>
-                            `;
-                        });
-                    });
-
-                    // Populate the table body with the generated rows
-                    stdTableBody.html(rowsHtml);
-
-                    // Show the container
-                    stdContainer.show();
-                } else {
-                    // Hide the container if no data is available
-                    stdContainer.hide();
+                if (!Array.isArray(data) || data.length === 0) {
+                    noData.text('No records found.');
+                    return;
                 }
+
+                let rowsHtml = '';
+
+                data.forEach(entry => {
+                    // Main student row
+                    rowsHtml += buildRow(entry.student, false);
+
+                    // Relative rows (highlighted in yellow)
+                    (entry.relatives ?? []).forEach(relative => {
+                        rowsHtml += buildRow(relative, true);
+                    });
+                });
+
+                reportBody.html(rowsHtml);
+                reportTable.show();
+
+                // Init DataTable after rows are injected
+                dataTable = $('#example').DataTable({
+                    pageLength : 25,
+                    responsive : true,
+                    order      : [],
+                    columnDefs : [{ orderable: false, targets: '_all' }]
+                });
             }
 
+            // ------------------------------------------------------------------ //
+            //  AJAX: fetch students + relatives
+            // ------------------------------------------------------------------ //
+            function fetchStdWithRelative() {
+                resetReport();
+                loader.show();
+                noData.text('');
 
-
-            // Fetch Student & Relative Details
-            function fetchStdWithRelative(selectedStdId) {
-                if (selectedStdId) {
-                    // selectedStdId.forEach(st => {
-
-                    $.ajax({
-                        url: '{{ route('student.getStdWithRelativeStd') }}',
-                        type: 'GET',
-                        dataType: 'JSON',
-                        data: {
-                            srno: selectedStdId
-                        },
-                        success: function(data) {
-                            populateStudentTable(data.data);
-                        },
-                        error: function(xhr) {
-                            console.error('Error fetching student and relative details:', xhr);
+                $.ajax({
+                    url      : '{{ route('student.get.student-report-relative-wise') }}',
+                    type     : 'POST',
+                    dataType : 'json',
+                    headers  : { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+                    data: {
+                        class  : classSelect.val(),
+                        section: sectionSelect.val(),
+                        std    : studentSelect.val(),
+                    },
+                    success: function (response) {
+                        loader.hide();
+                        if (response.status === 'success') {
+                            populateStudentTable(response.data);
+                        } else {
+                            noData.text(response.message ?? 'Something went wrong.');
                         }
-                    });
-                    // });
-                }
+                    },
+                    error: function (xhr) {
+                        loader.hide();
+                        noData.text('Server error, please try again.');
+                        console.error('AJAX error:', xhr);
+                    }
+                });
             }
-
-            // Event: Class Change
-            classFirst.change(function() {
-                stdContainer.hide();
-                stdSelect.empty().append('<option value="">Select Student</option>');
-            });
-
-            // Event: Section Change
-            sectionFirst.change(function() {
-                fetchStdNameFather(classFirst.val(), sectionFirst.val());
-                stdContainer.hide();
-            });
-
-            // Event: Show Details Button Click
-            showDetailsButton.click(function() {
-                const selectedStdId = stdSelect.val();
-                fetchStdWithRelative(selectedStdId);
-            });
         });
     </script>
 @endsection

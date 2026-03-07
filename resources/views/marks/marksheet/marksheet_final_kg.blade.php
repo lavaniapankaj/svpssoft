@@ -11,49 +11,43 @@
                     <form id="class-section-form" action="{{ route('marks.marks-report.marksheet.kg.store') }}" method="POST">
                         @csrf
                         <div class="row">
+                            {{-- Class --}}
                             <div class="form-group col-md-4">
-                                <input type="hidden" name="current_session" value='' id="current_session">
-                                <label for="class_id" class="mt-2">Class <span class="text-danger">*</span></label>
-                                <select name="class" id="class_id"
-                                    class="form-control @error('class') is-invalid @enderror" required>
-                                    <option value="">Select Class</option>
+                                <label for="marks_class_id" class="mt-2"> Class <span class="text-danger">*</span>
+                                </label>
+                                <select name="class" id="marks_class_id" class="form-control"
+                                    {{ count($classes) === 0 ? 'disabled' : '' }} required>
                                     @if (count($classes) > 0)
+                                        <option value="">Select Class</option>
                                         @foreach ($classes as $key => $class)
-                                         <option value="{{ $key }}" {{ old('class') == $key ? 'selected' : ''}}>{{ $class }}</option>
+                                            <option value="{{ $key }}" {{ request('class') == $key ? 'selected' : '' }}>
+                                                {{ $class }}
+                                            </option>
                                         @endforeach
                                     @else
-                                        <option value="">No Class Found</option>
-                                   @endif
+                                        <option value="" disabled selected>No Class Found</option>
+                                    @endif
                                 </select>
-                                @error('class')
-                                <span class="invalid-feedback form-invalid fw-bold"
-                                    role="alert">{{ $message }}</span>
-                                @enderror
+                                <span class="invalid-feedback fw-bold" id="class-error" role="alert"></span>
                             </div>
+                            {{-- Section --}}
                             <div class="form-group col-md-4">
-                                <label for="section_id" class="mt-2">Section <span
-                                        class="text-danger">*</span></label>
-                                <input type="hidden" id="initialSectionId"
-                                    value="{{ old('initialSectionId', request()->get('section_id') !== null ? request()->get('section_id') : '') }}">
-                                <select name="section" id="section_id"
-                                    class="form-control @error('section') is-invalid @enderror" required>
+                                <label for="marks_section_id" class="mt-2">Section <span class="text-danger">*</span>
+                                </label>
+                                <select name="section" id="marks_section_id" class="form-control" required>
                                     <option value="">Select Section</option>
                                 </select>
-                                @error('section')
-                                <span class="invalid-feedback form-invalid fw-bold"
-                                    role="alert">{{ $message }}</span>
-                                @enderror
+                                <span class="invalid-feedback fw-bold" id="section-error" role="alert"></span>
                             </div>
+                            {{-- Student --}}
                             <div class="form-group col-md-4">
-                                <label for="std_id" class="mt-2">Student <span class="text-danger">*</span></label>
-                                <select name="std_id" id="std_id"
-                                    class="form-control @error('std_id') is-invalid @enderror" required>
-                                    <option value="">All Students</option>
+                                <label for="marks_student_id" class="mt-2">Student <span class="text-danger">*</span>
+                                </label>
+                                {{-- Starts as "Select Student" until a section is chosen --}}
+                                <select name="std" id="marks_student_id" class="form-control" required>
+                                    <option value="">Select Student</option>
                                 </select>
-                                @error('std_id')
-                                <span class="invalid-feedback form-invalid fw-bold"
-                                    role="alert">{{ $message }}</span>
-                                @enderror
+                                <span class="invalid-feedback fw-bold" id="std-error" role="alert"></span>
                             </div>
                         </div>
                         <div class="row">
@@ -69,9 +63,8 @@
                             </div>
                         </div>
                         <div class="mt-3">
-                            <button type="submit" id="show-details" class="btn btn-primary">
-                                Show Details</button><span><img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader"
-                                    id="loader" style="display:none; width:10%;"></span>
+                            <button type="submit" id="show-details" class="btn btn-primary">Show Details</button>
+                            <span><img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader" id="loader" style="display:none; width:5%;"></span>
                         </div>
                     </form>
                 </div>
@@ -81,12 +74,32 @@
 </div>
 @endsection
 @section('marks-scripts')
-<script>
-    $(document).ready(function() {
-        let initialClassId = $('#class_id').val();
-        let initialSectionId = $('#initialSectionId').val();
-        getClassSection(initialClassId, initialSectionId);
-        getStd();
-    });
-</script>
+    <script>
+       $(document).ready(function() {
+             // ── Selectors ──────────────────────────────────────────────────────────────
+            const classSelect   = $('#marks_class_id');
+            const sectionSelect = $('#marks_section_id');
+            const studentSelect = $('#marks_student_id');
+            // Class change → reload sections & subjects, reset student to placeholder
+            classSelect.on('change', function () {
+                const classId = $(this).val();
+                if (classId) {
+                    getMarksWithoutAllSections(classId, function () {});
+                } else {
+                    sectionSelect.html('<option value="">Select Section</option>');
+                }
+                studentSelect.html('<option value="">Select Student</option>');
+            });
+
+            // Section change → reload students via global function, reset table
+            sectionSelect.on('change', function () {
+                const classId   = classSelect.val();
+                const sectionId = $(this).val();
+                studentSelect.html('<option value="">Select Student</option>');
+                if (classId && sectionId) {
+                    getMarksAllStudents(classId, sectionId);
+                }
+            });
+        });
+    </script>
 @endsection

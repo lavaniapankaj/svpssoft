@@ -564,29 +564,75 @@ class EditSectionsController extends Controller
     }
     public function editRemoveRelativeStdStore(Request $request)
     {
-        $request->validate([
-            'std_id' => 'required|exists:stu_main_srno,srno',
-            'second_std_id' => 'required|exists:stu_main_srno,srno',
-        ]);
-        $currentSession = session('current_session')->id;
-        $std = StudentMaster::where('srno', $request->std_id)->where('session_id', $currentSession)->whereIn('ssid', [1, 2, 3, 4, 5])->first();
-        // $secondStd = StudentMaster::where('srno', $request->second_std_id)->where('ssid', 1)->first();
-        $secondStd = StudentMaster::where('srno', $request->second_std_id)->where('session_id', $currentSession)->whereIn('ssid', [1, 2, 3, 4, 5])->first();
-        if ($std || $secondStd) {
+        try {
+            $validator = Validator::make($request->all(), [
+                'std_id' => 'required|exists:stu_main_srno,srno',
+                'second_std_id' => 'required|exists:stu_main_srno,srno|different:std_id',
+            ], [
+                'std_id.required' => 'Please select the first student',
+                'second_std_id.required' => 'Please select the second student',
+                'second_std_id.different' => 'Both students cannot be the same. Please select different students.',
+            ]);
+            /* Validation error */
+            if ($validator->fails()) {
+                return redirect()->back()->withErrors($validator)->withInput();
+            }
+            $currentSession = session('current_session')->id;
+            $std = StudentMaster::where('srno', $request->std_id)->where('session_id', $currentSession)->where('ssid', 1)->first();
+            $secondStd = StudentMaster::where('srno', $request->second_std_id)->where('session_id', $currentSession)->where('ssid', 1)->first();
+            /*  $std = StudentMaster::where('srno', $request->std_id)->where('session_id', $currentSession)->whereIn('ssid', [1, 2, 3, 4, 5])->first();
+            $secondStd = StudentMaster::where('srno', $request->second_std_id)->where('session_id', $currentSession)->whereIn('ssid', [1, 2, 3, 4, 5])->first();
+            if ($std || $secondStd) {
+                $stdRelationCode = $std->relation_code;
+                $secondStdRelationCode = $secondStd ? $secondStd->relation_code : null;
+                if ($stdRelationCode === null && $secondStdRelationCode === null) {
+                    $maxRelationCode = StudentMaster::whereNotNUll('relation_code')->max('relation_code');
+                    $newRelationCode = $maxRelationCode ? $maxRelationCode + 1 : 1;
+                    $std->update(['relation_code' => $newRelationCode]);
+                    $secondStd->update(['relation_code' => $newRelationCode]);
+                } else {
+                    if ($stdRelationCode !== null && $secondStdRelationCode === null) {
+                        $secondStd->update(['relation_code' => $stdRelationCode]);
+                    }
+                }
+                return redirect()->route('admin.editSection.editRemoveRelativeStd')->with('success', 'Relative added successfully.');
+            } else {
+                return redirect()->back()->with('error', 'Something went wrong, please try again.');
+            } */
+
+            // Check if they are already relatives
+            if ($std->relation_code && $secondStd->relation_code && $std->relation_code === $secondStd->relation_code) {
+                return redirect()->back()->with('error', 'These students are already relatives.');
+            }
+
             $stdRelationCode = $std->relation_code;
-            $secondStdRelationCode = $secondStd ? $secondStd->relation_code : null;
+            $secondStdRelationCode = $secondStd->relation_code;
+
             if ($stdRelationCode === null && $secondStdRelationCode === null) {
-                $maxRelationCode = StudentMaster::whereNotNUll('relation_code')->max('relation_code');
+                // Both students have no relation_code - create new relation
+                $maxRelationCode = StudentMaster::whereNotNull('relation_code')->max('relation_code');
                 $newRelationCode = $maxRelationCode ? $maxRelationCode + 1 : 1;
+
                 $std->update(['relation_code' => $newRelationCode]);
                 $secondStd->update(['relation_code' => $newRelationCode]);
+            } elseif ($stdRelationCode !== null && $secondStdRelationCode === null) {
+                // First student has relation_code, second doesn't
+                $secondStd->update(['relation_code' => $stdRelationCode]);
+            } elseif ($stdRelationCode === null && $secondStdRelationCode !== null) {
+                // Second student has relation_code, first doesn't
+                $std->update(['relation_code' => $secondStdRelationCode]);
             } else {
-                if ($stdRelationCode !== null && $secondStdRelationCode === null) {
-                    $secondStd->update(['relation_code' => $stdRelationCode]);
-                }
+                // Both have different relation_codes - merge them
+                // Update all students with second student's relation_code to first student's relation_code
+                StudentMaster::where('relation_code', $secondStdRelationCode)->update(['relation_code' => $stdRelationCode]);
             }
-            return redirect()->route('admin.editSection.editRemoveRelativeStd')->with('success', 'Relative Added successfully.');
-        } else {
+
+            return redirect()->route('admin.editSection.editRemoveRelativeStd')->with('success', 'Relative added successfully.');
+
+
+
+
+        } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Something went wrong, please try again.');
         }
     }
@@ -668,24 +714,105 @@ class EditSectionsController extends Controller
                 ->route('admin.editSection.editStdInfoClass')
                 ->with('success', 'Student updated successfully.');
         } catch (\Exception $e) {
-            return redirect()
-                ->back()
-                ->withInput()
-                ->with('error', 'Something went wrong, please try again.');
+            return redirect()->back()->withInput()->with('error', 'Something went wrong, please try again.');
         }
     }
+
+    /* Get student only admission date */
+    public function editStdAdmissionDateFetch(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'srno' => 'required|exists:stu_main_srno,srno',
+            ]);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $validator->errors()
+                ], 200);
+            }
+
+            /** Join tables */
+            $fields = [
+                'stu_main_srno.id',
+                'stu_main_srno.srno',
+                'stu_main_srno.admission_date',
+                'stu_detail.name as student_name',
+                'parents_detail.f_name',
+                'parents_detail.m_name',
+                'class_masters.class as class_name',
+                'section_masters.section as section_name',
+            ];
+            $where = [
+                'where' => [
+                    'stu_main_srno.srno' => $request->srno,
+                ],
+                'whereNotNull' => [
+                    'stu_main_srno.admission_date',
+                ],
+            ];
+            $joins = [
+                [
+                    'table' => 'stu_detail',
+                    'first' => 'stu_main_srno.srno',
+                    'operator' => '=',
+                    'second' => 'stu_detail.srno',
+                    'type' => 'left'
+                ],
+                [
+                    'table' => 'parents_detail',
+                    'first' => 'stu_main_srno.srno',
+                    'operator' => '=',
+                    'second' => 'parents_detail.srno',
+                    'type' => 'left'
+                ],
+                [
+                    'table' => 'class_masters',
+                    'first' => 'stu_main_srno.class',
+                    'operator' => '=',
+                    'second' => 'class_masters.id',
+                    'type' => 'left'
+                ],
+                [
+                    'table' => 'section_masters',
+                    'first' => 'stu_main_srno.section',
+                    'operator' => '=',
+                    'second' => 'section_masters.id',
+                    'type' => 'left'
+                ],
+            ];
+            $std = StudentMasterController::getOnlyStQuery($where, $fields, $joins)->first();
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Students fetched successfully.',
+                'data' => $std
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => "Failed to get students",
+            ], 200);
+        }
+    }
+
+
     public function editStdAdmissionDateStore(Request $request)
     {
-        $request->validate(
-            [
-                'a_date' => 'required|date_format:Y-m-d'
-            ]
-        );
-        $std = StudentMaster::where('id', $request->hidden_srno)->first();
-        if ($std) {
-            $std->update(['admission_date' => $request->a_date]);
-            return redirect()->route('admin.editSection.editStdAdmissionDate')->with('success', 'Student Admission Date updated successfully.');
-        } else {
+        try {
+            $validator = Validator::make($request->all(), [
+                'a_date' => 'required|date_format:Y-m-d',
+            ]);
+            if ($validator->fails()) {
+                return redirect()->back()->withErrors($validator)->withInput();
+            }
+            $std = StudentMaster::where('id', $request->hidden_st_id)->first();
+            if ($std) {
+                $std->update(['admission_date' => $request->a_date]);
+                return redirect()->route('admin.editSection.editStdAdmissionDate')->with('success', 'Student Admission Date updated successfully.');
+            } else {
+                return redirect()->back()->with('error', 'Something went wrong, please try again.');
+            }
+        } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Something went wrong, please try again.');
         }
     }
@@ -760,7 +887,7 @@ class EditSectionsController extends Controller
     {
         try {
             $data = $request->validate([
-                'hidden_a_date' => 'required|date_format:Y-m-d',
+                'a_date' => 'required|date_format:Y-m-d',
                 'students' => 'required|array',
                 'students.*.srno' => 'required|exists:stu_main_srno,srno',
                 'students.*.status' => 'in:1,0',
@@ -772,19 +899,19 @@ class EditSectionsController extends Controller
                 $student = Attendance::updateOrCreate(
                     [
                         'srno' => $std['srno'],
-                        'class' => $request->hidden_class,
-                        'section' => $request->hidden_section,
-                        'a_date' => $request->hidden_a_date,
+                        'class' => $request->class,
+                        'section' => $request->section,
+                        'a_date' => $request->a_date,
                         // 'session_id' => $request->current_session,
                         'session_id' => $currentSession,
                     ],
                     [
                         // 'session_id' => $request->current_session,
                         'session_id' => $currentSession,
-                        'class' => $request->hidden_class,
-                        'section' => $request->hidden_section,
+                        'class' => $request->class,
+                        'section' => $request->section,
                         'srno' => $std['srno'],
-                        'a_date' => $request->hidden_a_date,
+                        'a_date' => $request->a_date,
                         'status' => isset($std['status']) ? $std['status'] : 0,
                         'add_user_id' => Session::get('login_user'),
                         'edit_user_id' => Session::get('login_user'),
@@ -823,18 +950,16 @@ class EditSectionsController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => $validator->errors()
-                ], 400);
+                ], 200);
             }
-            $feeDetails = FeeDetail::where('srno', $request->srno)->where('session_id', $request->session)
-                ->get(['ref_slip_no', 'pay_date', 'academic_trans', 'fee_of', 'amount', 'paid_mercy', 'srno', 'id']);
+            $session = session('current_session')->id;
+            $feeDetails = FeeDetail::where('srno', $request->srno)->where('session_id', $session)->get(['ref_slip_no', 'pay_date', 'academic_trans', 'fee_of', 'amount', 'paid_mercy', 'srno', 'id']);
             if ($feeDetails->isNotEmpty()) {
-                # code...
                 return response()->json([
                     'status' => 'success',
                     'data' => $feeDetails
                 ], 200);
             } else {
-                # code...
                 return response()->json([
                     'status' => 'success',
                     'message' => 'No Fee Detail Found',

@@ -1,160 +1,220 @@
 @extends('admin.index')
 
 @section('sub-content')
-    <div class="container-fluid">
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card border-0 bg-white">
 
-        <div class="row ">
-            <div class="col-md-12">
-                <div class="card border-0 bg-white">
-                    <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between"><h5 class="mb-0 mt-0">{{ __('RTE Student') }}</h5>
-                        <a href="{{ route('admin.reports') }}" class="btn bg-light btn-sm" ><span class="mdi mdi-chevron-left me-2"></span>Back</a>
-                    </div>
+                <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between">
+                    <h5 class="mb-0 mt-0">{{ __('RTE Student') }}</h5>
+                    <a href="{{ route('admin.reports') }}" class="btn bg-light btn-sm">
+                        <span class="mdi mdi-chevron-left me-2"></span>Back
+                    </a>
+                </div>
 
-                    <div class="card-body">
-                        <form action="" method="get" id="class-form">
-                            <div class="row mt-2">
-                                <div class="form-group col-md-6">
-                                    <label for="class_id" class="mt-2">Class <span class="text-danger">*</span></label>
-                                    <input type="hidden" name="current_session" value='' id="current_session">
-                                    <input type="hidden" id="initialClassId" name="initialClassId"
-                                        value="{{ old('class_id') }}">
-                                    <select name="class_id" id="class_id"
-                                        class="form-control mx-1 @error('class_id') is-invalid @enderror" required>
-                                        <option value="">All Class</option>
-                                    </select>
-                                    @error('class_id')
-                                        <span class="invalid-feedback form-invalid fw-bold" role="alert">
-                                            {{ $message }}
-                                        </span>
-                                    @enderror
-                                    <img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader"
-                                        id="loader" style="display:none; width:10%;">
-                                </div>
+                <div class="card-body">
 
+                    {{-- ── Filter Form ─────────────────────────────────────── --}}
+                    <form id="rte-report-form" novalidate>
+                        <input type="hidden" id="current_session" value="">
+
+                        <div class="row mt-2">
+
+                            {{-- Class --}}
+                            <div class="form-group col-md-6">
+                                <label for="class_id" class="mt-2">
+                                    Class <span class="text-danger">*</span>
+                                </label>
+                                <select name="class_id" id="class_id" class="form-control">
+                                    <option value="">All Classes</option>
+                                </select>
+                                <span class="invalid-feedback fw-bold" id="class-error" role="alert"></span>
                             </div>
 
-                            <div class="mt-3">
-                                <button class="btn btn-primary" type="button" id="show-report">Show Report</button>
+                        </div>
 
-                            </div>
-                        </form>
+                        <div class="mt-3 d-flex align-items-center gap-2">
+                            <button type="button" id="btn-show-report" class="btn btn-primary">
+                                Show Report
+                            </button>
+                            <img src="{{ config('myconfig.myloader') }}" alt="Loading…" id="loader"
+                                style="display:none; width:40px;">
+                        </div>
+                    </form>
 
-                        <div class="super-div">
-                            <table class="table">
-                                <thead>
+                    {{-- ── Results ─────────────────────────────────────────── --}}
+                    <div id="report-container" class="mt-4" style="display:none;">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered table-hover align-middle">
+                                <thead class="table-light">
                                     <tr>
                                         <th>S.No.</th>
                                         <th>SRNO</th>
                                         <th>Name</th>
-                                        <th>Gurdian Name</th>
-                                        <th>Category(WS/DG)</th>
-                                        <th>Sign. of Certifier </th>
+                                        <th>Guardian Name</th>
+                                        <th>Category (WS/DG)</th>
+                                        <th>Sign. of Certifier</th>
                                         <th>Remark</th>
                                     </tr>
                                 </thead>
-                                <tbody id="report-body">
-                                </tbody>
+                                <tbody id="report-body"></tbody>
                             </table>
-                            <div id="std-pagination"></div>
-                            <div class="export-div">
-                                <button type="button" class="btn btn-info" id="export-button">Export</button>
-                            </div>
                         </div>
-
-
+                        <div id="admin-pagination" class="mt-2"></div>
                     </div>
 
-                </div>
+                    {{-- Export — only shown when records exist --}}
+                    <div id="export-container" class="mt-3" style="display:none;">
+                        <button type="button" id="btn-export" class="btn btn-info">Export</button>
+                    </div>
+
+                </div>{{-- /card-body --}}
             </div>
         </div>
     </div>
+</div>
 @endsection
+
 @section('admin-scripts')
-    <script>
-        $(document).ready(function() {
-            getClassDropDownWithAll();
-            let superDiv = $('.super-div');
-            superDiv.hide();
-            function getReport(page = 1) {
+<script>
+$(document).ready(function () {
 
-                superDiv.show();
-                let classId = $('#class_id').val();
-                console.log(classId);
-                let sessionId = $('#current_session').val();
-                if (classId) {
-                    $.ajax({
-                        url: '{{ route('admin.reports.rteStudentReport') }}',
-                        type: 'GET',
-                        dataType: 'JSON',
-                        data: {
-                            class: classId,
-                            session: sessionId,
-                            page: page,
+    // ── Init ───────────────────────────────────────────────────────────────────
+    getClassDropDownWithAll();
 
-                        },
-                        success: function(response) {
-                            console.log(response);
+    // ── Selectors ──────────────────────────────────────────────────────────────
+    const loader          = $('#loader');
+    const reportContainer = $('#report-container');
+    const exportContainer = $('#export-container');
+    const reportBody      = $('#report-body');
+    const pagination      = $('#admin-pagination');
 
-                            let tableHtml = '';
-                            updatePaginationControls(response.pagination);
-                            if (response.data.length > 0) {
-                                let displayIndex = (response.pagination.current_page - 1) * response.pagination
-                                .per_page + 1;
-                                $.each(response.data, function(index, std) {
-                                    // Create row for boys
-                                    tableHtml += `
-                                            <tr>
-                                                 <td>${displayIndex}</td>
-                                                 <td>${std.srno}</td>
-                                                 <td>${std.name}</td>
-                                                 <td>${std.f_name}</td>
-                                                 <td>-</td>
-                                                 <td>-</td>
-                                                 <td>-</td>
-                                            </tr>`;
+    // ── Helpers ────────────────────────────────────────────────────────────────
+    function showLoader() { loader.show(); }
+    function hideLoader() { loader.hide(); }
 
-                                });
-                            }else {
-                                tableHtml += `
-                                            <tr>
-                                                 <td colspan="7" class='text-center'>No Students Found</td>
-                                            </tr>`;
-                            }
-                            $('#report-body').html(tableHtml);
-                        },
-                        complete: function() {
+    function clearErrors() {
+        $('#class-error').text('').hide();
+    }
 
-                            loader.hide();
-                        },
-                        error: function(data, xhr) {
-                            console.log(xhr);
+    function showError(id, message) {
+        $(id).text(message).show();
+    }
 
-                        },
-                    });
-                }
-            }
-            $('#show-report').click(() => {
-                getReport();
-            });
+    function getFilters() {
+        return {
+            class:   $('#class_id').val(),
+            session: $('#current_session').val(),
+        };
+    }
 
-            // Pagination controls
-            $(document).on('click', '#std-pagination .page-link', function(e) {
-                e.preventDefault();
-                let page = $(this).data('page');
-                getReport(page);
-            });
-            $('#class_id').change(() => {
-                superDiv.hide();
-            });
-            $('#export-button').on('click', function() {
-                let session = $('#current_session').val();
-                let classId = $('#class_id').val();
+    // ── Build Table HTML ───────────────────────────────────────────────────────
+    function buildTableHtml(data) {
+        if (!data.data || data.data.length === 0) {
+            return '<tr><td colspan="7" class="text-center fst-italic fw-bold text-danger">No Records Found</td></tr>';
+        }
 
-                const exportUrl = "{{ route('admin.reports.rteStudentReport.excel') }}?class=" + classId + "&session=" + session;
-                window.location.href = exportUrl;
-            });
+        const startIndex = (data.current_page - 1) * data.per_page;
+        let html = '';
 
-
+        data.data.forEach((s, index) => {
+            html += `
+                <tr>
+                    <td>${startIndex + index + 1}.</td>
+                    <td>${s.srno   ?? '-'}</td>
+                    <td>${s.name   ?? '-'}</td>
+                    <td>${s.f_name ?? '-'}</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td>-</td>
+                </tr>`;
         });
-    </script>
+
+        return html;
+    }
+
+    // ── Fetch Report ───────────────────────────────────────────────────────────
+    function getReport(page = 1) {
+        const filters = getFilters();
+        clearErrors();
+
+        showLoader();
+        reportBody.html('');
+        reportContainer.hide();
+        exportContainer.hide();
+        pagination.html('');
+
+        $.ajax({
+            url: '{{ route('admin.reports.rteStudentReport') }}',
+            type: 'GET',
+            dataType: 'JSON',
+            data: { ...filters, page },
+            success(response) {
+                const hasRecords = response.data?.data?.length > 0;
+
+                reportBody.html(buildTableHtml(response.data));
+                adminUpdatePaginationControls(response.data);
+                reportContainer.show();
+
+                // Show export only when records exist
+                if (hasRecords) {
+                    exportContainer.show();
+                } else {
+                    exportContainer.hide();
+                }
+            },
+            error(xhr) {
+                const message = xhr.responseJSON?.message ?? {};
+
+                if (typeof message === 'object') {
+                    if (message.class)   showError('#class-error', message.class[0]);
+                    if (message.session) showError('#class-error', message.session[0]);
+                } else {
+                    reportBody.html(
+                        '<tr><td colspan="7" class="text-center text-danger">Server error. Please try again.</td></tr>'
+                    );
+                    reportContainer.show();
+                }
+
+                exportContainer.hide();
+            },
+            complete() { hideLoader(); }
+        });
+    }
+
+    // ── Export ─────────────────────────────────────────────────────────────────
+    function exportExcel() {
+        const filters = getFilters();
+
+        const params = new URLSearchParams({
+            class:   filters.class,
+            session: filters.session,
+        });
+
+        window.location.href = `{{ route('admin.reports.rteStudentReport.excel') }}?${params.toString()}`;
+    }
+
+    // ── Event Bindings ─────────────────────────────────────────────────────────
+    $('#btn-show-report').on('click', () => getReport(1));
+
+    $(document).on('click', '#admin-pagination .page-link', function (e) {
+        e.preventDefault();
+        const page = $(this).data('page');
+        if (page) getReport(page);
+    });
+
+    $('#btn-export').on('click', exportExcel);
+
+    // Reset on filter change
+    $('#class_id').on('change', function () {
+        reportContainer.hide();
+        exportContainer.hide();
+        reportBody.html('');
+        pagination.html('');
+        clearErrors();
+    });
+
+});
+</script>
 @endsection

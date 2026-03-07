@@ -109,4 +109,5 @@
 @section('scripts')
     <script src="{{ asset('public/marks/assets/js/custom.js') }}" type="text/javascript"></script>
     @yield('marks-scripts')
+    @stack('marks-swal-scripts')
 @endsection

@@ -111,6 +111,7 @@
 @section('scripts')
 <script src="{{ asset('public/student/assets/js/custom.js') }}" type="text/javascript"></script>
     @yield('std-scripts')
+    @stack('st-swal-scripts')
 @endsection
 
 

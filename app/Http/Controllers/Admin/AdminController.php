@@ -249,7 +249,6 @@ class AdminController extends Controller
 
     public function loginLogs(Request $request)
     {
-        # code...
         $query = LoginLog::select('id', 'ip_address', 'panel', 'browser', 'user_name', 'date', 'success', 'password_attempt');
         if ($request->search !== '') {
             $query->where('user_name', 'LIKE', "%$request->search%");
@@ -263,5 +262,90 @@ class AdminController extends Controller
         }
         $data = $query->orderBy('date', 'DESC')->paginate(10);
         return view('admin.login_logs.index', compact('data'));
+    }
+
+
+
+    /**
+     * Get Sections
+     */
+    public function getSections(Request $request){
+        return SectionMasterController::getAllClassSectionsAjax($request);
+    }
+
+
+    /**
+     * Get Students by class and section
+     */
+    public function getStudents(Request $request){
+        try {
+            $current_session = Session::get('current_session');
+            $validator = Validator::make($request->all(), [
+                'session_id' => 'nullable|exists:session_masters,id,active,1',
+                'class_id' => 'required',
+                'section_id' => 'required',
+            ]);
+            if ($validator->fails()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $validator->errors()
+                ], 200);
+            }
+            $currentSession = isset($request->session_id) ? $request->session_id : $current_session->id;
+            $ssid = isset($request->session_id) ? [1, 2, 3, 4, 5] : [1];
+            $classId = $request->class_id;
+            $sectionId = $request->section_id;
+            $baseQuery = DB::table('stu_main_srno')
+                ->leftJoin('stu_detail', 'stu_main_srno.srno', '=', 'stu_detail.srno')
+                ->leftJoin('parents_detail as parents', 'stu_main_srno.srno', '=', 'parents.srno')
+                ->select(
+                    'stu_main_srno.srno',
+                    'stu_main_srno.rollno',
+                    'stu_detail.name as student_name',
+                    'parents.f_name as father_name',
+                )
+                ->where('stu_main_srno.active', 1)
+                ->where('stu_main_srno.session_id', $currentSession)
+                ->whereIn('stu_main_srno.ssid', $ssid)->orderBy('stu_main_srno.rollno', 'asc');
+
+            if(!empty($classId) && $classId != 'all' && !empty($sectionId) && $sectionId != 'all'){
+                $baseQuery->where('stu_main_srno.class', $classId)->where('stu_main_srno.section', $sectionId);
+            }
+            $data = $baseQuery->get();
+            if ($data->isEmpty()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'No student found for the selected class and section.',
+                ], 200);
+            }else {
+                if ($classId == 'all' || $sectionId == 'all') {
+                   return response()->json([
+                    'status' => 'success',
+                        'message' => 'Students fetched successfully.',
+                        'data' => 'all'
+                    ], 200);
+                } else {
+                    $data = $data->map(function ($item) {
+                        return [
+                            'srno' => $item->srno,
+                            'rollno' => $item->rollno,
+                            'display_name' => $item->rollno . ' - ' . $item->student_name . ' / ' . $item->father_name,
+                            'student_name' => $item->student_name,
+                            'father_name' => $item->father_name,
+                        ];
+                    })->values(); /* Reindex the collection */
+                    return response()->json([
+                        'status' => 'success',
+                        'message' => 'Students fetched successfully.',
+                        'data' => $data
+                    ], 200);
+                }
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => "Failed to get students.",
+            ], 200);
+        }
     }
 }

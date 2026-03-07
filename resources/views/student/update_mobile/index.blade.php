@@ -2,30 +2,25 @@
 @section('sub-content')
     <div class="container-fluid">
         @if (Session::has('success'))
-            @section('scripts')
+            @push('st-swal-scripts')
                 <script>
-                    swal("Successful", "{{ Session::get('success') }}", "success").then(() => {
-                        location.reload();
-                    });
+                    swal("Successful", "{{ Session::get('success') }}", "success")
                 </script>
-            @endsection
+            @endpush
         @endif
 
         @if (Session::has('error'))
-            @section('scripts')
+            @push('st-swal-scripts')
                 <script>
-                    swal("Error", "{{ Session::get('error') }}", "error").then(() => {
-                        location.reload();
-                    });
+                    swal("Error", "{{ Session::get('error') }}", "error")
                 </script>
-            @endsection
+            @endpush
         @endif
         <div class="row justify-content-center">
             <div class="col-md-14">
                 <div class="card border-0 bg-white">
-           <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between"><h5 class="mb-0 mt-0">{{ 'Update Mobile No.' }}</h5>
+                    <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between"><h5 class="mb-0 mt-0">{{ 'Update Mobile No.' }}</h5>
                         <a href="{{ route('student.updateMobile.index') }}" class="btn bg-light btn-sm" ><span class="mdi mdi-chevron-left me-2"></span>Back</a>
-
                     </div>
                     <div class="card-body">
                         <form id="st-form" action="{{ route('student.updateMobile.store') }}" method="POST">

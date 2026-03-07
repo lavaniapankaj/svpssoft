@@ -12,8 +12,7 @@
                         <form id="class-section-form">
                             <div class="row">
                                 <div class="form-group col-md-6">
-                                    <label for="session_id" class="mt-2">Session <span
-                                            class="text-danger">*</span></label>
+                                    <label for="session_id" class="mt-2">Session <span class="text-danger">*</span></label>
                                     <select name="session_id" id="session_id" class="form-control " required>
                                         <option value="">Select Session</option>
                                         @if (count($sessions) > 0)
@@ -26,51 +25,41 @@
                                             <option value="">No Session Found</option>
                                         @endif
                                     </select>
-                                    <span class="invalid-feedback form-invalid fw-bold" id="session-error"
-                                        role="alert"></span>
+                                    <span class="text-danger fw-bold" id="session-error" role="alert"></span>
                                 </div>
                                 <div class="form-group col-md-6">
-                                    <label for="back_class_id" class="mt-2">Class <span
-                                            class="text-danger">*</span></label>
-                                    <input type="hidden" id="initialClassId" value="{{ old('class') }}">
-                                    <select name="class" id="back_class_id" class="form-control " required>
-                                        <option value="">All Class</option>
+                                    <label for="fee_class_id" class="mt-2">Class <span class="text-danger">*</span></label>
+                                    <select name="class" id="fee_class_id" class="form-control" {{ count($classes) == 0 ? 'disabled' : 'required' }}>
+                                        @if (count($classes) > 0)
+                                            <option value="all">All Class</option>
+                                            @foreach ($classes as $key => $class)
+                                                <option value="{{ $key }}" {{ request()->get('class') == $key ? 'selected' : '' }}>{{ $class }}</option>
+                                            @endforeach
+                                        @else
+                                            <option value="" selected disabled>No Class Found</option>
+                                        @endif
                                     </select>
-                                    <span class="invalid-feedback form-invalid fw-bold" id="class-error"
-                                        role="alert"></span>
+                                    <span class="text-danger fw-bold" id="class-error" role="alert"></span>
 
                                 </div>
 
 
                                 <div class="form-group col-md-6">
-                                    <label for="back_section_id" class="mt-2">Section <span
-                                            class="text-danger">*</span></label>
-                                    <input type="hidden" id="initialSectionId" value="{{ old('section') }}">
-                                    <select name="section" id="back_section_id" class="form-control  " required>
-                                        <option value="">All Section</option>
-                                    </select>
-                                    <span class="invalid-feedback form-invalid fw-bold" id="section-error"
-                                        role="alert"></span>
-                                    <img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader"
-                                        id="loader" style="display:none; width:10%;">
+                                    <label for="fee_section_id" class="mt-2">Section <span class="text-danger">*</span></label>
+                                    <select name="section" id="fee_section_id" class="form-control" required></select>
+                                    <span class="text-danger fw-bold" id="section-error" role="alert"></span>
+
                                 </div>
-                            
+
                                 <div class="form-group col-md-6">
-                                    <input type="hidden" name="current_session" value='' id="current_session">
-                                    <label for="back_std_id" class="mt-2">Student <span
-                                            class="text-danger">*</span></label>
-                                    <select name="std_id" id="back_std_id" class="form-control " required>
-                                        <option value="">All Students</option>
-                                    </select>
-                                    <span class="invalid-feedback form-invalid fw-bold" id="std-error"
-                                        role="alert"></span>
+                                    <label for="fee_student_id" class="mt-2">Student <span class="text-danger">*</span></label>
+                                    <select name="std_id" id="fee_student_id" class="form-control " required></select>
+                                    <span class="text-danger fw-bold" id="std-error" role="alert"></span>
                                 </div>
                                 <div class="form-group col-md-6">
-                                    <label for="report" class="mt-2">Select Report <span
-                                            class="text-danger">*</span></label>
+                                    <label for="report" class="mt-2">Select Report <span class="text-danger">*</span></label>
                                     <select name="report" id="report" class="form-control " required>
-                                        {{-- <option value="">Select Report</option> --}}
-                                        <option value="complete" selected>Complete Report</option>
+                                        <option value="backcomplete" selected>Complete Report</option>
                                         <option value="due">Due Report</option>
                                     </select>
                                 </div>
@@ -78,12 +67,12 @@
 
                             <div class="mt-3">
                                 <button type="button" id="show-details" class="btn btn-primary">Show Details</button>
-                                {{-- <span class="invalid-feedback form-invalid fw-bold" id="std-error"role="alert"></span> --}}
+                                <span><img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader" id="loader" style="display:none; width:5%;"></span>
                             </div>
 
                         </form>
 
-                        <div id="complete-fee-table" class="table-responsive mt-5">
+                        <div id="complete-fee-table" class="table-responsive mt-5" style="display: none;">
                             <table class="table table-striped table-bordered">
                                 <thead>
                                     <th>Class</th>
@@ -102,10 +91,14 @@
                                 </thead>
                                 <tbody></tbody>
                             </table>
-                            <div class="export-div">
-                                <button type="button" class="btn btn-info" id="export-button">Export</button>
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <div class="export-div" style="display: none;">
+                                    <button type="button" class="btn btn-info" id="export-button">
+                                        <i class="bx bx-download"></i> Export to Excel
+                                    </button>
+                                </div>
+                                <div id="due-std-pagination"></div>
                             </div>
-                            <div id="std-pagination" class="mt-4"></div>
                         </div>
                     </div>
                 </div>
@@ -116,144 +109,236 @@
 @section('fee-scripts')
     <script>
         $(document).ready(function() {
-            const feeTable = $('#complete-fee-table');
-            feeTable.hide();
-            const classId = $('#back_class_id');
-            const sectionId = $('#back_section_id');
-            const sessionId = $('#session_id');
-            const stdId = $('#back_std_id');
-            const loader = $('#loader');
-            const reportTypeDropdown = $('#report');
-            const sessionError = $('#session-error');
-            let currentPage = 1;
+            let page = 1;
+            let classId = $('#fee_class_id');
+            let sectionId = $('#fee_section_id');
+            let session = $('#session_id');
+            let sessionId = $('#session_id').val();
 
-            classSectionWithAll(fetchStudentsForSession, fetchStudents);
+            /** Get all students */
+            function getFeeSessionAllStudents(classId, sectionId, sessionId) {
 
-            function fetchStudentsForSession() {
-                const allSectionsValue = sectionId.find('option:first').val();
-                fetchStudents(allSectionsValue);
-            }
+                const loader = $('#loader');
+                const studentSelect = $('#fee_student_id');
 
-            function updateStudentDropdown(data, isAllSections) {
-                stdId.empty();
-                const allStdIds = data.map(student => student.srno);
-                if (data.length > 0) {
-
-                    if (isAllSections) {
-                        stdId.append(`<option value="${allStdIds.join(',')}" selected>All Students</option>`);
-                    } else {
-                        stdId.append(`<option value="${allStdIds.join(',')}" selected>All Students</option>`);
-                        data.forEach(value => {
-                            stdId.append(
-                                `<option value="${value.srno}">${value.student_name}/SH. ${value.f_name}</option>`
-                            );
-                        });
-                    }
-
-                    /* const selectedStValue = stdId.val() || allStdIds.join(',');
-                    studentTable(selectedStValue);
-                    $('#std-pagination').show(); */
-                } else {
-                    stdId.append(`<option value="">No Student Found</option>`);
-                    /* $('#complete-fee-table table tbody').html(`
-                                <tr>
-                                    <td colspan="13" class="text-center">No student found for the selected session and class.</td>
-                                </tr>
-                    `);
-                    feeTable.hide();
-                    $('#std-pagination').hide(); */
+                // Reset student dropdown if no class or section selected
+                if (!classId && !sectionId && !sessionId) {
+                    studentSelect.prop('disabled', true).html('<option value="">Select session, class and section first</option>');
+                    return;
                 }
-            }
 
-            function fetchStudents(sectionIds) {
-                if (!sectionIds) return;
                 loader.show();
+                studentSelect.prop('disabled', true).html('<option value="">Loading students...</option>');
                 $.ajax({
-                    url: siteUrl + '/std-name-father',
-                    type: 'GET',
-                    dataType: 'JSON',
-                    data: {
-                        class_id: classId.val(),
-                        section_id: sectionIds,
-                        session_id: sessionId.val(),
+                    url: siteUrl + '/fee/students',
+                    type: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                     },
-                    success: function(data) {
-                        const isAllSections = sectionIds.includes(',');
-                        updateStudentDropdown(data, isAllSections);
+                    data: { class_id: classId, section_id: sectionId , session_id: sessionId},
+                    dataType: 'json',
+
+                    success: function (response) {
+                        studentSelect.empty();
+                        if (response.status == 'success' && response.data == 'all') {
+                            studentSelect.append('<option value="all">All Students</option>');
+                            studentSelect.prop('disabled', false);
+                            return;
+                        }
+                        if (response.status == 'success' && response.data && response.data.length > 0) {
+                            studentSelect.append('<option value="all">All Students</option>');
+                            $.each(response.data, function (id, st) {
+                                studentSelect.append(`<option value="${st.srno}">${st.display_name}</option>`);
+                            });
+                            studentSelect.prop('disabled', false);
+                        } else {
+                            studentSelect.html('<option value="">No students found</option>').prop('disabled', true);
+                        }
                     },
-                    complete: function() {
+                    error: function () {
+                        studentSelect.html('<option value="">No students found</option>').prop('disabled', true);
+                    },
+                    complete: function () {
                         loader.hide();
-                    },
-                    error: function(data) {
-                        console.error('Error fetching students:', data.responseJSON?.message || 'Unknown error');
                     }
                 });
             }
+            if (classId.val() && classId.val() != '') {
+                getFeeAllSections(classId.val(), function() {
+                    let selectedSection = sectionId.val();
+                    if (!selectedSection || selectedSection == '') {
+                        sectionId.val('all');
+                        selectedSection = 'all';
+                    }
+                    getFeeSessionAllStudents(classId.val(), selectedSection);
+                });
+            }
 
-            function studentTable(st, page = 1) {
-                const reportType = reportTypeDropdown.val();
-                loader.show();
-                if (st && page) {
-                    feeTable.show();
+            classId.change(function() {
+                let selectedClass = $(this).val();
+                page = 1;
+                $('#complete-fee-table').hide();
+                $('#complete-fee-table table tbody').html('');
+                $('#due-std-pagination').html('');
+                $('.export-div').hide();
+
+                getFeeAllSections(selectedClass, function() {
+                    sectionId.val('all');
+                    getFeeSessionAllStudents(selectedClass, 'all');
+                });
+            });
+
+            sectionId.change(function() {
+                page = 1;
+                $('#complete-fee-table').hide();
+                $('#complete-fee-table table tbody').html('');
+                $('#due-std-pagination').html('');
+                $('.export-div').hide();
+
+                getFeeSessionAllStudents(classId.val(), $(this).val());
+            });
+            session.change(function() {
+                page = 1;
+                $('#complete-fee-table').hide();
+                $('#complete-fee-table table tbody').html('');
+                $('#due-std-pagination').html('');
+                $('.export-div').hide();
+                sessionId = $(this).val();
+
+                getFeeSessionAllStudents(classId.val(), $(this).val());
+            });
+
+            $('#report').change(function() {
+                page = 1;
+                $('#complete-fee-table').hide();
+                $('#complete-fee-table table tbody').html('');
+                $('#due-std-pagination').html('');
+                $('.export-div').hide();
+            });
+
+            $('#fee_student_id').change(function() {
+                page = 1;
+                $('#complete-fee-table').hide();
+                $('#complete-fee-table table tbody').html('');
+                $('#due-std-pagination').html('');
+                $('.export-div').hide();
+            });
+
+            function loadFeeReport(pageNum) {
+                page = pageNum;
+                let selectedClassVal = classId.val();
+                let selectedSectionVal = sectionId.val();
+                let st = $('#fee_student_id').val();
+                let reportType = $('#report').val();
+                let hasError = false;
+
+                // Reset errors
+                $('#class-error, #section-error, #std-error, #session-error').text('');
+
+                if (!selectedClassVal) {
+                    $('#class-error').text('Please select a class.');
+                    hasError = true;
+                }
+
+                if (!selectedSectionVal) {
+                    $('#section-error').text('Please select a section.');
+                    hasError = true;
+                }
+
+                if (!st) {
+                    $('#std-error').text('Please select a student.');
+                    hasError = true;
+                }
+                console.log(sessionId);
+
+                if (!sessionId) {
+                    $('#session-error').text('Please select a session.');
+                    hasError = true;
+                }
+
+                if (hasError) {
+                    return;
+                }
+                if(selectedClassVal && selectedSectionVal && st && reportType && sessionId) {
+                    $('#complete-fee-table').show();
+
+                    if (typeof loader !== 'undefined') {
+                        loader.show();
+                    }
+
                     $.ajax({
-                        url: '{{ route('fee.studentWithoutSsid') }}',
+                        url: "{{ route('fee.std-due-fee-report') }}",
                         type: 'POST',
                         dataType: 'JSON',
                         headers: {
                             'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                         },
                         data: {
-                            session: sessionId.val(),
-                            class: classId.val(),
-                            section: sectionId.val(),
+                            class: selectedClassVal,
+                            section: selectedSectionVal,
                             srno: st,
+                            session: sessionId,
                             reportType: reportType,
                             page: page,
                         },
-                        success: function(data) {
-                            const isAllStudents = st.includes(',');
-                            const isAllSections = sectionId.val().includes(',');
+                        success: function(response) {
+                            let stdHtml = '';
 
-                            let rows = data.data.map(value => {
-                                const totalDue = value.due_amount + value.trans_due_amount;
-                                const isValid = isAllSections ? st == value.student.srno.toString() : (st == value.student.srno.toString() && sectionId.val() == value.student.section.toString());
-
-                                if ((isAllStudents || isValid) && (reportType == 'complete' || totalDue > 0)) {
-                                    return `
-                                    <tr>
+                            if (response.status === 'success' && response.data && response.data.length > 0) {
+                                response.data.forEach(value => {
+                                    stdHtml += `<tr>
                                         <td>${value.class_name}</td>
                                         <td>${value.section_name}</td>
                                         <td>${value.student_name}</td>
                                         <td>${value.father_name}</td>
-                                        <td>${value.payable_amount}</td>
-                                        <td>${value.paid_amount}</td>
-                                        <td>${value.due_amount}</td>
-                                        <td>${value.trans_payable_amount ?? 0}</td>
-                                        <td>${value.trans_paid_amount}</td>
-                                        <td>${value.trans_due_amount}</td>
-                                        <td>${totalDue}</td>
+                                        <td>${value.academic_payable_amount}</td>
+                                        <td>${value.academic_paid_amount}</td>
+                                        <td>${value.academic_due_amount}</td>
+                                        <td>${value.transport_payable_amount}</td>
+                                        <td>${value.transport_paid_amount}</td>
+                                        <td>${value.transport_due_amount}</td>
+                                        <td>${value.total_due}</td>
                                         <td>
-                                            <a href='${siteUrl}/fee/back-session/individual-fee-details/${value.student.srno}/${value.student.session_id}/${value.student.class}/${value.student.section}' class="btn btn-sm btn-icon p-1">
+                                            <a href='${siteUrl}/fee/back-session/individual-fee-details/${value.student_srno}/${value.session_id}/${value.class}/${value.section}' class="btn btn-sm btn-icon p-1">
                                                 <i class="mdi mdi-eye mx-1" data-bs-toggle="tooltip" data-bs-placement="top" title="View"></i>
                                             </a>
                                         </td>
-                                        <td>${getStudentStatus(value.student.ssid)}</td>
+                                        <td>${getStudentStatus(value.ssid)}</td
                                     </tr>`;
-                                }
-                            }).join('');
-                            if (data.data.length == 0) {
-                                rows =
-                                    '<tr><td colspan="13" class="text-center">No data found.</td></tr>';
+                                });
+
+                                // Show export button when data is available
+                                $('.export-div').show();
+                            } else {
+                                stdHtml = '<tr><td colspan="13" class="text-center">No Student Record Found</td></tr>';
+                                // Hide export button when no data
+                                $('.export-div').hide();
                             }
 
-                            $('#complete-fee-table table tbody').html(rows);
-                            updatePaginationControls(data.pagination);
+                            $('#complete-fee-table table tbody').html(stdHtml);
+
+                            if (response.pagination) {
+                                dueUpdatePaginationControls(response.pagination);
+                            } else {
+                                $('#due-std-pagination').html('');
+                            }
                         },
                         complete: function() {
-                            loader.hide();
+                            if (typeof loader !== 'undefined') {
+                                loader.hide();
+                            }
                         },
-                        error: function(data) {
-                            console.error('Error fetching students:', data.responseJSON?.message || 'Unknown error');
+                        error: function(xhr) {
+                            if (typeof loader !== 'undefined') {
+                                loader.hide();
+                            }
+                            let errorMsg = 'Error loading data';
+                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                errorMsg = xhr.responseJSON.message;
+                            }
+                            $('#complete-fee-table table tbody').html(`<tr><td colspan="13" class="text-center text-danger">${errorMsg}</td></tr>`);
+                            $('#due-std-pagination').html('');
+                            $('.export-div').hide();
                         }
                     });
                 }
@@ -263,54 +348,87 @@
                 return ssid == 1 ? 'Active' : ssid == 2 ? 'Class Promoted' : ssid == 3 ? 'School Promoted' : ssid == 4 ? 'Tc' : ssid == 5 ? 'Left Out' : '';
             }
 
-            function getExcelReport() {
-                if(!stdId.val()){
+            $('#show-details').click(function() {
+                page = 1;
+                loadFeeReport(1);
+            });
+
+            $(document).on('click', '#due-std-pagination .page-link', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                let clickedPage = parseInt($(this).data('page'));
+                if (clickedPage && clickedPage > 0) {
+                    $('html, body').animate({
+                        scrollTop: $("#complete-fee-table").offset().top - 100
+                    }, 300);
+
+                    loadFeeReport(clickedPage);
+                }
+
+                return false;
+            });
+
+            // Export button click handler
+            $('#export-button').click(function() {
+                let selectedClassVal = classId.val();
+                let selectedSectionVal = sectionId.val();
+                let st = $('#fee_student_id').val();
+                let reportType = $('#report').val();
+
+                if(!selectedClassVal || !selectedSectionVal || !st || !reportType) {
                     return;
                 }
-                const st = stdId.val();
-                const report = reportTypeDropdown.val();
-                const classID = classId.val();
-                const sectionID = sectionId.val();
-                const exportUrl =
-                    `{{ route('fee.back-session-fee-detail-excel') }}?session=${sessionId.val()}&srno=${st}&reportType=${report}&class=${classID}&section=${sectionID}`;
-                window.location.href = exportUrl;
-            }
 
-            // Event Listeners
-            sectionId.change(() => fetchStudents(sectionId.val()));
-            sessionId.change(() => {
-                classId.val(classId.find('option:first').val());
-                sectionId.val(sectionId.find('option:first').val());
+                // Show loading state
+                let $btn = $(this);
+                let originalText = $btn.html();
+                $btn.prop('disabled', true).html('<i class="bx bx-loader bx-spin"></i> Exporting...');
 
-                if (!sessionId.val()) {
-                    feeTable.hide();
-                } else {
-                    fetchStudentsForSession();
-                }
-            });
+                // Build export URL with parameters
+                let exportUrl = "{{ route('fee.back.session.std-due-fee-report-excel') }}" +
+                    '?class=' + encodeURIComponent(selectedClassVal) +
+                    '&section=' + encodeURIComponent(selectedSectionVal) +
+                    '&session=' + encodeURIComponent(sessionId) +
+                    '&srno=' + encodeURIComponent(st) +
+                    '&reportType=' + encodeURIComponent(reportType);
 
-           /*  stdId.change(() => studentTable(stdId.val()));
-            reportTypeDropdown.change(() => studentTable(stdId.val())); */
-            $('#show-details').click(() => {
-                if (!sessionId.val()) {
-                    sessionError.show().text('Select the Session');
-                    feeTable.hide();
-                } else {
-                    sessionError.hide();
-                    studentTable(stdId.val());
-                    // feeTable.show();
-                }
-            });
-            $('#export-button').click(getExcelReport);
-            $(document).on('click', '#std-pagination .page-link', function(e) {
-                e.preventDefault();
-                const page = $(this).data('page');
-                currentPage = page;
-                studentTable(stdId.val(), page);
-            });
-            $('#session_id, #back_class_id, #back_section_id, #back_std_id, #report').change(() => {
-                feeTable.hide();
+                // First check if data exists
+                $.ajax({
+                    url: "{{ route('fee.back.session.check-due-fee-data') }}",
+                    type: 'GET',
+                    data: {
+                        class: selectedClassVal,
+                        section: selectedSectionVal,
+                        srno: st,
+                        sessionId: sessionId,
+                        reportType: reportType
+                    },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            // Data exists, proceed with download
+                            window.location.href = exportUrl;
+
+                            // Reset button after a delay
+                            setTimeout(function() {
+                                $btn.prop('disabled', false).html(originalText);
+                            }, 2000);
+                        } else {
+                            $btn.prop('disabled', false).html(originalText);
+                        }
+                    },
+                    error: function(xhr) {
+                        let errorMsg = 'No data available to export';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMsg = xhr.responseJSON.message;
+                        }
+                        $btn.prop('disabled', false).html(originalText);
+                    }
+                });
             });
         });
+
+
+
     </script>
 @endsection

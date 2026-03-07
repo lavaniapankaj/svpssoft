@@ -2,28 +2,23 @@
 @section('sub-content')
     <div class="container-fluid">
         @if (Session::has('success'))
-            @section('scripts')
+            @push('swal-scripts')
                 <script>
-                    swal("Successful", "{{ Session::get('success') }}", "success").then(() => {
-                        location.reload();
-                    });
+                    swal("Successful", "{{ Session::get('success') }}", "success");
                 </script>
-            @endsection
+            @endpush
         @endif
-
         @if (Session::has('error'))
-            @section('scripts')
+            @push('swal-scripts')
                 <script>
-                    swal("Error", "{{ Session::get('error') }}", "error").then(() => {
-                        location.reload();
-                    });
+                    swal("Error", "{{ Session::get('error') }}", "error");
                 </script>
-            @endsection
+            @endpush
         @endif
         <div class="row">
             <div class="col-md-12">
                 <div class="card border-0 bg-white">
-           <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between"><h5 class="mb-0 mt-0">{{ 'Edit/Remove Fee Entry' }}</h5>
+                    <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between"><h5 class="mb-0 mt-0">{{ 'Edit/Remove Fee Entry' }}</h5>
                         <a href="{{ route('admin.editSection.index') }}" class="btn bg-light btn-sm" ><span class="mdi mdi-chevron-left me-2"></span>Back</a>
 
                     </div>
@@ -33,8 +28,7 @@
                             <div class="row">
                                 <div class="form-group col-md-4">
                                     <label for="class_id" class="mt-2">Class <span class="text-danger">*</span></label>
-                                    <select name="class" id="class_id"
-                                        class="form-control @error('class') is-invalid @enderror" required>
+                                    <select name="class" id="class_id" class="form-control @error('class') is-invalid @enderror" required>
                                         <option value="">Select Class</option>
                                         @if (count($classes) > 0)
                                             @foreach ($classes as $key => $class)
@@ -47,33 +41,26 @@
                                         @endif
                                     </select>
                                     @error('class')
-                                        <span class="invalid-feedback form-invalid fw-bold"
-                                            role="alert">{{ $message }}</span>
+                                        <span class="invalid-feedback form-invalid fw-bold" role="alert">{{ $message }}</span>
                                     @enderror
-                                    <img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader"
-                                        id="loader" style="display:none; width:10%;">
+
                                 </div>
 
 
                                 <div class="form-group col-md-4">
-                                    <label for="section_id" class="mt-2">Section <span
-                                            class="text-danger">*</span></label>
+                                    <label for="section_id" class="mt-2">Section <span class="text-danger">*</span></label>
                                     <input type="hidden" id="initialSectionId" value="{{ old('section') }}">
-                                    <select name="section" id="section_id"
-                                        class="form-control @error('section') is-invalid @enderror" required>
+                                    <select name="section" id="section_id" class="form-control @error('section') is-invalid @enderror" required>
                                         <option value="">Select Section</option>
-
                                     </select>
                                     @error('section')
-                                        <span class="invalid-feedback form-invalid fw-bold"
-                                            role="alert">{{ $message }}</span>
+                                        <span class="invalid-feedback form-invalid fw-bold" role="alert">{{ $message }}</span>
                                     @enderror
                                 </div>
                                 <div class="form-group col-md-4">
                                     <input type="hidden" name="current_session" value='' id="current_session">
                                     <label for="std_id" class="mt-2">Student<span class="text-danger">*</span></label>
-                                    <select name="std_id" id="std_id"
-                                        class="form-control mx-1 @error('std_id') is-invalid @enderror">
+                                    <select name="std_id" id="std_id" class="form-control mx-1 @error('std_id') is-invalid @enderror">
                                         <option value="">Select Student</option>
                                     </select>
                                     <span class="invalid-feedback form-invalid fw-bold student-error" role="alert"></span>
@@ -83,14 +70,14 @@
 
 
                             <div class="mt-3">
-                                <button type="button" id="show-details" class="btn btn-primary">
-                                    Show Details</button>
+                                <button type="button" id="show-details" class="btn btn-primary">Show Details</button>
+                                <span><img src="{{ config('myconfig.myloader') }}" alt="Loading..." class="loader" id="loader" style="display:none; width:5%;"></span>
                             </div>
 
                         </form>
 
 
-                        <div id="std-container" class="mt-4">
+                        <div id="std-container" class="mt-4" style="display: none">
                             <table class="table table-responsible">
                                 <thead>
                                     <tr>
@@ -108,7 +95,7 @@
                                 </tbody>
                             </table>
                         </div>
-                        <div id="edit-std-container" class="mt-4">
+                        <div id="edit-std-container" class="mt-4" style="display: none">
                             <form action="" method="post">
                                 @csrf
                                 <input type="hidden" id="hidden-srno" name="srno" value="">
@@ -215,14 +202,12 @@
              */
             function fetchStudentDetails() {
                 const stdId = $('#std_id').val();
-                const sessionId = $('#current_session').val();
                 $.ajax({
                     url: '{{ route('admin.editSection.stdFeeDetailFetch') }}',
                     type: 'GET',
                     dataType: 'JSON',
                     data: {
                         srno: stdId,
-                        session: sessionId
                     },
                     success: function(response) {
                         renderStudentDetails(response.data);
@@ -289,6 +274,90 @@
                 return '';
             }
 
+            function editFee(stdId, sessionId, feeOf, academic, paidMercy, PayDate, refSlip) {
+                $.ajax({
+                    url: siteUrl + '/admin/edit-section/std-fee-details',
+                    type: 'GET',
+                    dataType: 'JSON',
+                    data: {
+                        srno: stdId,
+                        session: sessionId,
+                    },
+                    success: function (response) {
+                        let stdHtml = '';
+                        if (response.data && response.data.length > 0) {
+                            $.each(response.data, function (id, value) {
+                                if (value.ref_slip_no == refSlip && value.fee_of == feeOf && value.paid_mercy == paidMercy && value.academic_trans == academic && value.pay_date == PayDate) {
+                                        stdHtml += `<tr>
+                                                <td>${value.ref_slip_no ?? ''}</td>
+                                                <td><input type="date" value="${value.pay_date}" name="pay_date"></td>
+                                                <td>${value.academic_trans == 1 ? 'Academic' : 'Transport'}</td>
+                                                <td>${value.fee_of == 1 && value.academic_trans == 1 ? 'Admission Fee' : (value.paid_mercy == 1 && value.fee_of == (value.academic_trans == 1 ? 2 : 1) ? 'Ist Installment' : (value.paid_mercy == 1 && value.fee_of == (value.academic_trans == 1 ? 3 : 2) ? 'IInd Installment' : (value.fee_of == (value.academic_trans == 1 ? 4 : 3) && value.paid_mercy == 1 ? 'Complete' : 'Mercy Fee')))}</td >
+                                                <td><input type="text" value="${value.amount}" name="amount"></td>
+                                                <td>${value.fee_of == (value.academic_trans == 1 ? 4 : 3) && value.paid_mercy == 2 ? 'Mercy' : 'Paid'}</td>
+                                                <td>
+                                                <button type="button" class="btn btn-sm btn-info p-1 edit-update-btn">Update</button>
+                                                </td>
+                                        </tr > `;
+                                }
+                            });
+                        } else {
+                            stdHtml = '<tr><td colspan="7" class="text-center">No Fee Details Found</td></tr>';
+                        }
+                        $('#edit-std-container table tbody').html(stdHtml);
+                        $('#edit-std-container').show();
+                    },
+                    error: function (xhr) {
+                        let stdHtml = '';
+                        stdHtml = '<tr><td colspan="7" class="text-center">No Fee Details Found</td></tr>';
+                        $('#edit-std-container table tbody').html(stdHtml);
+                        $('#edit-std-container').show();
+                    }
+                });
+            };
+            function editFeeSave() {
+                let form = $('#edit-std-container form');
+                let formData = form.serializeArray();
+                $.ajax({
+                    url: siteUrl + '/admin/edit-section/std-fee-edit-remove/edit',
+                    type: 'POST',
+                    data: formData,
+                    success: function (response) {
+                        if (response.status == 'success') {
+                            Swal.fire({
+                                title: 'Successful',
+                                text: response.message,
+                                icon: 'success',
+                                confirmButtonColor: 'rgb(122 190 255)',
+                            });
+                            /* Hide edit table */
+                            editStdContainer.hide();
+                            /* Reload latest records */
+                            fetchStudentDetails();
+                        } else {
+                            Swal.fire({
+                                title: 'Error',
+                                text: data.message,
+                                icon: 'error',
+                                confirmButtonColor: 'rgb(122 190 255)',
+                            });
+                        }
+                    },
+                    error: function (xhr) {
+                        Swal.fire({
+                            title: 'Error',
+                            text: 'Update failed. Try again.',
+                            icon: 'error',
+                            confirmButtonColor: 'rgb(122 190 255)',
+                        });
+                    }
+                });
+            }
+
+            $(document).on('click', '.edit-update-btn', function () {
+                editFeeSave();
+            });
+
             /**
              * Fill the edit form with data
              */
@@ -300,8 +369,7 @@
                 $('#hidden-paidMercy').val(data.paidMercy);
                 $('#hidden-refSlip').val(data.refslip);
 
-                editFee(data.srno, data.session, data.feeOf, data.academicTrans, data.paidMercy, data.payDate, data
-                    .refslip);
+                editFee(data.srno, data.session, data.feeOf, data.academicTrans, data.paidMercy, data.payDate, data.refslip);
             }
 
             /**
@@ -320,7 +388,6 @@
                     if (result.isConfirmed) {
                         const url = form.attr('action');
                         const token = form.find('input[name="_token"]').val();
-
                         $.ajax({
                             url: url,
                             type: 'DELETE',
@@ -330,15 +397,17 @@
                             },
                             success: function(data) {
                                 if (data.status === 'success') {
-                                    Swal.fire('Deleted!', data.message, 'success').then(() =>
-                                        location.reload());
+                                    Swal.fire('Deleted!', data.message, 'success');
+                                    /* Hide edit table */
+                                    editStdContainer.hide();
+                                    /* Reload latest records */
+                                    fetchStudentDetails();
                                 } else {
                                     Swal.fire('Error!', data.message, 'error');
                                 }
                             },
                             error: function() {
-                                Swal.fire('Error!', 'An error occurred while deleting.',
-                                    'error');
+                                Swal.fire('Error!', 'An error occurred while deleting.', 'error');
                             }
                         });
                     }

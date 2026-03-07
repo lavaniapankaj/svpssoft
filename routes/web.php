@@ -40,9 +40,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 
-// Route::get('/', function () {
-//     return view('index');
-// })->name('index.page');
 
 Route::get('/', function () {
     session()->flush();
@@ -54,8 +51,6 @@ Route::get('/', function () {
 })->name('index.page');
 
 Auth::routes();
-
-// Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 
 Route::get('/admin/login', [AdminController::class, 'login'])->name('admin.login');
 Route::get('/student-admin/login', [StudentController::class, 'login'])->name('student.login');
@@ -83,7 +78,6 @@ Route::group(['middleware' => 'auth'], function () {
 Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth', 'is_validate:admin']], function () {
 
     Route::controller(AdminController::class)->group(function () {
-
         Route::get('/', 'index')->name('dashboard');
         Route::get('change-password', 'changePass')->name('changePass');
         Route::post('change-password', 'changePassStore')->name('changePass.store');
@@ -92,10 +86,12 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth', 'i
         Route::get('left-out-std', 'leftOutStd')->name('left-out-std.index');
         Route::post('left-out-std/{id}/edit', 'leftOutStdEdit')->where('id', '.*')->name('left-out-std.edit');
         Route::get('login-logs', 'loginLogs')->name('login.logs.index');
+
+        Route::post('sections', 'getSections')->name('sections');
+        Route::post('students', 'getStudents')->name('students');
     });
 
     Route::resource('session-master', SessionMasterController::class)->except(['destroy']);
-    // Route::resource('current-session', CurrentSessionController::class);
     Route::controller(CurrentSessionController::class)->group(function () {
 
         Route::get('current-session', 'index')->name('current-session.index');
@@ -123,6 +119,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth', 'i
         Route::get('edit-section/edit-std-info', 'editStdInfoClass')->name('editSection.editStdInfoClass');
         Route::post('edit-section/edit-std-info', 'editStdInfoClassStore')->name('editSection.editStdInfoClass.store');
         Route::get('edit-section/edit-std-admission-date', 'editStdAdmissionDate')->name('editSection.editStdAdmissionDate');
+        Route::get('edit-section/edit-std-admission-date/std', 'editStdAdmissionDateFetch')->name('editSection.admissionDate.st');
         Route::post('edit-section/edit-std-admission-date', 'editStdAdmissionDateStore')->name('editSection.editStdAdmissionDate.store');
         Route::get('edit-section/edit-std-previous-record', 'editStdByPreSrno')->name('editSection.editStdByPreSrno');
         Route::post('edit-section/edit-std-previous-record', 'editStdByPreSrnoStore')->name('editSection.editStdByPreSrno.store');
@@ -136,9 +133,6 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth', 'i
         Route::delete('edit-section/std-fee-edit-remove/{id}', 'stdFeeRemove')->name('editSection.stdFeeRemove');
         Route::get('edit-section/std-mercy-fee', 'mercyFeeBoth')->name('editSection.mercyFeeBoth');
         Route::post('edit-section/std-mercy-fee', 'mercyFeeBothStore')->name('editSection.mercyFeeBothStore');
-
-        // Route::get('edit-section/std-fee-edit','editStdFeeDetailsView')->name('editSection.editStdFeeDetailsView');
-        // Route::get('edit-section/std-fee-edit/info','editStdFeeGetInfo')->name('editSection.editStdFeeGetInfo');
         Route::get('edit-section/edit-std-fee','editStdFee')->name('editSection.editStdFee');
         Route::get('edit-section/get-std-fee-details','getStdFeeInfo1')->name('editSection.getStdFeeInfo1');
         Route::post('edit-section/std-fee-details/store','editStdFeeStore')->name('editSection.editStdFeeStore');
@@ -164,7 +158,7 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth', 'i
         Route::get('reports/age-wise-report/details', 'reportAgeWiseWithDetails')->name('reports.reportAgeWiseWithDetails');
         Route::get('reports/age-wise-report/index', 'reportAgeWiseView')->name('reports.reportAgeWiseView.index');
 
-        Route::get('reports/transport-wise-report', 'reportTransportWise')->name('reports.reportTransportWise');
+        Route::post('reports/transport-wise-report', 'reportTransportWise')->name('reports.reportTransportWise');
         Route::get('reports/transport-wise-report/index', 'transportWiseReportView')->name('reports.transportWiseReportView.index');
 
         Route::get('reports/sr-register-report/index', 'stdregisterView')->name('reports.stdregisterView.index');
@@ -219,11 +213,6 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth', 'i
         Route::post('/day-wise-collection/excel','exportdDayWiseCollectionReprt')->name('exportdDayWiseCollectionReprt');
     });
 
-    // Route::get('full-detail-student/{prevSrno?}/{srno?}', function(?string $prevSrno=null, ?string $srno=null){
-    //     dd(['prevSrno' => $prevSrno, 'srno' => $srno]);
-    //     return view('admin.reports.individual_std_report',['prevSrno' => $prevSrno, 'srno' => $srno]);
-    // })->name('individual.stdreports');
-
     Route::get('full-detail-student/{prevSrno?}/{srno?}', function(Request $request, ?string $prevSrno = null, ?string $srno = null) {
         // First check URL parameters, if not found then check query parameters
         $prevSrno = $prevSrno ?? $request->query('prevSrno');
@@ -265,22 +254,6 @@ Route::group(['prefix' => 'admin', 'as' => 'admin.', 'middleware' => ['auth', 'i
         Route::post('transport-fee-master/store', 'store')->name('transport-fee-master.store');
         Route::get('transport-fee-master/get-students', 'getStudents')->name('transport-fee-master.getStudents');
     });
-
-    /*Route::resources([
-        'academic-fee-master' => FeeMasterController::class,
-        'transport-fee-master' => TransportFeeMasterController::class,
-        'exam-master' => ExamMasterController::class,
-        'marks-master' => MarksMasterController::class,
-        'sms-panel' => SmsPanelController::class,
-        'promote-std' => PromoteController::class,
-        'website-message' => WebsiteMessageController::class,
-        'section-master' => SectionMasterController::class,
-        'class-master' => ClassMasterController::class,
-        'subject-master' => SubjectMasterController::class,
-        'subject-group-master' => SubjectGroupMasterController::class,
-        'state-master' => StateMasterController::class,
-        'district-master' => DistrictMasterController::class,
-    ]);*/
 
     Route::controller(TcPrintController::class)->group(function () {
         Route::get('print-tc', 'fillDetails')->name('fillDetails');
@@ -347,6 +320,8 @@ Route::group(['prefix' => 'student', 'as' => 'student.', 'middleware' => ['auth'
         Route::get('update-mobile', 'updateMobile')->name('updateMobile.index');
         Route::post('update-mobile', 'updateMobileStore')->name('updateMobile.store');
 
+        Route::post('sections', 'getSections')->name('sections');
+        Route::post('students', 'getStudents')->name('students');
     });
 
     Route::controller(StdCurrentSessionController::class)->group(function () {
@@ -360,10 +335,10 @@ Route::group(['prefix' => 'student', 'as' => 'student.', 'middleware' => ['auth'
         Route::post('attendance', 'store')->name('attendance.store');
         Route::get('attendance/edit/{id}', 'edit')->name('attendance.edit');
         Route::get('attendance-report', 'report')->name('attendance.report');
-        Route::get('attendance-report-get', 'getReport')->name('attendance.report.get');
+        Route::post('attendance-report-get', 'getReport')->name('attendance.report.get');
         Route::get('download-csv', 'downloadCsv')->name('download.attendance.csv');
         Route::get('cumulative-attendance', 'cumulativeAttendReport')->name('cumulative-attendance.index');
-        Route::get('cumulative-attendance/report', 'cumulativeReportData')->name('cumulative-attendance.report');
+        Route::post('cumulative-attendance/report', 'cumulativeReportData')->name('cumulative-attendance.report');
         Route::get('cumulative-attendance/report/excel', 'cumulativeAttendExcel')->name('cumulative-attendance.csv');
     });
     Route::resource('student-master', StudentMasterController::class)->except(['destroy']);
@@ -371,8 +346,11 @@ Route::group(['prefix' => 'student', 'as' => 'student.', 'middleware' => ['auth'
     Route::get('student-report-class-wise', [StudentMasterController::class, 'stdReportClassWiseExcel'])->name('student-report-class-wise-excel');
 
     Route::get('student-report-relative-wise', [StudentMasterController::class, 'stdRelativeWiseView'])->name('student-report-relative-wise');
-    Route::get('std/relative',  [StudentMasterController::class, 'getStdsWithRelativeStd'])->where('srno', '.*')->name('getStdWithRelativeStd');
+    // Route::get('std/relative',  [StudentMasterController::class, 'getStdsWithRelativeStd'])->where('srno', '.*')->name('getStdWithRelativeStd');
     // Route::get('std/relative',  [StudentMasterController::class, 'getStdWithRelativeStd'])->where('srno', '.*')->name('getStdWithRelativeStd');
+    Route::post('relative',  [StudentMasterController::class, 'getStudentReportWithRelative'])->name('get.student-report-relative-wise');
+    Route::post('report',  [StudentMasterController::class, 'getStudentFullDetailsReport'])->name('get.student-report');
+    Route::get('report/csv',  [StudentMasterController::class, 'getStudentFullDetailsReportCSV'])->name('get.student-report.csv');
 
     Route::get('blank-form', function () {
         return view('student.blank_form.index');
@@ -385,11 +363,13 @@ Route::group(['prefix' => 'student', 'as' => 'student.', 'middleware' => ['auth'
     })->name('blank.public');
 });
 Route::group(['prefix' => 'marks', 'as' => 'marks.', 'middleware' => ['auth', 'is_validate:marks']], function () {
-    // Route::group(['prefix' => 'marks', 'as' => 'marks.', 'middleware' => ['auth', 'is_marks_admin']], function () {
     Route::controller(MarksController::class)->group(function () {
         Route::get('/marks-admin', 'index')->name('dashboard');
         Route::get('change-password', 'changePass')->name('changePass');
         Route::post('change-password', 'changePassStore')->name('changePass.store');
+
+        Route::post('sections', 'getSections')->name('sections');
+        Route::post('students', 'getStudents')->name('students');
     });
 
     Route::controller(MarksCurrentSessionController::class)->group(function () {
@@ -458,6 +438,10 @@ Route::group(['prefix' => 'fee', 'as' => 'fee.', 'middleware' => ['auth', 'is_va
         Route::get('/fee-admin', 'index')->name('dashboard');
         Route::get('change-password', 'changePass')->name('changePass');
         Route::post('change-password', 'changePassStore')->name('changePass.store');
+
+
+        Route::post('sections', 'getSections')->name('sections');
+        Route::post('students', 'getStudents')->name('students');
     });
     Route::controller(FeeCurrentSessionController::class)->group(function () {
         Route::get('current-session', 'index')->name('current-session.index');
@@ -470,13 +454,20 @@ Route::group(['prefix' => 'fee', 'as' => 'fee.', 'middleware' => ['auth', 'is_va
         Route::get('fee-entry', 'index')->name('fee-entry.index');
         Route::get('academic-fee-entry', 'academicFee')->name('fee-entry.academic');
         Route::post('academic-fee-entry', 'academicFeeStore')->name('fee-entry.academic.store');
+        Route::post('st-academic/fee-details', 'stAcademicFeeDetails')->name('fee-entry.academic.get');
+
         Route::get('transport-fee-entry', 'transportFee')->name('fee-entry.transport');
+        Route::post('st-transport/fee-details', 'stTransportFeeDetails')->name('fee-entry.transport.get');
+
         Route::get('back-session-fee-entry/{session_id}/{srno}/{class}/{section}', 'academicBackSessionFeeEntry')->where('srno', '.*')->name('fee-entry.academicBackFee');
         Route::get('back-session-transport-fee-entry/{session_id}/{srno}/{class}/{section}', 'transBackSessionFeeEntry')->where('srno', '.*')->name('fee-entry.academicBackTransFee');
         Route::post('fee-entry-due', 'academicFeeDueAmount')->where('srno', '.*')->name('fee-entry.academicFeeDueAmount');
         Route::get('fee-details', 'feeDetail')->name('fee-detail');
+        Route::post('get/fee-details', 'stCompleteFeeDetails')->name('fee-detail.get');
         Route::get('relative-wise-fee-details', 'relativewiseFeeDetails')->name('fee-detail-relaive-wise');
-        Route::get('relative-wise-fee-details/excel', 'exportRelativeWiseFeeReport')->name('fee-detail-relaive-wise-excel');
+        Route::post('relative-wise/due-fee-report', 'relativeWiseDueFeeReport')->name('std-due-fee-report.relaive-wise.get');
+        // Route::get('relative-wise-fee-details/excel', 'exportRelativeWiseFeeReport')->name('fee-detail-relaive-wise-excel');
+        Route::get('relative-wise-fee-details/excel', 'relativeWiseDueFeeExcelReport')->name('fee-detail-relaive-wise-excel');
 
         Route::post('single-st/feeDue', 'singleStAcademiceFee')->name('single.st.feeDue');
         Route::post('single-st/transport/feeDue', 'singleStTransportFee')->name('single.st.transport.feeDue');
@@ -491,18 +482,20 @@ Route::group(['prefix' => 'fee', 'as' => 'fee.', 'middleware' => ['auth', 'is_va
         // Route::get('student-without-ssid', 'studentWithoutSsid')->name('studentWithoutSsid');
         Route::get('back-session/individual-fee-details/{st}/{session}/{class}/{section}', 'backSessionIndividualFeeDetail')->where('st', '.*')->name('back-session-individual-fee-detail');
         Route::get('print-due-receipt', 'printDueReceipt')->name('print-due-receipt');
+        Route::post('print-due-receipt/get', 'printStDueReceipt')->name('print-due-receipt.get');
 
         Route::get('due-fee-report', 'dueFeeReport')->name('due-fee-report');
         Route::get('due-fee-report/excel', 'exportDueFeeReport')->name('due-fee-report-excel');
 
         Route::get('due-fee-report-sms', 'dueFeeReportSMS')->name('due-fee-report-sms');
+        Route::post('due-fee-report-sms/get', 'getSMSStDueFeeReport')->name('due-fee-report-sms.get');
         Route::post('due-fee-report-send-sms', 'sendSMSSt')->name('due-fee-report-send-sms');
 
        Route::post('std-due-fee-report', 'dueFeeReportStds')->name('std-due-fee-report');
        Route::get('std-due-fee-report/excel', 'stexportDueFeeReport')->name('std-due-fee-report-excel');
        Route::get('check/excel/data', 'checkDueFeeData')->name('check-due-fee-data');
-
-
+       Route::get('back-session/std-due-fee-report/excel', 'backSessionStexportDueFeeReport')->name('back.session.std-due-fee-report-excel');
+       Route::get('back-session/check/excel/data', 'backSessionCheckDueFeeData')->name('back.session.check-due-fee-data');
 
     });
 

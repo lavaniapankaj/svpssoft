@@ -131,7 +131,7 @@
                                         }
                                     });
                                 }
-                                // ✅ Add Final Grade row
+                                // Add Final Grade row
                                 tableHtml += `
                                     <tr class="table-secondary">
                                         <td colspan="6" class="fw-bold text-end">Final Grade</td>

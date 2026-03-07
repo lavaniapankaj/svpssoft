@@ -121,4 +121,5 @@
 @section('scripts')
     <script src="{{ asset('public/fee/assets/js/custom.js') }}" type="text/javascript"></script>
     @yield('fee-scripts')
+    @stack('fee-swal-scripts')
 @endsection
