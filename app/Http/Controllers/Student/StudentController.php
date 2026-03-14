@@ -50,25 +50,49 @@ class StudentController extends Controller
 
     public function updateMobileStore(Request $request)
     {
-        $request->validate([
-            'std_id' => 'required|exists:stu_main_srno,srno',
-            'f_mobile' => 'nullable|string|regex:/^[0-9]{10}$/',
-            'm_mobile' => 'nullable|string|regex:/^[0-9]{10}$/',
-            'class' => 'required|exists:class_masters,id',
-            'section' => 'required|exists:section_masters,id',
+        $validator = Validator::make($request->all(), [
+            'class'    => 'required|exists:class_masters,id',
+            'section'  => 'required|exists:section_masters,id',
+            'std_id'   => 'required|exists:stu_main_srno,srno',
+            'f_mobile' => 'required|digits:10',
+            'm_mobile' => 'nullable|digits:10',
+        ], [
+            'class.required'    => 'Please select a class.',
+            'class.exists'      => 'Selected class is invalid.',
+            'section.required'  => 'Please select a section.',
+            'section.exists'    => 'Selected section is invalid.',
+            'std_id.required'   => 'Please select a student.',
+            'std_id.exists'     => 'Selected student is invalid.',
+            'f_mobile.required' => 'Father\'s mobile number is required.',
+            'f_mobile.digits'   => 'Father\'s mobile number must be exactly 10 digits.',
+            'm_mobile.digits'   => 'Mother\'s mobile number must be exactly 10 digits.',
         ]);
-        $std =  DB::table('parents_detail')->where('srno', $request->std_id);
-        if ($std) {
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $std = DB::table('parents_detail')->where('srno', $request->std_id);
+
+        if ($std->exists()) {
             $std->update([
                 'f_mobile' => $request->f_mobile,
                 'm_mobile' => $request->m_mobile,
             ]);
-            return redirect()->route('student.updateMobile.index')->with('success', 'Student Mobile Number Updated Successfully');
-        } else {
-            return redirect()->back()->with('error', 'Something went wrong, please try again.');
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Student mobile number updated successfully.'
+            ]);
         }
-    }
 
+        return response()->json([
+            'status'  => 'error',
+            'message' => 'Student record not found. Please try again.'
+        ], 404);
+    }
     public function changePass()
     {
         return view('student.change_pass');

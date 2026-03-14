@@ -22,18 +22,22 @@ class SectionMasterController extends Controller
      */
     public function index(Request $request)
     {
+            $fields = [
+                'section_masters.id',
+                'section_masters.section',
+                'section_masters.class_id',
+                'section_masters.active',
+                'section_masters.created_at',
+                'class_masters.class as class_name',
+            ];
+            $whereAttb = $request->class_id ? 'where' : '';
+            $where     = $request->class_id ? ['section_masters.class_id' => $request->class_id] : [];
+            $orderBy   = ['section_masters.created_at' => 'DESC'];
 
-        $fields = ['id', 'section', 'class_id', 'active', 'created_at'];
-        $whereAttb = isset($request->class_id) ? 'where' : '';
-        $where = isset($request->class_id) ? ['class_id' => $request->class_id] : [];
-        $orderBy = ['created_at' => 'DESC'];
-        if (!empty($fields)) {
             $classes = ClassMasterController::getClasses();
-            $data = self::getAllSection($fields, $whereAttb,  $where, $orderBy, 15, true);
+            $data    = self::paginateSections($fields, $whereAttb, $where, $orderBy, 15, true);
+
             return view('admin.section.index', compact('data', 'classes'));
-        } else {
-            return redirect()->back()->with('error', 'Something went wrong, please try again.');
-        }
     }
 
     /**
@@ -139,6 +143,49 @@ class SectionMasterController extends Controller
             return redirect()->route('admin.section-master.index')->with('success', 'Section updated successfully.');
         } else {
             return redirect()->back()->with('error', 'Something went wrong, please try again.');
+        }
+    }
+
+
+    /* Paginate Sections */
+    public static function paginateSections($fields = [], $whereAttb = '', $where = [], $orderBy = [], $limit = 10, $paginate = false)
+    {
+        $query = SectionMaster::query()
+            ->join('class_masters', 'section_masters.class_id', '=', 'class_masters.id')
+            ->where('section_masters.active', 1);
+
+        if (!empty($fields) && is_array($fields)) {
+            $query->select($fields);
+        } else {
+            $query->select(
+                'section_masters.id',
+                'section_masters.section',
+                'section_masters.class_id',
+                'section_masters.active',
+                'section_masters.created_at',
+                'class_masters.class as class_name'  // ← joined column
+            );
+        }
+
+        if (!empty($where) && is_array($where) && !empty($whereAttb) && is_string($whereAttb)) {
+            foreach ($where as $key => $value) {
+                $query->$whereAttb($key, $value);
+            }
+        }
+
+        if (!empty($orderBy) && is_array($orderBy)) {
+            foreach ($orderBy as $key => $value) {
+                $query->orderBy($key, $value);
+            }
+        } else {
+            $query->orderBy('section_masters.section', 'asc');
+        }
+
+        if ($paginate) {
+            $limit = (is_numeric($limit) && $limit > 0) ? $limit : 10;
+            return $query->paginate($limit);
+        } else {
+            return $query->pluck('section_masters.section', 'section_masters.id')->toArray();
         }
     }
 

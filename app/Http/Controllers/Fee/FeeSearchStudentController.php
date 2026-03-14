@@ -43,7 +43,7 @@ class FeeSearchStudentController extends Controller
                     ->orWhere('stu_detail.name', 'LIKE', "%{$search}%");
             });
         }
-        $data = $baseQuery->orderBy('stu_main_srno.created_at', 'DESC')->paginate(10);
+        $data = $baseQuery->orderBy('stu_main_srno.created_at', 'DESC')->paginate(50);
         return view('fee.search_student.index', compact('data'));
     }
 

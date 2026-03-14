@@ -147,7 +147,7 @@
                                                 <td>{{ $data->firstItem() + $key ?? '' }}</td>
                                                 <td>{{ $value->section ?? '' }}</td>
                                                 <td>
-                                                    {{ $value->class->class ?? '' }}
+                                                    {{ $value->class_name ?? '' }}
                                                 </td>
                                                 <td class="text-center">
                                                     <div class="d-flex gap-2 justify-content-center">

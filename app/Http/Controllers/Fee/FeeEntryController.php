@@ -3914,7 +3914,7 @@ class FeeEntryController extends Controller
 
             $totalTransportPaid = $transportFirstInst + $transportSecondInst + $transportComplete + $transportMercy;
 
-            $payableAmount = $student->trans_total ?? 0;
+            $payableAmount = $sessionClass->trans_total ?? 0;
 
             $result['sessions'][] = [
                 'isCurrentSession' => $sessionClass->session_id == $currentSession,

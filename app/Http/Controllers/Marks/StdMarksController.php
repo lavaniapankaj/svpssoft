@@ -241,6 +241,7 @@ class StdMarksController extends Controller
             $sessionId       = $current_session->id;
             $examId          = $request->exam;
             $classId         = $request->class;
+            $sectionId       = $request->section;
             $filterSubjectId = $request->subject;   // renamed to avoid collision
             $filterStudentId = $request->std_id;
 
@@ -250,6 +251,7 @@ class StdMarksController extends Controller
                 ->select('stu_main_srno.srno', 'stu_main_srno.rollno', 'stu_detail.name')
                 ->where('stu_main_srno.class',      $classId)
                 ->where('stu_main_srno.session_id', $sessionId)
+                ->where('stu_main_srno.section',    $sectionId)
                 ->where('stu_main_srno.ssid',       1)
                 ->where('stu_main_srno.active',     1)
                 ->orderBy('stu_main_srno.rollno')

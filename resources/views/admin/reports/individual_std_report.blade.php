@@ -223,7 +223,7 @@
 
                                                 <td>${rowData.category}</td>
 
-                                                <td>${rowData.email}</td>
+                                                <td>${rowData.email ?? ''}</td>
 
                                                 <td>${rowData.mobile}</td>
 

@@ -120,7 +120,7 @@ class ReportController extends Controller
             $ageProofIds   = array_map('intval', explode(',', $request->age_proof));
 
             // ── Fetch active classes (one query) ──────────────────────────
-            $classQuery = DB::table('class_masters')->where('active', 1)->orderBy('id');
+            $classQuery = DB::table('class_masters')->where('active', 1)->orderBy('sort');
 
             if ($classId !== 'all') {
                 $classQuery->where('id', (int) $classId);
@@ -342,7 +342,7 @@ class ReportController extends Controller
             // ── Fetch active classes (one query) ──────────────────────────
             $classQuery = DB::table('class_masters')
                 ->where('active', 1)
-                ->orderBy('id');
+                ->orderBy('sort');
 
             if ($classId !== 'all') {
                 $classQuery->where('id', (int) $classId);
@@ -567,7 +567,7 @@ class ReportController extends Controller
             // ── Fetch active classes (one query) ──────────────────────────
             $classQuery = DB::table('class_masters')
                 ->where('active', 1)
-                ->orderBy('id');
+                ->orderBy('sort');
 
             if ($classId !== 'all') {
                 $classQuery->where('id', (int) $classId);
@@ -783,7 +783,7 @@ class ReportController extends Controller
             // ── Fetch active classes (one query) ──────────────────────────
             $classQuery = DB::table('class_masters')
                 ->where('active', 1)
-                ->orderBy('id');
+                ->orderBy('sort');
 
             if ($classId !== 'all') {
                 $classQuery->where('id', (int) $classId);
@@ -1004,7 +1004,7 @@ class ReportController extends Controller
             // ── Fetch active classes (one query) ──────────────────────────
             $classQuery = DB::table('class_masters')
                 ->where('active', 1)
-                ->orderBy('id');
+                ->orderBy('sort');
 
             if ($classId !== 'all') {
                 $classQuery->where('id', (int) $classId);

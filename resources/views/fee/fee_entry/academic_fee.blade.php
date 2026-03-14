@@ -331,7 +331,11 @@
                             <td>${session.class || '-'}</td>
                             <td class="text-end">₹${parseFloat(session.payable_amount || 0).toFixed(2)}</td>
                             <td class="text-end">₹${parseFloat(session.paid_amount || 0).toFixed(2)}</td>
-                            <td class="text-end fw-bold ${session.due_amount > 0 ? 'text-danger' : 'text-success'}">₹${parseFloat(session.due_amount || 0).toFixed(2)}</td>
+                            <td class="text-end">
+                                <span style="font-weight:bold; color:${session.due_amount > 0 ? 'red' : 'green'}">
+                                    ₹${parseFloat(session.due_amount || 0).toFixed(2)}
+                                </span>
+                            </td>
                             <td>${actionText}</td>
                         </tr>`;
                     });
@@ -356,7 +360,11 @@
                             <td>${relative.section || '-'}</td>
                             <td class="text-end">₹${parseFloat(relative.payable_amount || 0).toFixed(2)}</td>
                             <td class="text-end">₹${parseFloat(relative.paid_amount || 0).toFixed(2)}</td>
-                            <td class="text-end fw-bold ${relative.due_amount > 0 ? 'text-danger' : 'text-success'}">₹${parseFloat(relative.due_amount || 0).toFixed(2)}</td>
+                            <td class="text-end">
+                                <span style="font-weight:bold; color:${relative.due_amount > 0 ? 'red' : 'green'}">
+                                    ₹${parseFloat(relative.due_amount || 0).toFixed(2)}
+                                </span>
+                            </td>
                         </tr>`;
                     });
                     stRelativeFeeTableBody.html(relativestdHtml);
@@ -541,14 +549,43 @@
                                 resetFeeInputs();
                             });
                         } else {
-                            showError(response.message || 'Failed to submit fee entry');
+
+                            // response.message could be a string OR an object with field errors
+                            if (response.message && typeof response.message === 'object') {
+                                // It's a validation errors object - map to form fields
+                                const errors = response.message;
+                                const errorMap = {
+                                    'class': '#class-error',
+                                    'section': '#section-error',
+                                    'std_id': '#std-error',
+                                    'fee_date': '#fee-date-error',
+                                    'fee_mode': '#fee-mode-error',
+                                    'payment_note': '#payment-note-error',
+                                    'ref_slip': '#ref-slip-error',
+                                    'total_amount': '#total-amount-error',
+                                    'admission_fee': '#admission-fee-error',
+                                    'first_inst_fee': '#first-inst-fee-error',
+                                    'second_inst_fee': '#second-inst-fee-error',
+                                    'complete_fee': '#complete-fee-error',
+                                    'mercy_fee': '#mercy-fee-error'
+                                };
+
+                                Object.keys(errors).forEach(function(field) {
+                                    if (errorMap[field]) {
+                                        $(errorMap[field]).show().html(errors[field][0]);
+                                    }
+                                });
+                            } else {
+                                // It's a plain string message
+                                showError('Failed to submit fee entry');
+                            }
                         }
                     },
                     error: function(xhr) {
                         $('#loader').hide();
                         $('#submit-academic-fee').prop('disabled', false).html('<i class="mdi mdi-check-circle me-1"></i> Submit Fee Entry');
 
-                        if (xhr.responseJSON && xhr.responseJSON.errors) {
+                        /* if (xhr.responseJSON && xhr.responseJSON.errors) {
                             const errors = xhr.responseJSON.errors;
                             const errorMap = {
                                 'class': '#class-error',
@@ -573,6 +610,38 @@
                             });
                         } else {
                             showError(xhr.responseJSON?.message || 'An error occurred while submitting the fee entry');
+                        } */
+
+                        if (xhr.responseJSON) {
+                            const response = xhr.responseJSON;
+                            if (response.message && typeof response.message === 'object') {
+                                // Validation errors object
+                                const errors = response.message;
+                                const errorMap = {
+                                    'class': '#class-error',
+                                    'section': '#section-error',
+                                    'std_id': '#std-error',
+                                    'fee_date': '#fee-date-error',
+                                    'fee_mode': '#fee-mode-error',
+                                    'payment_note': '#payment-note-error',
+                                    'ref_slip': '#ref-slip-error',
+                                    'total_amount': '#total-amount-error',
+                                    'admission_fee': '#admission-fee-error',
+                                    'first_inst_fee': '#first-inst-fee-error',
+                                    'second_inst_fee': '#second-inst-fee-error',
+                                    'complete_fee': '#complete-fee-error',
+                                    'mercy_fee': '#mercy-fee-error'
+                                };
+                                Object.keys(errors).forEach(function(field) {
+                                    if (errorMap[field]) {
+                                        $(errorMap[field]).show().html(errors[field][0]);
+                                    }
+                                });
+                            } else {
+                                showError(response.message || 'An error occurred');
+                            }
+                        } else {
+                            showError('An error occurred while submitting the fee entry');
                         }
                     }
                 });

@@ -175,11 +175,9 @@
                     students.forEach((student,index) =>{
 
                         let filteredSessions = student.sessions.filter(function(value) {
-                            console.log(value);
                             return value.session_id === Number(session);
                         });
                         $('#back_std').val(student.student_name);
-                        console.log(filteredSessions);
                         $.each(filteredSessions, function(index,st){
                             $('#back_session').val(st.session);
                             $('#class').val(st.class_id);
