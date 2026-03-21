@@ -1,0 +1,23 @@
+.nav_link.active {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border-radius: 4px;
+}
+
+.submenu_item.active-parent {
+    background-color: rgba(255, 255, 255, 0.10);
+    border-radius: 4px;
+}
+
+.submenu_item.active-parent .arrow-left {
+    transform: rotate(90deg);
+}
+
+.submenu_item.active-parent+.submenu {
+    display: block !important;
+}
+
+.nav_link.sublink.active {
+    background-color: rgba(255, 255, 255, 0.20);
+    font-weight: bold;
+}

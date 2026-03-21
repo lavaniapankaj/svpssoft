@@ -16,6 +16,7 @@
                         <a href="{{ route('marks.marks-report.marksheet.first.second') }}" class="btn btn-primary btn-sm mt-2">Final Marksheet (Only for First And Second)</a>
                         <a href="{{ route('marks.marks-report.marksheet.third.fifth') }}" class="btn btn-primary btn-sm mt-2">Final Marksheet (Only for Third to Fifth)</a>
                         <a href="{{ route('marks.marks-report.marksheet.six.eighth') }}" class="btn btn-primary btn-sm mt-2">Final Marksheet (Only for Sixth to Eighth)</a>
+                        <a href="{{ route('marks.marks-report.marksheet.ninth') }}" class="btn btn-primary btn-sm mt-2">Final Marksheet (Only for Ninth)</a>
 
                     </div>
                 </div>

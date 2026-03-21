@@ -271,6 +271,12 @@ body table .border-right-0 {
     line-height: 1.4em;
 
 }
+.ms_final_box_result_message p {
+    margin-bottom: 0px;
+}
+.ms_final_box_result_message hr {
+    margin-block: 5px;
+}
 
 
 

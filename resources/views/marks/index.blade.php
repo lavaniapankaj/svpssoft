@@ -25,6 +25,7 @@
         'marks.marks-report.marksheet.first.second',
         'marks.marks-report.marksheet.third.fifth',
         'marks.marks-report.marksheet.six.eighth',
+        'marks.marks-report.marksheet.ninth',
     ];
     $isMarksheetActive = isActiveMarks(...$marksheetRoutes);
 @endphp
@@ -105,6 +106,11 @@
                        class="nav_link sublink {{ isActiveMarks('marks.marks-report.marksheet.six.eighth') }}">
                         <span class="navlink_icon"><span class="mdi mdi-menu-right"></span></span>
                         Final Marksheet (Only for Sixth to Eighth)
+                    </a>
+                    <a href="{{ route('marks.marks-report.marksheet.ninth') }}"
+                       class="nav_link sublink {{ isActiveMarks('marks.marks-report.marksheet.ninth') }}">
+                        <span class="navlink_icon"><span class="mdi mdi-menu-right"></span></span>
+                        Final Marksheet (Only for Ninth)
                     </a>
                 </ul>
             </li>

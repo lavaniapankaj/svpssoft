@@ -5,9 +5,9 @@
             <div class="col-md-12">
                 <div class="card border-0 bg-white">
                     <div class="card-header flex-wrap bg-white d-flex align-items-center justify-content-between">
-                        <h5 class="mb-0 mt-0">{{ 'Print Final Marksheet (6th to 8th)' }}</h5>
+                        <h5 class="mb-0 mt-0">{{ 'Print Final Marksheet (9th)' }}</h5>
                         <div class="align-items-center d-flex gap-2">
-                            <a href="{{ route('marks.marks-report.marksheet.six.eighth') }}" class="btn bg-light btn-sm" ><span class="mdi mdi-chevron-left me-2"></span>Back</a>
+                            <a href="{{ route('marks.marks-report.marksheet.ninth') }}" class="btn bg-light btn-sm" ><span class="mdi mdi-chevron-left me-2"></span>Back</a>
                             <button type="button" id="print-marksheet" class="btn btn-sm btn-primary mx-2 print-marksheet"
                             style="float: right;">Print Marksheet</button>
                         </div>
@@ -68,7 +68,7 @@
                 let currentIndex = 0;
                 if (classId && sectionId && stdId && examId && withId && withoutId) {
                     $.ajax({
-                        url: siteUrl + '/marks/marksheet-final-six-eighth/report',
+                        url: siteUrl + '/marks/marksheet-final-ninth/report',
                         type: 'GET',
                         dataType: 'JSON',
                         data: {
@@ -199,25 +199,19 @@
                                     tableHtml += `<tr><td class="fw-bold">M.M.</td>`;
                                     let subjectMaxMarksTotal = 0;
                                     if (examsData[0].by_m_g == 1 && examsData[0].priority == 1 && examsData[0]['exam-info'] && Array.isArray(examsData[0]['exam-info']) && examsData[0]['exam-info'].length > 0) {
-                                        // For each exam associated with the subject
                                         Object.keys(examGroupedById).forEach(examId => {
                                             let examGroup = examGroupedById[examId];
-                                            // Check if the exam is in the 'withoutId' array
                                             if (withoutId.includes(examGroup.examID.toString())) {
-                                                // Find the specific exam info for the current examId
                                                 let examInfo = examsData[0]['exam-info'].find(info => info.exam_id === parseInt(examId));
-                                                // If examInfo is found, display the max_marks
                                                 if (examInfo) {
                                                     tableHtml += `<td class="text-center fw-bold">${examInfo.max_marks}</td> `;
                                                     subjectMaxMarksTotal += examInfo.max_marks;
                                                 } else {
-                                                    // If no exam info is found, display "Abs"
                                                     tableHtml +=` <td class="text-center">Abs</td> `;
                                                 }
                                             }
                                         });
                                     }
-                                    // maxMarks += subjectMaxMarksTotal;
                                     maxmMarksTotalSide += subjectMaxMarksTotal;
                                     if (withoutId != '') {
                                         tableHtml +=`<td class="text-center fw-bold border-end-0">${subjectMaxMarksTotal}</td></tr>`;
@@ -228,23 +222,22 @@
                                         if (exam.by_m_g == 1 && exam.priority == 1 && exam['exam-info'] && exam['exam-info'].length > 0) {
                                             tableHtml += `<tr><td class="fw-bold">${exam.subject}</td>`;
                                             let subjectTotal = 0;
-                                            // For each exam associated with the subject
-                                            Object.keys(examGroupedById).forEach(
-                                                examId => {
-                                                    if (withoutId.includes(examGroupedById[examId].examID.toString())) {
-                                                        let examInfo = exam['exam-info'].find(info => info.exam_id === parseInt(examId));
-                                                        // If the subject has data for this exam_id, display the actual data
-                                                        if (examInfo) {
-                                                            examGroupedById[examId].totalMarks += examInfo.total_marks;
-                                                            examGroupedById[examId].maxMarks += examInfo.max_marks;
-                                                            subjectTotal += examInfo.total_marks;
-                                                            allSubjectsToMarks += examInfo.max_marks;
-                                                            tableHtml += `<td class="text-center">${examInfo.total_marks}</td>`;
-                                                        } else {
-                                                            tableHtml += `<td class="text-center">Abs</td> `;
-                                                        }
+                                            Object.keys(examGroupedById).forEach(examId => {
+                                                if (withoutId.includes(examGroupedById[examId].examID.toString())) {
+                                                    let examInfo = exam['exam-info'].find(info => info.exam_id === parseInt(examId));
+                                                    if (examInfo) {
+                                                        // marks is already numeric or 'Abs' from PHP
+                                                        let numericMarks = (examInfo.marks === 'Abs') ? 0 : Number(examInfo.marks);
+                                                        examGroupedById[examId].totalMarks += numericMarks;
+                                                        examGroupedById[examId].maxMarks   += examInfo.max_marks;
+                                                        subjectTotal                        += numericMarks;
+                                                        allSubjectsToMarks                  += examInfo.max_marks;
+                                                        tableHtml += `<td class="text-center">${examInfo.marks}</td>`;
+                                                    } else {
+                                                        tableHtml += `<td class="text-center">Abs</td> `;
                                                     }
-                                                });
+                                                }
+                                            });
                                             if (withoutId != '') {
                                                 tableHtml += `<td class="text-center border-end-0">${subjectTotal}</td></tr>`;
                                             }
@@ -254,8 +247,7 @@
                                     let sssp = 0;
                                     Object.keys(examGroupedById).forEach(examId => {
                                         let exam = examGroupedById[examId];
-                                        if (withoutId.includes(exam.examID
-                                                .toString())) {
+                                        if (withoutId.includes(exam.examID.toString())) {
                                             SubjectgrandTotalValue += exam.totalMarks;
                                             sssp += exam.totalMarks;
                                             tableHtml += `<td class="text-center fw-bold">${exam.totalMarks}</td> `;
@@ -300,14 +292,14 @@
                                         }
                                     });
                                     rowSpan = 0;
-                                    // Step 2: Create table headers dynamically based on `exam_id`
+                                    // Step 2: Create table headers — colspan 2 (Marks + Total), no Oral
                                     let isWithOut = false;
                                     let isWith = false;
                                     Object.keys(examGroupedById2).forEach(examId => {
                                         let exam = examGroupedById2[examId];
                                         if (withId && (withId.includes(exam.examID.toString()))) {
-                                            tableHtml += `<th class="text-center" colspan="3" id="exam-name" data-id="${exam.examID}">${exam.examName}</th>`;
-                                            spanValue += 3;
+                                            tableHtml += `<th class="text-center" colspan="2" id="exam-name" data-id="${exam.examID}">${exam.examName}</th>`;
+                                            spanValue += 2;
                                         }
                                     });
                                     tableHtml +=`<th class="text-center align-middle" rowspan="2">Grand Total</th></tr>`;
@@ -315,35 +307,29 @@
                                     Object.keys(examGroupedById2).forEach(examId => {
                                         let exam = examGroupedById2[examId];
                                         if (withId && (withId.includes(exam.examID.toString()))) {
-                                            // Add sub-headers only for exams in `withId`
-                                            tableHtml += `<th class="text-center">Written</th>
-                                                           <th class="text-center">Oral</th>
-                                                            <th class="text-center">Total</th>`;
-                                            spanValue += 3;
+                                            tableHtml += `<th class="text-center">Marks</th>
+                                                           <th class="text-center">Total</th>`;
+                                            spanValue += 2;
                                         }
                                     });
                                     tableHtml += `</tr>`;
                                     tableHtml += `</thead><tbody>`;
+                                    // M.M. row for withId table
                                     tableHtml += `<tr>`;
                                     if (examsData[0].by_m_g == 1 && examsData[0].priority == 1 && examsData[0]['exam-info'] && Array.isArray(examsData[0]['exam-info']) && examsData[0]['exam-info'].length > 0) {
-                                        // For each exam associated with the subject
-                                        Object.keys(examGroupedById).forEach(examId => {
-                                            let examGroup = examGroupedById[examId]; // Get the exam group by exam_id
+                                        Object.keys(examGroupedById2).forEach(examId => {
+                                            let examGroup = examGroupedById2[examId];
                                             if (withId && (withId.includes(examGroup.examID.toString()))) {
                                                 let examInfo = examsData[0]['exam-info'].find(info => info.exam_id === parseInt(examId));
                                                 if (examInfo) {
-                                                    examGroupedById[examId].totalMarks += examInfo.total_marks;
-                                                    examGroupedById[examId].maxMarks += examInfo.max_marks;
                                                     maxMarks += examInfo.max_marks;
                                                     maxmMarksTotalSide += examInfo.max_marks;
+                                                    allSubjectsToMarks += examInfo.max_marks;
                                                     tableHtml += `
-                                                                <td class="text-center fw-bold">${examInfo.written_max_marks}</td>
-                                                                <td class="text-center fw-bold">${examInfo.oral_max_marks}</td>
-                                                                <td class="text-center fw-bold">${examInfo.max_marks}</td>
-                                                                `;
+                                                        <td class="text-center fw-bold">${examInfo.max_marks}</td>
+                                                        <td class="text-center fw-bold">${examInfo.max_marks}</td>
+                                                    `;
                                                 } else {
-                                                    // If no exam info is found, display "Abs"
-                                                    tableHtml += `<td class="text-center">Abs</td>`;
                                                     tableHtml += `<td class="text-center">Abs</td>`;
                                                     tableHtml += `<td class="text-center">Abs</td>`;
                                                 }
@@ -352,7 +338,7 @@
                                     }
                                     tableHtml += `<td class="text-center fw-bold">${maxmMarksTotalSide}</td></tr>`;
                                     let grandTotal = 0;
-                                    // Step 3: Generate the table body
+                                    // Step 3: Data rows for withId table
                                     examsData.forEach(exam => {
                                         if (exam.by_m_g == 1 && exam.priority == 1 && exam['exam-info'] && Array.isArray(exam['exam-info']) && exam['exam-info'].length > 0) {
                                             if (withId != '') {
@@ -361,59 +347,62 @@
                                                 tableHtml += `<tr style="">`;
                                             }
                                             let subjectTotalForSuperTotal = 0;
-                                            // For each exam associated with the subject
-                                            Object.keys(examGroupedById2).forEach(
-                                                examId => {
-                                                    let examInfo = exam['exam-info'].find(info => info.exam_id === parseInt(examId));
-                                                    let examGroup = examGroupedById2[examId];
-                                                    if (examInfo) {
-                                                        if (withId && (withId.includes(examGroup.examID.toString()))) {
-                                                            // For exams in withId, show written, oral, and total marks
-                                                            tableHtml += `
-                                                                        <td class="text-center">${examInfo.written_marks}</td>
-                                                                        <td class="text-center">${examInfo.oral_marks}</td>
-                                                                        <td class="text-center">${examInfo.total_marks}</td>
-                                                                    `;
-                                                            examGroup.totalMarks += examInfo.total_marks;
-                                                            // examGroup.maxMarks += examInfo.max_marks;
-                                                            allSubjectsToMarks += examInfo.max_marks;
-                                                            subjectMaxMarksTotal += examInfo.max_marks;
-                                                            subjectTotalForSuperTotal += examInfo.total_marks;
-                                                        }
-                                                    } else {
-                                                        // If the subject does not have this exam's data, insert appropriate placeholders
-                                                        if (withId && (withId.includes(examGroup.examID.toString()))) {
-                                                            tableHtml += `
-                                                                        <td class="text-center">Abs</td>
-                                                                        <td class="text-center">Abs</td>
-                                                                        <td class="text-center">Abs</td>
-                                                                    `;
-                                                        }
+                                            Object.keys(examGroupedById2).forEach(examId => {
+                                                let examInfo = exam['exam-info'].find(info => info.exam_id === parseInt(examId));
+                                                let examGroup = examGroupedById2[examId];
+                                                if (examInfo) {
+                                                    if (withId && (withId.includes(examGroup.examID.toString()))) {
+                                                        // marks is already numeric or 'Abs' from PHP
+                                                        let numericMarks = (examInfo.marks === 'Abs') ? 0 : Number(examInfo.marks);
+                                                        tableHtml += `
+                                                            <td class="text-center">${examInfo.marks}</td>
+                                                            <td class="text-center">${examInfo.marks}</td>
+                                                        `;
+                                                        examGroup.totalMarks     += numericMarks;
+                                                        examGroup.maxMarks       += examInfo.max_marks;
+                                                        subjectTotalForSuperTotal += numericMarks;
                                                     }
-                                                });
-                                            // Add the super total column with subject total
+                                                } else {
+                                                    if (withId && (withId.includes(examGroup.examID.toString()))) {
+                                                        tableHtml += `
+                                                            <td class="text-center">Abs</td>
+                                                            <td class="text-center">Abs</td>
+                                                        `;
+                                                    }
+                                                }
+                                            });
                                             tableHtml += `<td class="text-center fw-bold">${exam.allExamsTotal}</td></tr>`;
                                         }
                                     });
+                                    // Total row
                                     tableHtml += ` <tr>`;
                                     overallGrandTotal = sbMarks;
                                     Object.keys(examGroupedById2).forEach(examId => {
                                         let exam = examGroupedById2[examId];
                                         if (withId && (withId.includes(exam.examID.toString()))) {
                                             tableHtml +=
-                                                `<td></td><td></td><td class="text-center fw-bold">${exam.totalMarks}</td>`;
+                                                `<td></td><td class="text-center fw-bold">${exam.totalMarks}</td>`;
                                             overallGrandTotal += exam.totalMarks;
                                         }
                                     });
                                     tableHtml += `<td class="text-center fw-bold">${overallGrandTotal}</td></tr>`;
                                     grandTotal = overallGrandTotal;
+                                    // Calculate correct total max marks:
+                                    // subjectCount × max_marks per exam (from MM row = examsData[0])
+                                    let subjectCount = examsData.filter(e => e.by_m_g == 1 && e.priority == 1).length;
+                                    let totalMaxMarksForPercentage = 0;
+                                    if (examsData[0] && examsData[0]['exam-info']) {
+                                        examsData[0]['exam-info'].forEach(info => {
+                                            totalMaxMarksForPercentage += info.max_marks * subjectCount;
+                                        });
+                                    }
                                     tableHtml += ` </tbody>
                                             </table>
                                         </div>
                                         <div class="col-md-2 align-items-stretch justify-content-center px-0 mb-1">
                                             <table class="table table-bordered h-100 w-100 mb-0">
                                                 <tr>
-                                                    <td class="align-middle border-start-0">
+                                                    <td class="align-middle border-start-0 ms_final_box_result_message">
                                                     <p class="text-center">${response.logo.result_date_message}</p>
                                                     <hr>
                                                     <p class="text-center">${response.logo.session_start_message}</p></td>
@@ -439,7 +428,6 @@
                                                                 examName: info.exam,
                                                                 subjects: []
                                                         };
-                                                        // Track the order of exam IDs as they first appear
                                                         examIdOrder.push(info.exam_id);
                                                     }
                                                     examGroupedGradeById[info.exam_id].subjects.push(exam);
@@ -458,7 +446,6 @@
                                                               <th>Subject</th><th class="text-center">${exam.examName}</th><th class="text-center">Grade</th>`;
                                             });
                                     } else {
-                                        // If multiple exams exist, create headers for each exam type and grade
                                         tableHtml += `<th>Subject</th>`;
                                         examIdOrder.forEach(examId => {
                                                 let exam = examGroupedGradeById[examId];
@@ -468,28 +455,23 @@
                                     tableHtml += `</tr></thead><tbody>`;
                                      // Step 3: Generate the table body
                                     if (allSubjectsSameExam) {
-                                        // For the "only one exam type" case, group subjects and display them side by side
                                         let rows = [];
                                         examsData.forEach(exam => {
                                             if (exam.by_m_g == 2 && exam['exam-info'] && exam['exam-info'].length > 0) {
                                                 rows.push(exam);
                                             }
                                         });
-                                        // Now, render subjects side by side
                                         let maxSubjects = rows.length;
                                         for (let i = 0; i < maxSubjects; i += 2) {
                                             tableHtml += `<tr class="align-middle">`;
                                             if (rows[i]) {
                                                 tableHtml += `<td>${rows[i].subject}</td>`;
-                                                // Check if the subject has data for the current exam
                                                 let examInfo = rows[i]['exam-info'].find(info => info.exam_id === parseInt(Object.keys(examGroupedGradeById)[0]));
                                                 if (examInfo) {
                                                     tableHtml += `<td class="text-center">${examInfo.grade}</td><td class="text-center">${examInfo.grade}</td>`;
                                                 }
-                                                // Add the next subject (if any)
                                                 if (rows[i + 1]) {
                                                     tableHtml += `<td>${rows[i + 1].subject}</td>`;
-                                                    // Check if the next subject has data for the current exam
                                                     let examInfo2 = rows[i + 1]['exam-info'].find(info => info.exam_id === parseInt(Object.keys(examGroupedGradeById)[0]));
                                                     if (examInfo2) {
                                                         tableHtml += `<td class="text-center">${examInfo2.grade}</td><td class="text-center">${examInfo2.grade}</td>`;
@@ -501,17 +483,14 @@
                                             tableHtml += `</tr>`;
                                         }
                                     } else {
-                                        // If multiple exams (e.g., Unit Test and Half Yearly) exist, display the data in separate columns
                                         examsData.forEach(exam => {
                                             if (exam.by_m_g == 2 && exam['exam-info'] && exam['exam-info'].length > 0) {
                                                 tableHtml += `<tr class="align-middle"><td class="fw-bold">${exam.subject}</td>`;
-                                                // For each exam (e.g., Unit Test, Half Yearly) associated with the subject
                                                 examIdOrder.forEach(examId => {
                                                         let examInfo = exam['exam-info'].find(info => info.exam_id === parseInt(examId));
                                                         if (examInfo) {
                                                             tableHtml += `<td class="text-center">${examInfo.grade}</td><td class="text-center">${examInfo.grade}</td>`;
                                                         } else {
-                                                            // If the subject does not have this exam's data, insert empty td
                                                             tableHtml += `<td class="text-center">Abs</td><td class="text-center">Abs</td>`;
                                                         }
                                                     });
@@ -526,8 +505,8 @@
                                         <div class="col-md-2 align-items-stretch px-0 mb-1">
                                             <table class="table table-bordered h-100 w-100 mb-0">
                                                 <tr class="align-middle">
-                                                    <td class="align-middle text-center border-start-0">
-                                                        <p>Percentage:<br>${((overallGrandTotal / allSubjectsToMarks) * 100).toFixed(2)}%</p>
+                                                    <td class="align-middle text-center border-start-0 ms_final_box_result_message">
+                                                        <p>Percentage:<br>${totalMaxMarksForPercentage > 0 ? ((overallGrandTotal / totalMaxMarksForPercentage) * 100).toFixed(2) : '0.00'}%</p>
                                                         <hr>
                                                         <p>Result:<br>Pass</p>`;
                                                                 grandTotal = 0;

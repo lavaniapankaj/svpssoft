@@ -274,7 +274,7 @@
                                             <div class="col-md-2 align-items-stretch justify-content-center px-0">
                                                 <table class="table table-bordered h-100 w-100 mb-0">
                                                     <tr>
-                                                        <td class="align-middle text-center">
+                                                        <td class="align-middle text-center ms_final_box_result_message">
                                                         <p class="">${response.logo.result_date_message}</p>
                                                         <hr>
                                                        <p class="">${response.logo.session_start_message}</p></td>
@@ -424,9 +424,9 @@
                                             <div class="col-md-2 align-items-stretch px-0">
                                                 <table class="table table-bordered h-100 w-100 mb-0">
                                                     <tr>
-                                                        <td class="align-middle text-center">
+                                                        <td class="align-middle text-center ms_final_box_result_message">
                                                         <p>Percentage: <br>${((grandTotal / maxMarks) * 100).toFixed(2)}%</p>
-                                                        <hr> 
+                                                        <hr>
                                                         <p>Result: <br>Pass</p>`;
                                 grandTotal = 0;
                                 maxMarks = 0;
@@ -554,6 +554,12 @@
                                 }
                                 html body .border-0 {
                                     border: 0 !important;
+                                }
+                                .ms_final_box_result_message p {
+                                    margin-bottom: 0px;
+                                }
+                                .ms_final_box_result_message hr {
+                                    margin-block: 5px;
                                 }
                                 .marksheet-container th, .marksheet-container td {
                                     border: 1px solid #000 !important;

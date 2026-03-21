@@ -414,6 +414,13 @@ Route::group(['prefix' => 'marks', 'as' => 'marks.', 'middleware' => ['auth', 'i
         Route::get('marksheet-final-six-eighth/print', 'finalMarksheetSixToEighthPrint')->name('marks-report.marksheet.six.eighth.print');
         Route::get('marksheet-final-six-eighth/report', 'finalMarksheetSixtoEighthReport')->name('marks-report.marksheet.six.eighth.get');
 
+        Route::get('marksheet-final-ninth-select/exam', 'selectExamWithOrWithoutNinth')->name('marks-report.select.exam.ninth');
+        Route::post('marksheet-final-ninth-select/exam', 'selectExamWithOrWithoutNinthStore')->name('marks-report.select.exam.ninth.store');
+        Route::get('marksheet-final-ninth', 'finalMarksheetNinth')->name('marks-report.marksheet.ninth');
+        Route::post('marksheet-final-ninth', 'finalMarksheetNinthStore')->name('marks-report.marksheet.ninth.store');
+        Route::get('marksheet-final-ninth/print', 'finalMarksheetNinthPrint')->name('marks-report.marksheet.ninth.print');
+        Route::get('marksheet-final-ninth/report', 'finalMarksheetNinthReport')->name('marks-report.marksheet.ninth.get');
+
         Route::get('exam-wise/public-school', 'publicSchoolExamWise')->name('marks-report.public-exam-wise');
         Route::post('exam-wise/public-school', 'publicSchoolExamWisePrintStore')->name('marks-report.public-exam-wise.store');
         Route::get('exam-wise/public-school/print', 'publicSchoolExamWisePrint')->name('marks-report.public-exam-wise.print');
