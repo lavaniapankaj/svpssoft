@@ -157,7 +157,7 @@ class MarksMasterController extends Controller
 
             $requestSubjectIds = array_keys($request->subjects);
 
-            // 🔹 If Edit Mode — Only remove grades not included now
+            //  If Edit Mode — Only remove grades not included now
             if ($isEdit) {
                 SubjectGrade::where('session_id', $sessionId)
                     ->where('exam_id', $request->exam_id)

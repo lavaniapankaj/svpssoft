@@ -1156,44 +1156,49 @@ class ReportController extends Controller
                 ], 400);
             }
 
-            $classID   = $request->class;
+            $classId   = $request->class;
             $sessionId = $current_session->id;
             $calcDate  = Carbon::parse($request->date);
 
-            // ─── Load classes ─────────────────────────────────────────────
-            // Pass null when "all" is selected so no class filter is applied
-            $allClasses = ClassMasterController::getClasses(
-                ['id', 'class'],
-                null,
-                false,
-                $classID !== 'all' ? ['id' => $classID] : [],   // ← empty = no filter
-                'whereIn',
-                true
-            );
+            // ── Fetch active classes (one query) ──────────────────────────
+            $classQuery = DB::table('class_masters')
+                ->where('active', 1)
+                ->orderBy('sort');
 
-            // ─── Pre-load all DOBs in one query (eliminates N+1) ──────────
-            // Collect every srno we'll need across all classes first
-            $allSrnos = StudentMaster::where('session_id', $sessionId)
-                ->when($classID !== 'all', fn($q) => $q->where('class', $classID))
+            if ($classId !== 'all') {
+                $classQuery->where('id', (int) $classId);
+            }
+
+            $classes = $classQuery->get(['id', 'class']);
+
+            if ($classes->isEmpty()) {
+                return response()->json(['status' => 'success', 'data' => []], 200);
+            }
+
+            // ── Fetch all relevant students (one query) ────────────────────
+            $studentQuery = DB::table('stu_main_srno')
+                ->where('session_id', $sessionId)
                 ->whereIn('ssid', [1, 2, 4, 5])
-                ->where('active', 1)
-                ->pluck('gender', 'srno');   // [ srno => gender ]
+                ->where('active', 1);
 
+            if ($classId !== 'all') {
+                $studentQuery->where('class', (int) $classId);
+            }
+
+            // [ srno => {srno, class, gender} ]
+            $students = $studentQuery->get(['srno', 'class', 'gender'])
+                ->keyBy('srno');
+
+            // ── Fetch all DOBs in one query ────────────────────────────────
             $dobMap = DB::table('stu_detail')
-                ->whereIn('srno', $allSrnos->keys())
+                ->whereIn('srno', $students->keys())
                 ->where('active', 1)
-                ->pluck('dob', 'srno');      // [ srno => dob ]
+                ->pluck('dob', 'srno');  // [ srno => dob ]
 
-            // ─── Build report per class ────────────────────────────────────
-            $report = $allClasses->map(function ($class) use (
-                $sessionId, $calcDate, $dobMap, $allSrnos
-            ) {
-                // Students belonging to this class only
-                $students = StudentMaster::where('session_id', $sessionId)
-                    ->where('class', $class->id)
-                    ->whereIn('ssid', [1, 2, 4, 5])
-                    ->where('active', 1)
-                    ->pluck('gender', 'srno');
+            // ── Build report per class ─────────────────────────────────────
+            $report = $classes->map(function ($class) use ($students, $dobMap, $calcDate) {
+
+                $classStudents = $students->filter(fn($s) => $s->class == $class->id);
 
                 $ageGroups = [
                     'lessThanFive'    => ['boys' => 0, 'girls' => 0],
@@ -1212,7 +1217,7 @@ class ReportController extends Controller
                     'aboveToSixteen'  => ['boys' => 0, 'girls' => 0],
                 ];
 
-                foreach ($students as $srno => $gender) {
+                foreach ($classStudents as $srno => $student) {
                     $dob = $dobMap->get($srno);
                     if (!$dob) continue;
 
@@ -1235,7 +1240,7 @@ class ReportController extends Controller
                         default     => 'aboveToSixteen',
                     };
 
-                    $genderKey = $gender == 1 ? 'boys' : 'girls';
+                    $genderKey = $student->gender == 1 ? 'boys' : 'girls';
                     $ageGroups[$ageGroup][$genderKey]++;
                 }
 
@@ -1253,7 +1258,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'Failed to get age-wise report: ' . $e->getMessage(),
+                'message' => 'Failed to get age-wise report.'.$e->getMessage(),
             ], 500);
         }
     }
@@ -1446,7 +1451,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'Failed to get age-wise report: ' . $e->getMessage(),
+                'message' => 'Failed to get age-wise report.',
             ], 500);
         }
     }

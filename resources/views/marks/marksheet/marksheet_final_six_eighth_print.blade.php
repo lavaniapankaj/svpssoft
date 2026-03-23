@@ -413,7 +413,7 @@
                                         <div class="col-md-2 align-items-stretch justify-content-center px-0 mb-1">
                                             <table class="table table-bordered h-100 w-100 mb-0">
                                                 <tr>
-                                                    <td class="align-middle border-start-0">
+                                                    <td class="align-middle border-start-0 ms_final_box_result_message">
                                                     <p class="text-center">${response.logo.result_date_message}</p>
                                                     <hr>
                                                     <p class="text-center">${response.logo.session_start_message}</p></td>
@@ -526,7 +526,7 @@
                                         <div class="col-md-2 align-items-stretch px-0 mb-1">
                                             <table class="table table-bordered h-100 w-100 mb-0">
                                                 <tr class="align-middle">
-                                                    <td class="align-middle text-center border-start-0">
+                                                    <td class="align-middle text-center border-start-0 ms_final_box_result_message">
                                                         <p>Percentage:<br>${((overallGrandTotal / allSubjectsToMarks) * 100).toFixed(2)}%</p>
                                                         <hr>
                                                         <p>Result:<br>Pass</p>`;

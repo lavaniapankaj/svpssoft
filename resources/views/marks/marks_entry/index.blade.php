@@ -501,13 +501,12 @@ $(document).ready(function () {
                         title: 'Successful',
                         text:  'Student marks and attendance have been updated.',
                         confirmButtonText: 'OK'
-                    });
-                    /* .then(function () {
+                    }).then(function () {
                         // Reset UI without full page reload
                         studentMarks = {};
                         stdContainer.hide();
                         stdTableBody.html('');
-                    }); */
+                    });
                 } else {
                     Swal.fire({
                         icon: 'error',
