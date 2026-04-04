@@ -80,7 +80,7 @@
                                     <tr class="marksheet_row first"><td class="border-0">
                                         <div class="text-center mb-4">
                                             <img src="${response.logo.school_logo}" alt="School Logo" class="mb-2">
-                                            <h2 class="mb-2 name_st_ms_sv">St. Vivekanand Play House</h2>
+                                            <h2 class="mb-2 name_st_ms_sv">St. Vivekanand Public Secondary School</h2>
                                             <p class="mb-1 med_text_sv">(English Medium)</p>
                                             <p class="mb-1 add_text_sv">Vivekanand Chowk, Chirawa, 01596 - 220877</p>
                                             <p class="mb-2 sec_text_sv">Session : ${response.session}</p>
@@ -90,7 +90,7 @@
                                         <td class="border-0">
                                         <!-- Student Details -->
                                             <div class="row">
-                                                <div class="col-md-6">		
+                                                <div class="col-md-6">
                                                     <div class="row mb-2">
                                                         <div class="col-5 ms_text_head fw-bold">Name of Student :</div>
                                                         <div class="col-7 ms_text_head">${studentInfo.name}</div>
@@ -98,7 +98,7 @@
                                                     <div class="row mb-2">
                                                         <div class="col-5 ms_text_head fw-bold">Father's Name :</div>
                                                         <div class="col-7 ms_text_head">${studentInfo.father_name}</div>
-                                                    </div>			
+                                                    </div>
                                                     <div class="row mb-2">
                                                         <div class="col-5 ms_text_head fw-bold">Mother's Name :</div>
                                                         <div class="col-7 ms_text_head">${studentInfo.mother_name}</div>
@@ -106,9 +106,9 @@
                                                     <div class="row mb-2">
                                                         <div class="col-5 ms_text_head fw-bold">Class :</div>
                                                         <div class="col-7 ms_text_head">${studentInfo.class}</div>
-                                                    </div>			
+                                                    </div>
                                                 </div>
-                                                
+
                                                 <div class="col-md-6">
                                                     <div class="row mb-2">
                                                         <div class="col-5 ms_text_head fw-bold">Section :</div>
@@ -185,9 +185,9 @@
                                                                                         </div>
                                                                                         <div class="col-3 d-flex align-content-center align-items-stretch">
                                                                                             <div class="border-dark border-top-1 border border-bottom-1 col-12 text-center border-start-0 align-content-center">
-                                                                                                <p class="fw-bold mb-1 text-decoration-underline">Attendance</p>
+                                                                                                <!-- <p class="fw-bold mb-1 text-decoration-underline">Attendance</p>
                                                                                                 <p class="mb-1">Attended</p>
-                                                                                                <p class="mb-1">${attendance.days_present} / ${attendance.total_days}</p>
+                                                                                                <p class="mb-1">${attendance.days_present} / ${attendance.total_days}</p> -->
                                                                                                 <p class="mb-1">Result : ${result.result}</p>
                                                                                                 <p class="mb-1">${result.result_date_message}</p>
                                                                                                 <hr class="mx-2">
@@ -217,10 +217,10 @@
                                                                                 </td></tr>
                                                                                 <tr><td class="border-0">
                                                                                     <div class="row">
-                                                                                        <div class="col-4 text-center align-content-end my-2">                                                                                            
+                                                                                        <div class="col-4 text-center align-content-end my-2">
                                                                                             <p class="mb-0">Sign of Class Teacher</p>
                                                                                         </div>
-                                                                                        <div class="col-4 text-center align-content-end  my-2">                                                                                           
+                                                                                        <div class="col-4 text-center align-content-end  my-2">
                                                                                             <p class="mb-0">Sign of Checker</p>
                                                                                         </div>
                                                                                         <div class="col-4 text-center align-content-end  my-2">

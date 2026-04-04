@@ -158,7 +158,7 @@ class MarksController extends Controller
                 ], 200);
             }
             $currentSession = isset($request->session_id) ? $request->session_id : $current_session->id;
-            $ssid = isset($request->session_id) ? [1, 2, 3, 4, 5] : [1];
+            $ssid = isset($request->session_id) ? [1, 2, 3, 4, 5] : [1, 2];
             $classId = $request->class_id;
             $sectionId = $request->section_id;
             $baseQuery = DB::table('stu_main_srno')

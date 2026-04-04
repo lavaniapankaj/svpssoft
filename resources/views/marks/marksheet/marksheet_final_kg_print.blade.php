@@ -67,17 +67,17 @@
                                              <td class="border-0">
                                                 <div class="text-center mb-4">
                                                     <img src="${response.logo.school_logo}" alt="School Logo" class="rounded-circle mb-2 pt-3">
-                                                    <h2 class="mb-0 name_st_ms_sv">St. Vivekanand Play House</h2>
-                                                    <p class="mb-0 med_text_sv">(English Medium)</p>
-                                                    <p class="mb-0 add_text_sv">Vivekanand Chowk, Chirawa, 01596 - 220877</p>
-                                                    <p class="mb-0 sec_text_sv">Session: ${response.session.name}</p>
+                                                    <h2 class="mb-2 name_st_ms_sv">St. Vivekanand Public Secondary School</h2>
+                                                    <p class="mb-2 med_text_sv">(English Medium)</p>
+                                                    <p class="mb-2 add_text_sv">Vivekanand Chowk, Chirawa, 01596 - 220877</p>
+                                                    <p class="mb-2 sec_text_sv">Session: ${response.session.name}</p>
                                                 </div>
                                              </td>
                                             </tr>
                                             <tr class="marksheet_row second">
                                              <td class="border-0">
                                                 <!-- Student Details -->
-                                                <div class="row">
+                                                <div class="row mb-2">
                                                     <div class="col-md-6">
                                                         <div class="row mb-2">
                                                             <div class="col-5 fw-bold ms_text_head">Name of Student:</div>
@@ -107,7 +107,7 @@
                                                         </div>
                                                         <div class="row mb-2">
                                                             <div class="col-5 fw-bold ms_text_head">Date of Birth:</div>
-                                                            <div class="col-7 ms_text_head">${student.student_details.dob ?? 'N/A'}</div>
+                                                            <div class="col-7 ms_text_head">${student.student_details.dob ? formatDOB(student.student_details.dob) : 'N/A'}</div>
                                                         </div>
                                                         <div class="row mb-2">
                                                             <div class="col-5 fw-bold ms_text_head">Roll No.:</div>
@@ -161,31 +161,31 @@
                                                 </div>
                                                  <div class="col-md-2 d-flex px-0 align-items-stretch">
                                                     <div class="border-dark border-top-1 border border-bottom-1 text-center align-content-center w-100 border-start-0">
-                                                        <p class="fw-bold mb-1">Attendance</p>
+                                                       <!-- <p class="fw-bold mb-1">Attendance</p>
                                                         <p class="mb-1">Attended</p>
-                                                        <p class="mb-1">${student.attendance.days_present} / ${student.attendance.total_days}</p>                                                        
-                                                        <hr class="mx-2">
+                                                        <p class="mb-1">${student.attendance.days_present} / ${student.attendance.total_days}</p>
+                                                        <hr class="mx-2"> -->
                                                         <p class="text-center mb-0">${student.attendance.result_date_message}</p>
                                                     </div>
                                                 </div>
                                             </div>
                                             </td>
                                             </tr>
-                                            
+
                                             <tr class="marksheet_row"><td class="border-0 p-0">
                                             <!-- Grades -->
                                             <div class="row align-items-stretch mx-0">
                                                 <div class="col-10 align-items-stretch px-0">
                                                     <table class="table table-bordered w-100 h-100">
                                                     <thead>
-                                                    
+
                                                     <tr class="table-light text-center main_ms_th align-middle">
                                                         <th class="align-middle text-start">Subject</th>
                                                         ${student.marks_data[0].exam_marks.map(exam => `
                                                                         <th>${exam.exam_name}</th>
                                                                     `).join('')}
                                                         <th >Grand Total</th>
-                                                        
+
                                                     </tr>
                                                     </thead>
                                                        <tbody>
@@ -212,7 +212,7 @@
                                                         <p class="mb-1">${student.summary.overall_percentage ?? 'Nan'}%</p>
                                                         <p class="fw-bold mb-1">Result</p>
                                                         <p class="mb-0">${student.summary.overall_result}</p>
-                                                        <hr class="mx-2">
+                                                        <hr class="mx-2 my-2">
                                                         <p class="text-center mb-0">${student.attendance.session_start_message}</p>
                                                     </div>
                                                 </div>
@@ -220,7 +220,7 @@
                                             </td></tr>
                                             <tr><td class="border-0">
                                             <!-- Signatures -->
-                                            <div class="row mx-0 signature-container">
+                                            <div class="row mx-0 mt-2 signature-container">
                                                 <div class="col-md-4 align-content-end text-center my-2">
                                                     <p class="mb-0">Sign of Class Teacher</p>
                                                 </div>
@@ -228,7 +228,7 @@
                                                     <p class="mb-0">Sign of Checker</p>
                                                 </div>
                                                 <div class="col-md-4 text-center my-2">
-                                                    <img src="${response.logo.principal_sign}" alt="School Logo" class="mb-1" style="height:35px;">                                                    
+                                                    <img src="${response.logo.principal_sign}" alt="School Logo" class="mb-1" style="height:35px;">
                                                     <p class="mb-0">Sign of Principal</p>
                                                 </div>
                                             </div>
@@ -267,9 +267,12 @@
                         <style>
                             @media print {
                                 body {
-                                    zoom: 1; /* Adjust the zoom level as needed */
-                                    margin: auto !important;
+                                    /* Adjust the zoom level as needed */
+                                    margin: 8mm; !important;
                                     padding: auto !important;
+                                    size: A4 landscape;
+                                    box-sizing: border-box;
+                                    zoom:0.98;
                                 }
                                 .marksheet-container {
                                     page-break-after: always; /* Ensure page break after each marksheet */

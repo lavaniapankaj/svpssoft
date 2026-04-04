@@ -30,32 +30,100 @@ class StudentMasterController extends Controller
     /**
      * Display a listing of the resource.
      */
+    // public function index(Request $request)
+    // {
+    //     $search = $request->input('search');
+    //     $current_session = Session::get('std_current_session')->id;
+    //     if ($search !== '') {
+    //         $baseQuery = DB::table('stu_main_srno')
+    //             ->select(
+    //                 'stu_main_srno.id',
+    //                 'stu_main_srno.srno',
+    //                 'stu_main_srno.school',
+    //                 'stu_main_srno.class',
+    //                 'stu_main_srno.section',
+    //                 'stu_detail.name as student_name',
+    //                 'class_masters.class as class_name',
+    //                 'section_masters.section as section_name',
+    //                 'parents_detail.f_name',
+    //                 'parents_detail.m_name'
+    //             )
+    //             ->leftJoin('stu_detail', 'stu_main_srno.srno', '=', 'stu_detail.srno')
+    //             ->leftJoin('parents_detail', 'stu_main_srno.srno', '=', 'parents_detail.srno')
+    //             ->leftJoin('class_masters', 'stu_main_srno.class', '=', 'class_masters.id')
+    //             ->leftJoin('section_masters', 'stu_main_srno.section', '=', 'section_masters.id')
+    //             ->where('stu_main_srno.session_id', $current_session)
+    //             // ->whereIn('ssid', [1, 2, 3, 4, 5]);
+    //             ->whereIn('ssid', [1, 2]);
+
+    //         $baseQuery->where(function ($q) use ($search) {
+    //             $q->where('stu_main_srno.srno', 'LIKE', "%{$search}%")
+    //                 ->orWhere('stu_detail.name', 'LIKE', "%{$search}%");
+    //         });
+    //     }
+
+    //     $data = $baseQuery->orderBy('stu_main_srno.created_at', 'DESC')->paginate(10);
+    //     // $maxPlaySchool = DB::table('stu_main_srno')->where('stu_main_srno.school', 1)->max('srno');
+    //     $maxPlaySchool = DB::table(DB::raw('(select distinct srno, created_at from stu_main_srno where school = 1 order by created_at desc) as subquery'))
+    //         ->select('srno')->limit(1)->first();
+    //     $playSchoolLatest = DB::table('stu_main_srno')
+    //         ->select('stu_main_srno.srno', 'stu_detail.name', 'parents_detail.f_name')
+    //         ->leftJoin('stu_detail', 'stu_main_srno.srno', '=', 'stu_detail.srno')
+    //         ->leftJoin('parents_detail', 'stu_main_srno.srno', '=', 'parents_detail.srno')
+    //         // ->where('stu_main_srno.school', 1)
+    //         ->where('stu_main_srno.srno', $maxPlaySchool->srno)
+    //         ->first();
+    //     // $maxPublicSchool = DB::table('stu_main_srno')->where('stu_main_srno.school', 2)->max('srno');
+    //     $maxPublicSchool = DB::table(DB::raw('(select distinct srno, created_at from stu_main_srno where school = 2 order by created_at desc) as subquery'))
+    //         ->select('srno')->limit(1)->first();
+
+
+
+    //     $publicSchoolLatest = DB::table('stu_main_srno')
+    //         ->select('stu_main_srno.srno', 'stu_detail.name', 'parents_detail.f_name')
+    //         ->leftJoin('stu_detail', 'stu_main_srno.srno', '=', 'stu_detail.srno')
+    //         ->leftJoin('parents_detail', 'stu_main_srno.srno', '=', 'parents_detail.srno')
+    //         // ->where('stu_main_srno.school', 2)
+    //         ->where('stu_main_srno.srno', $maxPublicSchool->srno)
+    //         ->first();
+
+    //     $playSchoolLatestSrno = $playSchoolLatest ? $playSchoolLatest->srno : null;
+    //     $playSchoolLatestName = $playSchoolLatest ? $playSchoolLatest->name : null;
+    //     $playSchoolLatestFatherName = $playSchoolLatest ? $playSchoolLatest->f_name : null;
+
+    //     $publicSchoolLatestSrno = $publicSchoolLatest ? $publicSchoolLatest->srno : null;
+    //     $publicSchoolLatestName = $publicSchoolLatest ? $publicSchoolLatest->name : null;
+    //     $publicSchoolLatestFatherName = $publicSchoolLatest ? $publicSchoolLatest->f_name : null;
+
+    //     return view('student.registration.index', compact('data', 'playSchoolLatestSrno', 'playSchoolLatestName', 'playSchoolLatestFatherName', 'publicSchoolLatestSrno', 'publicSchoolLatestName', 'publicSchoolLatestFatherName'));
+    // }
+
     public function index(Request $request)
     {
         $search = $request->input('search');
         $current_session = Session::get('std_current_session')->id;
-        if ($search !== '') {
-            $baseQuery = DB::table('stu_main_srno')
-                ->select(
-                    'stu_main_srno.id',
-                    'stu_main_srno.srno',
-                    'stu_main_srno.school',
-                    'stu_main_srno.class',
-                    'stu_main_srno.section',
-                    'stu_detail.name as student_name',
-                    'class_masters.class as class_name',
-                    'section_masters.section as section_name',
-                    'parents_detail.f_name',
-                    'parents_detail.m_name'
-                )
-                ->leftJoin('stu_detail', 'stu_main_srno.srno', '=', 'stu_detail.srno')
-                ->leftJoin('parents_detail', 'stu_main_srno.srno', '=', 'parents_detail.srno')
-                ->leftJoin('class_masters', 'stu_main_srno.class', '=', 'class_masters.id')
-                ->leftJoin('section_masters', 'stu_main_srno.section', '=', 'section_masters.id')
-                ->where('stu_main_srno.session_id', $current_session)
-                // ->whereIn('ssid', [1, 2, 3, 4, 5]);
-                ->whereIn('ssid', [1, 2]);
 
+        $baseQuery = DB::table('stu_main_srno')
+            ->select(
+                'stu_main_srno.id',
+                'stu_main_srno.srno',
+                'stu_main_srno.school',
+                'stu_main_srno.class',
+                'stu_main_srno.section',
+                'stu_detail.name as student_name',
+                'class_masters.class as class_name',
+                'section_masters.section as section_name',
+                'parents_detail.f_name',
+                'parents_detail.m_name'
+            )
+            ->leftJoin('stu_detail', 'stu_main_srno.srno', '=', 'stu_detail.srno')
+            ->leftJoin('parents_detail', 'stu_main_srno.srno', '=', 'parents_detail.srno')
+            ->leftJoin('class_masters', 'stu_main_srno.class', '=', 'class_masters.id')
+            ->leftJoin('section_masters', 'stu_main_srno.section', '=', 'section_masters.id')
+            ->where('stu_main_srno.session_id', $current_session)
+            ->whereIn('ssid', [1, 2]);
+
+        if ($search !== '' && $search !== null) {
             $baseQuery->where(function ($q) use ($search) {
                 $q->where('stu_main_srno.srno', 'LIKE', "%{$search}%")
                     ->orWhere('stu_detail.name', 'LIKE', "%{$search}%");
@@ -63,39 +131,54 @@ class StudentMasterController extends Controller
         }
 
         $data = $baseQuery->orderBy('stu_main_srno.created_at', 'DESC')->paginate(10);
-        // $maxPlaySchool = DB::table('stu_main_srno')->where('stu_main_srno.school', 1)->max('srno');
-        $maxPlaySchool = DB::table(DB::raw('(select distinct srno, created_at from stu_main_srno where school = 1 order by created_at desc) as subquery'))
-            ->select('srno')->limit(1)->first();
-        $playSchoolLatest = DB::table('stu_main_srno')
-            ->select('stu_main_srno.srno', 'stu_detail.name', 'parents_detail.f_name')
-            ->leftJoin('stu_detail', 'stu_main_srno.srno', '=', 'stu_detail.srno')
-            ->leftJoin('parents_detail', 'stu_main_srno.srno', '=', 'parents_detail.srno')
-            // ->where('stu_main_srno.school', 1)
-            ->where('stu_main_srno.srno', $maxPlaySchool->srno)
-            ->first();
-        // $maxPublicSchool = DB::table('stu_main_srno')->where('stu_main_srno.school', 2)->max('srno');
-        $maxPublicSchool = DB::table(DB::raw('(select distinct srno, created_at from stu_main_srno where school = 2 order by created_at desc) as subquery'))
-            ->select('srno')->limit(1)->first();
 
+        //  Fixed: Play school srno format is j/551 so extract numeric part after "/"
+        $maxPlaySchoolSrno = DB::table('stu_main_srno')
+            ->where('school', 1)
+            ->orderByRaw('CAST(SUBSTRING_INDEX(srno, "/", -1) AS UNSIGNED) DESC')
+            ->value('srno');
 
+        $playSchoolLatest = $maxPlaySchoolSrno
+            ? DB::table('stu_main_srno')
+                ->select('stu_main_srno.srno', 'stu_detail.name', 'parents_detail.f_name')
+                ->leftJoin('stu_detail', 'stu_main_srno.srno', '=', 'stu_detail.srno')
+                ->leftJoin('parents_detail', 'stu_main_srno.srno', '=', 'parents_detail.srno')
+                ->where('stu_main_srno.srno', $maxPlaySchoolSrno)
+                ->first()
+            : null;
 
-        $publicSchoolLatest = DB::table('stu_main_srno')
-            ->select('stu_main_srno.srno', 'stu_detail.name', 'parents_detail.f_name')
-            ->leftJoin('stu_detail', 'stu_main_srno.srno', '=', 'stu_detail.srno')
-            ->leftJoin('parents_detail', 'stu_main_srno.srno', '=', 'parents_detail.srno')
-            // ->where('stu_main_srno.school', 2)
-            ->where('stu_main_srno.srno', $maxPublicSchool->srno)
-            ->first();
+        //  Fixed: Public school srno is numeric varchar so cast properly
+        $maxPublicSchoolSrno = DB::table('stu_main_srno')
+            ->where('school', 2)
+            ->orderByRaw('CAST(srno AS UNSIGNED) DESC')
+            ->value('srno');
 
-        $playSchoolLatestSrno = $playSchoolLatest ? $playSchoolLatest->srno : null;
-        $playSchoolLatestName = $playSchoolLatest ? $playSchoolLatest->name : null;
-        $playSchoolLatestFatherName = $playSchoolLatest ? $playSchoolLatest->f_name : null;
+        $publicSchoolLatest = $maxPublicSchoolSrno
+            ? DB::table('stu_main_srno')
+                ->select('stu_main_srno.srno', 'stu_detail.name', 'parents_detail.f_name')
+                ->leftJoin('stu_detail', 'stu_main_srno.srno', '=', 'stu_detail.srno')
+                ->leftJoin('parents_detail', 'stu_main_srno.srno', '=', 'parents_detail.srno')
+                ->where('stu_main_srno.srno', $maxPublicSchoolSrno)
+                ->first()
+            : null;
 
-        $publicSchoolLatestSrno = $publicSchoolLatest ? $publicSchoolLatest->srno : null;
-        $publicSchoolLatestName = $publicSchoolLatest ? $publicSchoolLatest->name : null;
-        $publicSchoolLatestFatherName = $publicSchoolLatest ? $publicSchoolLatest->f_name : null;
+        $playSchoolLatestSrno        = $playSchoolLatest->srno   ?? null;
+        $playSchoolLatestName        = $playSchoolLatest->name   ?? null;
+        $playSchoolLatestFatherName  = $playSchoolLatest->f_name ?? null;
 
-        return view('student.registration.index', compact('data', 'playSchoolLatestSrno', 'playSchoolLatestName', 'playSchoolLatestFatherName', 'publicSchoolLatestSrno', 'publicSchoolLatestName', 'publicSchoolLatestFatherName'));
+        $publicSchoolLatestSrno       = $publicSchoolLatest->srno   ?? null;
+        $publicSchoolLatestName       = $publicSchoolLatest->name   ?? null;
+        $publicSchoolLatestFatherName = $publicSchoolLatest->f_name ?? null;
+
+        return view('student.registration.index', compact(
+            'data',
+            'playSchoolLatestSrno',
+            'playSchoolLatestName',
+            'playSchoolLatestFatherName',
+            'publicSchoolLatestSrno',
+            'publicSchoolLatestName',
+            'publicSchoolLatestFatherName'
+        ));
     }
 
     /**
@@ -1570,7 +1653,7 @@ class StudentMasterController extends Controller
         ];
 
         $where = $isSSID == true ? [
-            'whereIn' => ['stu_main_srno.ssid' => [1, 2, 4, 5]],
+            'whereIn' => ['stu_main_srno.ssid' => [1, 2]],
             'where' => ['stu_main_srno.active' => 1],
         ] : [
             'where' => [

@@ -157,7 +157,7 @@ class MarksMasterController extends Controller
 
             $requestSubjectIds = array_keys($request->subjects);
 
-            //  If Edit Mode — Only remove grades not included now
+            // 🔹 If Edit Mode — Only remove grades not included now
             if ($isEdit) {
                 SubjectGrade::where('session_id', $sessionId)
                     ->where('exam_id', $request->exam_id)
@@ -695,25 +695,117 @@ class MarksMasterController extends Controller
 
 
     /** Get Subject-wise OverAllGrade */
+    // public function getGlobalSubjectWiseOverallGrade(Request $request)
+    // {
+    //     $classId = $request->class;
+    //     $sessionId = Session::get('current_session')->id;
+
+    //     try {
+
+    //         // Step 1: Fetch parent subjects which have child subjects
+    //         $subjects = DB::table('subject_masters as s')
+    //             ->whereExists(function($query) use ($classId) {
+    //                 $query->select(DB::raw(1))
+    //                     ->from('subject_masters as child')
+    //                     ->whereRaw('child.subject_id = s.id')
+    //                     ->where('child.class_id', $classId)
+    //                     ->where('child.active', 1);
+    //             })
+    //             ->where('s.class_id', $classId)
+    //             ->where('s.active', 1)
+    //             ->whereNull('s.subject_id') // Only parent subjects
+    //             ->select(
+    //                 's.id as subject_id',
+    //                 's.subject as subject_name'
+    //             )
+    //             ->orderBy('s.priority')
+    //             ->orderBy('s.order_by')
+    //             ->get();
+
+    //         // -----------------------------------------------
+    //         // NEW CONDITION: If no parent-with-child found → load all subjects of class
+    //         // -----------------------------------------------
+    //         if ($subjects->isEmpty()) {
+    //             $subjects = DB::table('subject_masters')
+    //                 ->where('class_id', $classId)
+    //                 ->where('active', 1)
+    //                 ->select('id as subject_id', 'subject as subject_name')
+    //                 ->orderBy('priority')
+    //                 ->orderBy('order_by')
+    //                 ->get();
+    //         }
+
+    //         $data = [];
+
+    //         foreach ($subjects as $subject) {
+    //             // Get grades for this subject
+    //             $grades = DB::table('subject_grades')
+    //                 ->where('subject_id', $subject->subject_id)
+    //                 ->where('class_id', $classId)
+    //                 ->whereNull('exam_id')
+    //                 ->where('session_id', $sessionId)
+    //                 ->where('active', 1)
+    //                 ->where('is_overall', 4)
+    //                 ->orderBy('min_marks', 'desc')
+    //                 ->get(['grade_name', 'min_marks', 'max_marks']);
+
+    //             $data[] = [
+    //                 'id' => $subject->subject_id,
+    //                 'name' => $subject->subject_name,
+    //                 'grades' => $grades->isEmpty() ? [] : $grades,
+    //             ];
+    //         }
+    //         dd($data);
+    //         return response()->json([
+    //             'status' => 'success',
+    //             'data' => $data,
+    //         ]);
+
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'Failed to get record',
+    //             'error' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
+    /** Get Subject-wise OverAllGrade */
     public function getGlobalSubjectWiseOverallGrade(Request $request)
     {
         $classId = $request->class;
         $sessionId = Session::get('current_session')->id;
 
         try {
-
-            // Step 1: Fetch parent subjects which have child subjects
+            // Step 1: Fetch parent subjects:
+            // - Either has child subjects, OR is a standalone parent with no children (by_m_g = 2)
             $subjects = DB::table('subject_masters as s')
-                ->whereExists(function($query) use ($classId) {
-                    $query->select(DB::raw(1))
-                        ->from('subject_masters as child')
-                        ->whereRaw('child.subject_id = s.id')
-                        ->where('child.class_id', $classId)
-                        ->where('child.active', 1);
-                })
                 ->where('s.class_id', $classId)
                 ->where('s.active', 1)
                 ->whereNull('s.subject_id') // Only parent subjects
+                ->where(function($query) use ($classId) {
+
+                    // Case 1: Has child subjects
+                    $query->whereExists(function($subQuery) use ($classId) {
+                        $subQuery->select(DB::raw(1))
+                            ->from('subject_masters as child')
+                            ->whereRaw('child.subject_id = s.id')
+                            ->where('child.class_id', $classId)
+                            ->where('child.active', 1);
+                    })
+
+                    // Case 2: Standalone parent with no children (by_m_g = 2)
+                    ->orWhere(function($subQuery) use ($classId) {
+                        $subQuery->where('s.by_m_g', 2)
+                            ->whereNotExists(function($existsQuery) use ($classId) {
+                                $existsQuery->select(DB::raw(1))
+                                    ->from('subject_masters as child')
+                                    ->whereRaw('child.subject_id = s.id')
+                                    ->where('child.class_id', $classId)
+                                    ->where('child.active', 1);
+                            });
+                    });
+                })
                 ->select(
                     's.id as subject_id',
                     's.subject as subject_name'
@@ -721,19 +813,6 @@ class MarksMasterController extends Controller
                 ->orderBy('s.priority')
                 ->orderBy('s.order_by')
                 ->get();
-
-            // -----------------------------------------------
-            // NEW CONDITION: If no parent-with-child found → load all subjects of class
-            // -----------------------------------------------
-            if ($subjects->isEmpty()) {
-                $subjects = DB::table('subject_masters')
-                    ->where('class_id', $classId)
-                    ->where('active', 1)
-                    ->select('id as subject_id', 'subject as subject_name')
-                    ->orderBy('priority')
-                    ->orderBy('order_by')
-                    ->get();
-            }
 
             $data = [];
 
@@ -750,22 +829,22 @@ class MarksMasterController extends Controller
                     ->get(['grade_name', 'min_marks', 'max_marks']);
 
                 $data[] = [
-                    'id' => $subject->subject_id,
-                    'name' => $subject->subject_name,
+                    'id'     => $subject->subject_id,
+                    'name'   => $subject->subject_name,
                     'grades' => $grades->isEmpty() ? [] : $grades,
                 ];
             }
 
             return response()->json([
                 'status' => 'success',
-                'data' => $data,
+                'data'   => $data,
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Failed to get record',
-                'error' => $e->getMessage()
+                'error'   => $e->getMessage()
             ], 500);
         }
     }

@@ -132,7 +132,7 @@
             let secondInstall = parseFloat($('#inst_2').val()) || 0;
             let discount = parseFloat($('#ins_discount').val()) || 0;
 
-            let total = admission + firstInstall + secondInstall - discount;
+            let total = firstInstall + secondInstall - discount;
 
             $('#inst_total').val(total.toFixed(2));
         }

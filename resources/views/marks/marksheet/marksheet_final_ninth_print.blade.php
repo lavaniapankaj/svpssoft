@@ -101,8 +101,8 @@
                                                 </div>
                                                 <div class="col-8 text-center">
                                                     <h2 class="mb-2 name_st_ms_sv">St. Vivekanand ${studentInfo.school == 1 ? 'Play House' : 'Public Secondary School'}</h2>
-                                                    <p class="mb-1 med_text_sv">(English Medium)</p>
-                                                    <p class="mb-1 add_text_sv">Vivekanand Chowk, Chirawa, 01596 - 220877</p>
+                                                    <p class="mb-2 med_text_sv">(English Medium)</p>
+                                                    <p class="mb-2 add_text_sv">Vivekanand Chowk, Chirawa, 01596 - 220877</p>
                                                     <p class="mb-2 sec_text_sv">Session : ${response.session.session}</p>
                                                 </div>
                                                 <div class="col-2"></div>
@@ -111,7 +111,7 @@
                                       </tr>
                                       <tr class="marksheet_row second">
                                           <td class="border-0"><!-- Student Details -->
-                                            <div class="row">
+                                            <div class="row mb-2">
                                                 <div class="col-md-6">
                                                     <div class="row mb-2">
                                                         <div class="col-5 ms_text_head fw-bold">Name of Student:</div>
@@ -184,6 +184,7 @@
                                     });
                                     rowSpan = 0;
                                     // Step 2: Create table headers dynamically based on `exam_id`
+                                    // CHANGE 1: removed "Total" column header for withoutId exams — no rowspan="2" Total th here
                                     Object.keys(examGroupedById).forEach(examId => {
                                         let exam = examGroupedById[examId];
                                         if (withoutId.includes(exam.examID.toString())) {
@@ -191,9 +192,7 @@
                                         }
                                         spanValue += withId.includes(exam.examID.toString()) ? 3 : 1;
                                     });
-                                    if (withoutId != '') {
-                                        tableHtml += `<th class="text-center align-middle border-end-0" rowspan="2">Total</th>`;
-                                    }
+                                    // REMOVED: Total column header for withoutId table
                                     tableHtml += `</tr>`;
                                     tableHtml += `</thead><tbody>`;
                                     tableHtml += `<tr><td class="fw-bold">M.M.</td>`;
@@ -213,9 +212,8 @@
                                         });
                                     }
                                     maxmMarksTotalSide += subjectMaxMarksTotal;
-                                    if (withoutId != '') {
-                                        tableHtml +=`<td class="text-center fw-bold border-end-0">${subjectMaxMarksTotal}</td></tr>`;
-                                    }
+                                    // REMOVED: Total cell in MM row for withoutId table
+                                    tableHtml += `</tr>`;
                                     // Step 3: Generate the table body
                                     let allSubjectsToMarks = 0;
                                     examsData.forEach(exam => {
@@ -226,7 +224,6 @@
                                                 if (withoutId.includes(examGroupedById[examId].examID.toString())) {
                                                     let examInfo = exam['exam-info'].find(info => info.exam_id === parseInt(examId));
                                                     if (examInfo) {
-                                                        // marks is already numeric or 'Abs' from PHP
                                                         let numericMarks = (examInfo.marks === 'Abs') ? 0 : Number(examInfo.marks);
                                                         examGroupedById[examId].totalMarks += numericMarks;
                                                         examGroupedById[examId].maxMarks   += examInfo.max_marks;
@@ -238,9 +235,8 @@
                                                     }
                                                 }
                                             });
-                                            if (withoutId != '') {
-                                                tableHtml += `<td class="text-center border-end-0">${subjectTotal}</td></tr>`;
-                                            }
+                                            // REMOVED: subjectTotal cell per row for withoutId table
+                                            tableHtml += `</tr>`;
                                         }
                                     });
                                     tableHtml += `<tr> <td class="text-center fw-bold">Total</td>`;
@@ -254,9 +250,8 @@
                                         }
                                     });
                                     sbMarks = sssp;
-                                    if (withoutId != '') {
-                                        tableHtml += `<td class="text-center fw-bold border-end-0">${sssp}</td></tr>`;
-                                    }
+                                    // REMOVED: sssp total cell in Total row for withoutId table
+                                    tableHtml += `</tr>`;
                                     tableHtml += `</tbody>
                                             </table>
                                         </div>`;
@@ -292,14 +287,16 @@
                                         }
                                     });
                                     rowSpan = 0;
-                                    // Step 2: Create table headers — colspan 2 (Marks + Total), no Oral
+                                    // Step 2: Create table headers
+                                    // CHANGE 2: withId exam headers — only "Marks" column, no "Total" column
                                     let isWithOut = false;
                                     let isWith = false;
                                     Object.keys(examGroupedById2).forEach(examId => {
                                         let exam = examGroupedById2[examId];
                                         if (withId && (withId.includes(exam.examID.toString()))) {
-                                            tableHtml += `<th class="text-center" colspan="2" id="exam-name" data-id="${exam.examID}">${exam.examName}</th>`;
-                                            spanValue += 2;
+                                            // CHANGED colspan from 2 to 1 — removed Total sub-column
+                                            tableHtml += `<th class="text-center" colspan="1" id="exam-name" data-id="${exam.examID}">${exam.examName}</th>`;
+                                            spanValue += 1;
                                         }
                                     });
                                     tableHtml +=`<th class="text-center align-middle" rowspan="2">Grand Total</th></tr>`;
@@ -307,9 +304,8 @@
                                     Object.keys(examGroupedById2).forEach(examId => {
                                         let exam = examGroupedById2[examId];
                                         if (withId && (withId.includes(exam.examID.toString()))) {
-                                            tableHtml += `<th class="text-center">Marks</th>
-                                                           <th class="text-center">Total</th>`;
-                                            spanValue += 2;
+                                            // CHANGED: only Marks header, removed Total header
+                                            tableHtml += `<th class="text-center">Marks</th>`;
                                         }
                                     });
                                     tableHtml += `</tr>`;
@@ -325,12 +321,11 @@
                                                     maxMarks += examInfo.max_marks;
                                                     maxmMarksTotalSide += examInfo.max_marks;
                                                     allSubjectsToMarks += examInfo.max_marks;
+                                                    // CHANGED: only one td for Marks, removed Total td
                                                     tableHtml += `
-                                                        <td class="text-center fw-bold">${examInfo.max_marks}</td>
                                                         <td class="text-center fw-bold">${examInfo.max_marks}</td>
                                                     `;
                                                 } else {
-                                                    tableHtml += `<td class="text-center">Abs</td>`;
                                                     tableHtml += `<td class="text-center">Abs</td>`;
                                                 }
                                             }
@@ -352,10 +347,9 @@
                                                 let examGroup = examGroupedById2[examId];
                                                 if (examInfo) {
                                                     if (withId && (withId.includes(examGroup.examID.toString()))) {
-                                                        // marks is already numeric or 'Abs' from PHP
                                                         let numericMarks = (examInfo.marks === 'Abs') ? 0 : Number(examInfo.marks);
+                                                        // CHANGED: only Marks cell, removed Total cell
                                                         tableHtml += `
-                                                            <td class="text-center">${examInfo.marks}</td>
                                                             <td class="text-center">${examInfo.marks}</td>
                                                         `;
                                                         examGroup.totalMarks     += numericMarks;
@@ -364,8 +358,8 @@
                                                     }
                                                 } else {
                                                     if (withId && (withId.includes(examGroup.examID.toString()))) {
+                                                        // CHANGED: only one Abs cell
                                                         tableHtml += `
-                                                            <td class="text-center">Abs</td>
                                                             <td class="text-center">Abs</td>
                                                         `;
                                                     }
@@ -380,15 +374,15 @@
                                     Object.keys(examGroupedById2).forEach(examId => {
                                         let exam = examGroupedById2[examId];
                                         if (withId && (withId.includes(exam.examID.toString()))) {
+                                            // CHANGED: only one total td (removed empty td before)
                                             tableHtml +=
-                                                `<td></td><td class="text-center fw-bold">${exam.totalMarks}</td>`;
+                                                `<td class="text-center fw-bold">${exam.totalMarks}</td>`;
                                             overallGrandTotal += exam.totalMarks;
                                         }
                                     });
                                     tableHtml += `<td class="text-center fw-bold">${overallGrandTotal}</td></tr>`;
                                     grandTotal = overallGrandTotal;
-                                    // Calculate correct total max marks:
-                                    // subjectCount × max_marks per exam (from MM row = examsData[0])
+                                    // Calculate correct total max marks
                                     let subjectCount = examsData.filter(e => e.by_m_g == 1 && e.priority == 1).length;
                                     let totalMaxMarksForPercentage = 0;
                                     if (examsData[0] && examsData[0]['exam-info']) {
@@ -396,6 +390,10 @@
                                             totalMaxMarksForPercentage += info.max_marks * subjectCount;
                                         });
                                     }
+
+                                    // Overall Grade comes from backend
+                                    let overallGrade = studentData.overallGrade ?? '';
+
                                     tableHtml += ` </tbody>
                                             </table>
                                         </div>
@@ -435,25 +433,25 @@
                                             }
                                         }
                                     });
-                                    // Step 2: Check if all subjects have only one exam type (same `exam_id`)
+                                    // Step 2: Check if all subjects have only one exam type
                                     let allSubjectsSameExam = Object.keys(examGroupedGradeById).length === 1;
-                                    // Generate headers
+                                    // Generate headers — Subject + exam mark columns + Overall Grade
                                     if (allSubjectsSameExam) {
-                                        examIdOrder.forEach(
-                                            examId => {
-                                                let exam = examGroupedGradeById[examId];
-                                                tableHtml += `<th>Subject</th><th class="text-center">${exam.examName}</th><th class="text-center">Grade</th>
-                                                              <th>Subject</th><th class="text-center">${exam.examName}</th><th class="text-center">Grade</th>`;
-                                            });
+                                        examIdOrder.forEach(examId => {
+                                            let exam = examGroupedGradeById[examId];
+                                            tableHtml += `<th>Subject</th><th class="text-center">${exam.examName}</th><th class="text-center">Overall Grade</th>
+                                                          <th>Subject</th><th class="text-center">${exam.examName}</th><th class="text-center">Overall Grade</th>`;
+                                        });
                                     } else {
                                         tableHtml += `<th>Subject</th>`;
                                         examIdOrder.forEach(examId => {
-                                                let exam = examGroupedGradeById[examId];
-                                                tableHtml += `<th class="text-center">${exam.examName}</th><th class="text-center">Grade</th>`;
+                                            let exam = examGroupedGradeById[examId];
+                                            tableHtml += `<th class="text-center">${exam.examName}</th>`;
                                         });
+                                        tableHtml += `<th class="text-center">Overall Grade</th>`;
                                     }
                                     tableHtml += `</tr></thead><tbody>`;
-                                     // Step 3: Generate the table body
+                                    // Step 3: Generate the table body
                                     if (allSubjectsSameExam) {
                                         let rows = [];
                                         examsData.forEach(exam => {
@@ -468,16 +466,18 @@
                                                 tableHtml += `<td>${rows[i].subject}</td>`;
                                                 let examInfo = rows[i]['exam-info'].find(info => info.exam_id === parseInt(Object.keys(examGroupedGradeById)[0]));
                                                 if (examInfo) {
-                                                    tableHtml += `<td class="text-center">${examInfo.grade}</td><td class="text-center">${examInfo.grade}</td>`;
+                                                    tableHtml += `<td class="text-center">${examInfo.grade}</td>`;
                                                 }
+                                                tableHtml += `<td class="text-center fw-bold">${rows[i].overallGrade ?? ''}</td>`;
                                                 if (rows[i + 1]) {
                                                     tableHtml += `<td>${rows[i + 1].subject}</td>`;
                                                     let examInfo2 = rows[i + 1]['exam-info'].find(info => info.exam_id === parseInt(Object.keys(examGroupedGradeById)[0]));
                                                     if (examInfo2) {
-                                                        tableHtml += `<td class="text-center">${examInfo2.grade}</td><td class="text-center">${examInfo2.grade}</td>`;
+                                                        tableHtml += `<td class="text-center">${examInfo2.grade}</td>`;
                                                     }
+                                                    tableHtml += `<td class="text-center fw-bold">${rows[i + 1].overallGrade ?? ''}</td>`;
                                                 } else {
-                                                    tableHtml += `<td class="text-center"></td><td class="text-center"></td><td>`;
+                                                    tableHtml += `<td class="text-center"></td><td class="text-center"></td><td class="text-center"></td>`;
                                                 }
                                             }
                                             tableHtml += `</tr>`;
@@ -487,13 +487,14 @@
                                             if (exam.by_m_g == 2 && exam['exam-info'] && exam['exam-info'].length > 0) {
                                                 tableHtml += `<tr class="align-middle"><td class="fw-bold">${exam.subject}</td>`;
                                                 examIdOrder.forEach(examId => {
-                                                        let examInfo = exam['exam-info'].find(info => info.exam_id === parseInt(examId));
-                                                        if (examInfo) {
-                                                            tableHtml += `<td class="text-center">${examInfo.grade}</td><td class="text-center">${examInfo.grade}</td>`;
-                                                        } else {
-                                                            tableHtml += `<td class="text-center">Abs</td><td class="text-center">Abs</td>`;
-                                                        }
-                                                    });
+                                                    let examInfo = exam['exam-info'].find(info => info.exam_id === parseInt(examId));
+                                                    if (examInfo) {
+                                                        tableHtml += `<td class="text-center">${examInfo.grade}</td>`;
+                                                    } else {
+                                                        tableHtml += `<td class="text-center">--</td>`;
+                                                    }
+                                                });
+                                                tableHtml += `<td class="text-center fw-bold">${exam.overallGrade ?? ''}</td>`;
                                                 tableHtml += `</tr>`;
                                             }
                                         });
@@ -522,7 +523,7 @@
                                       </tr>
                                       <tr class="marksheet_row attendence_details"><td class="p-0 border-0">
                                     <!-- Attendance Record -->
-                                    <div class="align-items-stretch">
+                                   <!-- <div class="align-items-stretch">
                                         <div class="col-12 px-0">
                                             <table class="table m-0">
                                                 <thead class="t_head_sv">
@@ -552,10 +553,10 @@
                                             </tbody>
                                             </table>
                                         </div>
-                                    </div>
+                                    </div> -->
                                     </td></tr><tr><td class="border-0">
                                     <!-- Signatures -->
-                                    <div class="row mt-0">
+                                    <div class="row mt-2">
                                         <div class="col-4 text-center align-content-end my-2">
                                             <p class="mb-0">Sign of Class Teacher</p>
                                         </div>
@@ -610,8 +611,9 @@
                                          /* Adjust the zoom level as needed */
                                             margin: 8mm; !important;
                                             padding: auto !important;
-                                            size: A4;
+                                            size: A4 landscape;
                                             box-sizing: border-box;
+                                            zoom:0.98;
                                         }
                                         .marksheet-container {
                                             page-break-after: always; /* Ensure page break after each marksheet */

@@ -361,7 +361,7 @@ function formatDOB(inputDate) {
     // Return formatted date
     return `${day}-${month}-${year}`;
 }
-// Marksheet For class 3 to 5 and 6 to 8
+// Marksheet For class 3 to 5
 function marksheetData() {
     let classId = $('#class').val();
     let sectionId = $('#section').val();
@@ -409,10 +409,10 @@ function marksheetData() {
                                             <img src="${response.logo.school_logo}" alt="School Logo" class="img-fluid rounded-circle">
                                         </div>
                                         <div class="col-8 text-center">
-                                            <h2 class="mb-0 name_st_ms_sv">St. Vivekanand ${studentInfo.school == 1 ? 'Play House' : 'Public Secondary School'}</h2>
-                                            <p class="mb-0 med_text_sv">(English Medium)</p>
-                                            <p class="mb-0 add_text_sv">Vivekanand Chowk, Chirawa, 01596 - 220877</p>
-                                            <p class="mb-0 sec_text_sv">Session : ${response.session.session}</p>
+                                            <h2 class="mb-2 name_st_ms_sv">St. Vivekanand ${studentInfo.school == 1 ? 'Play House' : 'Public Secondary School'}</h2>
+                                            <p class="mb-2 med_text_sv">(English Medium)</p>
+                                            <p class="mb-2 add_text_sv">Vivekanand Chowk, Chirawa, 01596 - 220877</p>
+                                            <p class="mb-2 sec_text_sv">Session : ${response.session.session}</p>
                                         </div>
                                         <div class="col-2"></div>
                                 </div>
@@ -553,7 +553,7 @@ function marksheetData() {
                                                 examGroupedById[examId].maxMarks += examInfo.max_marks;
                                                 subjectTotal += examInfo.total_marks;
                                                 allSubjectsToMarks += examInfo.max_marks;
-                                                tableHtml += `<td class="text-center ">${examInfo.total_marks}</td>`;
+                                                tableHtml += `<td class="text-center">${examInfo.total_marks && examInfo.total_marks !== null && examInfo.total_marks !== undefined && examInfo.total_marks !== '' && examInfo.total_marks !== 0 ? examInfo.total_marks : 'Abs'}</td>`;
                                             } else {
                                                 tableHtml += `<td class="text-center">Abs</td> `;
                                             }
@@ -772,16 +772,16 @@ function marksheetData() {
                             examIdOrder.forEach(
                                 examId => {
                                     let exam = examGroupedGradeById[examId];
-                                    tableHtml += `<th>Subject</th><th class="text-center">${exam.examName}</th><th class="text-center">Grade</th>
-                                                  <th>Subject</th><th class="text-center">${exam.examName}</th><th class="text-center">Grade</th>`;
+                                    tableHtml += `<th>Subject</th><th class="text-center">${exam.examName}</th>`;
                                 });
                         } else {
                             // If multiple exams exist, create headers for each exam type and grade
                             tableHtml += `<th>Subject</th>`;
                             examIdOrder.forEach(examId => {
                                 let exam = examGroupedGradeById[examId];
-                                tableHtml += `<th class="text-center">${exam.examName}</th><th class="text-center border-right-0">Grade</th>`;
+                                tableHtml += `<th class="text-center">${exam.examName}</th>`;
                             });
+                            tableHtml += `<th class="text-center border-right-0">Overall Grade</th>`;
                         }
                         tableHtml += `</tr></thead><tbody>`;
                         // Step 3: Generate the table body
@@ -802,18 +802,20 @@ function marksheetData() {
                                     // Check if the subject has data for the current exam
                                     let examInfo = rows[i]['exam-info'].find(info => info.exam_id === parseInt(Object.keys(examGroupedGradeById)[0]));
                                     if (examInfo) {
-                                        tableHtml += `<td class="text-center">${examInfo.grade}</td><td class="text-center">${examInfo.grade}</td>`;
+                                        tableHtml += `<td class="text-center">${examInfo.grade}</td>`;
                                     }
+                                    tableHtml += `<td class="text-center fw-bold border-right-0">${rows[i].overallGrade ?? ''}</td>`;
                                     // Add the next subject (if any)
                                     if (rows[i + 1]) {
                                         tableHtml += `<td>${rows[i + 1].subject}</td>`;
                                         // Check if the next subject has data for the current exam
                                         let examInfo2 = rows[i + 1]['exam-info'].find(info => info.exam_id === parseInt(Object.keys(examGroupedGradeById)[0]));
                                         if (examInfo2) {
-                                            tableHtml += `<td class="text-center">${examInfo2.grade}</td><td class="text-center">${examInfo2.grade}</td>`;
+                                            tableHtml += `<td class="text-center">${examInfo2.grade}</td>`;
                                         }
+                                        tableHtml += `<td class="text-center fw-bold border-right-0">${rows[i + 1].overallGrade ?? ''}</td>`;
                                     } else {
-                                        tableHtml += `<td class="text-center"></td><td class="text-center"></td><td>`;
+                                        tableHtml += `<td class="text-center"></td><td class="text-center border-right-0"></td>`;
                                     }
                                 }
                                 tableHtml += `</tr>`;
@@ -827,12 +829,13 @@ function marksheetData() {
                                     examIdOrder.forEach(examId => {
                                         let examInfo = exam['exam-info'].find(info => info.exam_id === parseInt(examId));
                                         if (examInfo) {
-                                            tableHtml += `<td class="text-center">${examInfo.grade}</td><td class="text-center border-right-0">${examInfo.grade}</td>`;
+                                            tableHtml += `<td class="text-center">${examInfo.grade}</td>`;
                                         } else {
                                             // If the subject does not have this exam's data, insert empty td
-                                            tableHtml += `<td class="text-center">Abs</td><td class="text-center">Abs</td>`;
+                                            tableHtml += `<td class="text-center">Abs</td>`;
                                         }
                                     });
+                                    tableHtml += `<td class="text-center fw-bold border-right-0">${exam.overallGrade ?? ''}</td>`;
                                     tableHtml += `</tr>`;
                                 }
                             });
@@ -862,7 +865,7 @@ function marksheetData() {
 
                           <tr class="marksheet_row attendence_details"><td class="p-0 border-0">
                         <!-- Attendance Record -->
-                        <div class="align-items-stretch">
+                    <!-- <div class="align-items-stretch">
                             <div class="col-12 px-0">
                                 <table class="table table-bordered h-100 w-100 mb-0">
                                     <thead>
@@ -895,7 +898,7 @@ function marksheetData() {
                                     </tbody>
                                 </table>
                             </div>
-                        </div>
+                        </div> -->
                         </td></tr><tr><td class ="border-0">
                         <!-- Signatures -->
                         <div class="row mt-0">

@@ -197,8 +197,8 @@
                                         // If examInfo is found, display the max_marks
                                         if (examInfo) {
                                             tableHtml +=
-                                                `<td class="text-center">${examInfo.written_max_marks}</td>
-                                                <td class="text-center">${examInfo.oral_max_marks}</td>
+                                                `<td class="text-center fw-bold">${examInfo.written_max_marks}</td>
+                                                <td class="text-center fw-bold">${examInfo.oral_max_marks}</td>
                                                 <td class="text-center fw-bold">${examInfo.max_marks}</td> `;
                                             subjectMaxMarksTotal += examInfo
                                                 .max_marks;
@@ -320,32 +320,24 @@
                                     }
                                 });
                                 // Step 2: Check if all subjects have only one exam type (same `exam_id`)
-                                let allSubjectsSameExam = Object.keys(examGroupedGradeById)
-                                    .length === 1;
+                                let allSubjectsSameExam = Object.keys(examGroupedGradeById).length === 1;
                                 // Generate headers
                                 if (allSubjectsSameExam) {
                                     Object.keys(examGroupedGradeById).forEach(examId => {
                                         let exam = examGroupedGradeById[examId];
-                                        // exam.subjects.forEach(sData => {
-                                        //     if (sData.by_m_g == 2) {
-                                        tableHtml +=
-                                            `<th>Subject</th><th class="text-center">${exam.examName}</th><th class="text-center ">Grade</th>
-                                                                            <th>Subject</th><th class="text-center">${exam.examName}</th><th class="text-center border-right-0">Grade</th>`;
-                                        //     }
-                                        // });
+                                        tableHtml +=`<th>Subject</th><th class="text-center">${exam.examName}</th><th class="text-center">Overall Grade</th>
+                                                    <th>Subject</th><th class="text-center">${exam.examName}</th><th class="text-center border-right-0">Overall Grade</th>`;
+                                        
                                     });
                                 } else {
                                     // If multiple exams exist, create headers for each exam type and grade
                                     tableHtml += `<th>Subject</th>`;
                                     Object.keys(examGroupedGradeById).forEach(examId => {
                                         let exam = examGroupedGradeById[examId];
-                                        // exam.subjects.forEach(sData => {
-                                        //     if (sData.by_m_g == 2) {
                                         tableHtml +=
-                                            `<th class="text-center">${exam.examName}</th><th class="text-center border-right-0">Grade</th>`;
-                                        //     }
-                                        // });
+                                            `<th class="text-center">${exam.examName}</th>`;
                                     });
+                                    tableHtml += `<th class="text-center border-right-0">Overall Grade</th>`;
                                 }
                                 tableHtml += `</tr></thead><tbody>`;
                                 // Step 3: Generate the table body
@@ -370,8 +362,9 @@
                                                     examGroupedGradeById)[0]));
                                             if (examInfo) {
                                                 tableHtml +=
-                                                    `<td class="text-center ">${examInfo.grade}</td><td class="text-center">${examInfo.grade}</td>`;
+                                                    `<td class="text-center ">${examInfo.grade}</td>`;
                                             }
+                                            tableHtml += `<td class="text-center fw-bold border-right-0">${rows[i].overallGrade ?? ''}</td>`;
                                             // Add the next subject (if any)
                                             if (rows[i + 1]) {
                                                 tableHtml += `<td class="border-right-0">${rows[i + 1].subject}</td>`;
@@ -381,11 +374,12 @@
                                                         .keys(examGroupedGradeById)[0]));
                                                 if (examInfo2) {
                                                     tableHtml +=
-                                                        `<td class="text-center">${examInfo2.grade}</td><td class="text-center border-right-0">${examInfo2.grade}</td>`;
+                                                        `<td class="text-center">${examInfo2.grade}</td>`;
                                                 }
+                                                tableHtml += `<td class="text-center fw-bold border-right-0">${rows[i + 1].overallGrade ?? ''}</td>`;
                                             } else {
                                                 tableHtml +=
-                                                    `<td class="text-center"></td><td class="text-center border-right-0"></td><td>`;
+                                                    `<td class="text-center"></td><td class="text-center"></td><td class="text-center border-right-0"></td>`;
                                             }
                                         }
                                         tableHtml += `</tr>`;
@@ -405,13 +399,14 @@
                                                                 examId));
                                                     if (examInfo) {
                                                         tableHtml +=
-                                                            `<td class="text-center">${examInfo.grade}</td><td class="text-center border-right-0">${examInfo.grade}</td>`;
+                                                            `<td class="text-center">${examInfo.grade}</td>`;
                                                     } else {
                                                         // If the subject does not have this exam's data, insert empty td
                                                         tableHtml +=
-                                                            `<td class="text-center border-right-0">Abs</td><td class="text-center">Abs</td>`;
+                                                            `<td class="text-center border-right-0">Abs</td>`;
                                                     }
                                                 });
+                                            tableHtml += `<td class="text-center fw-bold border-right-0">${exam.overallGrade ?? ''}</td>`;
                                             tableHtml += `</tr>`;
                                         }
                                     });
@@ -443,7 +438,7 @@
                                           <tr class="marksheet_row">
                                           <td class="p-0 border-0">
                                         <!-- Attendance Record -->
-                                        <div class="row">
+                                <!-- <div class="row">
                                             <div class="col-12">
                                                 <table class="table table-bordered text-center mb-0">
                                                     <thead>
@@ -481,7 +476,7 @@
                                                     </tbody>
                                                 </table>
                                             </div>
-                                        </div>
+                                        </div> -->
                                         </td>
                                           </tr>`;
                                 tableHtml += `

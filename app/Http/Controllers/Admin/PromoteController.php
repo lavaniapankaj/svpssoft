@@ -23,11 +23,7 @@ class PromoteController extends Controller
     {
         $currentSession = Session::get('current_session')->id;
         if ($currentSession) {
-            # code...
-            // $maxPlaySchool = DB::table('stu_main_srno')->where('stu_main_srno.school', 1)->max('srno');
-
-            // $maxPublicSchool = DB::table('stu_main_srno')->where('stu_main_srno.school', 2)->max('srno');
-            $maxPublicSchool =  DB::table(DB::raw('(select distinct srno, created_at from stu_main_srno where school = 2 order by created_at desc) as subquery'))
+            /* $maxPublicSchool =  DB::table(DB::raw('(select distinct srno, created_at from stu_main_srno where school = 2 order by created_at desc) as subquery'))
             ->select('srno')->limit(1)->first();
 
             $publicSchoolSrno = DB::table('stu_main_srno')->select('stu_main_srno.srno')->where('stu_main_srno.srno', $maxPublicSchool->srno)->first();
@@ -37,9 +33,18 @@ class PromoteController extends Controller
             $maxPlaySchool = DB::table(DB::raw('(select distinct srno, created_at from stu_main_srno where school = 1 order by created_at desc) as subquery'))
                                 ->select('srno')->limit(1)->first();
             $playSchoolSrno = DB::table('stu_main_srno')->select('stu_main_srno.srno')->where('stu_main_srno.srno', $maxPlaySchool->srno)->first();
-            $playSchoolSrnoLatest = isset($playSchoolSrno) ? $playSchoolSrno->srno : null;
-            // }
-            // $sessions = SessionMaster::where('id', '>=', $currentSession)->where('active', 1)->pluck('session', 'id');
+            $playSchoolSrnoLatest = isset($playSchoolSrno) ? $playSchoolSrno->srno : null; */
+
+            $publicSchoolSrnoLatest = DB::table('stu_main_srno')
+                ->where('school', 2)
+                ->orderByRaw('CAST(srno AS UNSIGNED) DESC')
+                ->value('srno');
+
+            $playSchoolSrnoLatest = DB::table('stu_main_srno')
+                ->where('school', 1)
+                ->orderByRaw('CAST(SUBSTRING_INDEX(srno, "/", -1) AS UNSIGNED) DESC')
+                ->value('srno');
+
             $sessions = array_filter(SessionMasterController::getSessions(), function ($value, $key) use ($currentSession) {
                 return $key >= $currentSession;
             }, ARRAY_FILTER_USE_BOTH);
@@ -66,7 +71,6 @@ class PromoteController extends Controller
     public function store(Request $request)
     {
         try {
-            // Validate the request data
             $sessionRules = [
                 'sometimes',
                 'required',
@@ -112,7 +116,6 @@ class PromoteController extends Controller
                 'promote_date.required' => 'Enter the date',
             ]);
 
-
             if ($validator->fails()) {
                 return response()->json([
                     'status' => 'error',
@@ -128,6 +131,7 @@ class PromoteController extends Controller
             $selectedStdIds = $request->input('std_id');
             $students = StudentMaster::whereIn('srno', $selectedStdIds)->where('ssid', 1)->where('active', 1)->get();
             $successMessages = 'Student Promoted successfully.';
+
             if ($students->isEmpty()) {
                 return redirect()->back()->with('error', 'No students found.');
             }
@@ -137,6 +141,7 @@ class PromoteController extends Controller
                     'class' => $request->second_class_id,
                     'section' => $request->second_section_id,
                     'rollno' => $std->rollno,
+                    'is_rtest' => $std->is_rtest,
                     'session_id' => $request->session_id,
                     'image' => $std->image,
                     'age_proof' => $std->age_proof,
@@ -155,7 +160,12 @@ class PromoteController extends Controller
                     'add_user_id' => Session::get('login_user'),
                     'edit_user_id' => Session::get('login_user'),
                 ];
-                $stdSsIdUpdate = StudentMaster::whereIn('srno', $selectedStdIds)->where('ssid', 1)->latest()->first();
+
+                //  Fixed: scoped to current student's srno only
+                $stdSsIdUpdate = StudentMaster::where('srno', $std->srno)
+                    ->where('ssid', 1)
+                    ->latest()
+                    ->first();
 
                 if (!empty($request->srno)) {
                     $promoteStdSchoolData = array_merge($commanData, [
@@ -166,9 +176,11 @@ class PromoteController extends Controller
                         'ssid' => 1,
                     ]);
 
+                    // Update old record BEFORE creating new one
                     if ($stdSsIdUpdate) {
                         $stdSsIdUpdate->update(['ssid' => 3]);
                     }
+
                     $stdDetails = DB::table('stu_detail')->where('srno', $std->srno)->first();
                     if (!empty($stdDetails)) {
                         DB::table('stu_detail')->updateOrInsert(['srno' => $request->srno], [
@@ -189,10 +201,9 @@ class PromoteController extends Controller
                             'active' => $stdDetails->active,
                         ]);
                     }
+
                     $stdParentDetails = DB::table('parents_detail')->where('srno', $std->srno)->first();
                     if (!empty($stdParentDetails)) {
-                        // DB::table('parents_detail')->where('srno', $std->srno)->update(['srno' => $request->srno]);
-
                         DB::table('parents_detail')->updateOrInsert(['srno' => $request->srno], [
                             'srno' => $request->srno,
                             'f_name' => $stdParentDetails->f_name,
@@ -213,6 +224,7 @@ class PromoteController extends Controller
                             'active' => $stdParentDetails->active,
                         ]);
                     }
+
                     StudentMaster::updateOrCreate([
                         'class' => $request->second_class_id,
                         'section' => $request->second_section_id,
@@ -220,57 +232,41 @@ class PromoteController extends Controller
                         'prev_srno' => $std->srno,
                         'admission_date' => $request->promote_date,
                     ], $promoteStdSchoolData);
+
                     $successMessages = 'Student School Promoted successfully.';
                     continue;
                 }
 
                 if (!empty($request->tc)) {
-                    /* $tcStdData = array_merge($commanData, [
-                        'srno' => $std->srno,
-                        'school' => $std->school,
-                        'ssid' => 4,
-                    ]); */
+                    //  Update old record scoped to current student
                     if ($stdSsIdUpdate) {
                         $stdSsIdUpdate->update(['ssid' => 4]);
                     }
-                    /* StudentMaster::updateOrCreate([
-                        'admission_date' => null,
-                        'class' => $request->second_class_id,
-                        'section' => $request->second_section_id,
-                        'session_id' => $request->session_id,
-                        'prev_srno' => $std->srno,
-                    ], $tcStdData); */
                     $successMessages = 'Student TC to Out Successfully.';
                     continue;
                 }
 
                 if (!empty($request->leftOut)) {
-                    /* $leftStdData = array_merge($commanData, [
-                        'srno' => $std->srno,
-                        'school' => $std->school,
-                        'ssid' => 5,
-                    ]); */
+                    // Update old record scoped to current student
                     if ($stdSsIdUpdate) {
                         $stdSsIdUpdate->update(['ssid' => 5]);
                     }
-                    /* StudentMaster::updateOrCreate([
-                        'admission_date' => null,
-                        'class' => $request->second_class_id,
-                        'section' => $request->second_section_id,
-                        'session_id' => $request->session_id,
-                        'prev_srno' => $std->srno,
-                    ], $leftStdData); */
                     $successMessages = 'Student has Been left out Successfully.';
                     continue;
                 }
 
-
+                // Normal promote
                 $promoteData = array_merge($commanData, [
                     'srno' => $std->srno,
                     'school' => $std->school,
                     'ssid' => 1,
                 ]);
-                $stdSsIdUpdate->update(['ssid' => 2]);
+
+                // Update old record BEFORE creating new one
+                if ($stdSsIdUpdate) {
+                    $stdSsIdUpdate->update(['ssid' => 2]);
+                }
+
                 StudentMaster::updateOrCreate([
                     'admission_date' => null,
                     'class' => $request->second_class_id,
@@ -281,6 +277,7 @@ class PromoteController extends Controller
             }
 
             return response()->json(['success' => $successMessages]);
+
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',

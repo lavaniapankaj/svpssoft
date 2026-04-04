@@ -101,8 +101,8 @@
                                                 </div>
                                                 <div class="col-8 text-center">
                                                     <h2 class="mb-2 name_st_ms_sv">St. Vivekanand ${studentInfo.school == 1 ? 'Play House' : 'Public Secondary School'}</h2>
-                                                    <p class="mb-1 med_text_sv">(English Medium)</p>
-                                                    <p class="mb-1 add_text_sv">Vivekanand Chowk, Chirawa, 01596 - 220877</p>
+                                                    <p class="mb-2 med_text_sv">(English Medium)</p>
+                                                    <p class="mb-2 add_text_sv">Vivekanand Chowk, Chirawa, 01596 - 220877</p>
                                                     <p class="mb-2 sec_text_sv">Session : ${response.session.session}</p>
                                                 </div>
                                                 <div class="col-2"></div>
@@ -111,7 +111,7 @@
                                       </tr>
                                       <tr class="marksheet_row second">
                                           <td class="border-0"><!-- Student Details -->
-                                            <div class="row">
+                                            <div class="row mb-2">
                                                 <div class="col-md-6">
                                                     <div class="row mb-2">
                                                         <div class="col-5 ms_text_head fw-bold">Name of Student:</div>
@@ -239,7 +239,7 @@
                                                             examGroupedById[examId].maxMarks += examInfo.max_marks;
                                                             subjectTotal += examInfo.total_marks;
                                                             allSubjectsToMarks += examInfo.max_marks;
-                                                            tableHtml += `<td class="text-center">${examInfo.total_marks}</td>`;
+                                                            tableHtml += `<td class="text-center">${examInfo.total_marks && examInfo.total_marks !== null && examInfo.total_marks !== undefined && examInfo.total_marks !== '' && examInfo.total_marks !== 0 ? examInfo.total_marks : 'Abs'}</td>`;
                                                         } else {
                                                             tableHtml += `<td class="text-center">Abs</td> `;
                                                         }
@@ -454,18 +454,17 @@
                                         examIdOrder.forEach(
                                             examId => {
                                                 let exam = examGroupedGradeById[examId];
-                                                tableHtml += `<th>Subject</th><th class="text-center">${exam.examName}</th><th class="text-center">Grade</th>
-                                                              <th>Subject</th><th class="text-center">${exam.examName}</th><th class="text-center">Grade</th>`;
+                                                tableHtml += `<th>Subject</th><th class="text-center">${exam.examName}</th>`;
                                             });
                                     } else {
                                         // If multiple exams exist, create headers for each exam type and grade
                                         tableHtml += `<th>Subject</th>`;
                                         examIdOrder.forEach(examId => {
                                                 let exam = examGroupedGradeById[examId];
-                                                tableHtml += `<th class="text-center">${exam.examName}</th><th class="text-center">Grade</th>`;
+                                                tableHtml += `<th class="text-center">${exam.examName}</th>`;
                                         });
                                     }
-                                    tableHtml += `</tr></thead><tbody>`;
+                                    tableHtml += `<th class="text-center">Overall Grade</th></tr></thead><tbody>`;
                                      // Step 3: Generate the table body
                                     if (allSubjectsSameExam) {
                                         // For the "only one exam type" case, group subjects and display them side by side
@@ -484,18 +483,20 @@
                                                 // Check if the subject has data for the current exam
                                                 let examInfo = rows[i]['exam-info'].find(info => info.exam_id === parseInt(Object.keys(examGroupedGradeById)[0]));
                                                 if (examInfo) {
-                                                    tableHtml += `<td class="text-center">${examInfo.grade}</td><td class="text-center">${examInfo.grade}</td>`;
+                                                    tableHtml += `<td class="text-center">${examInfo.grade}</td>`;
                                                 }
+                                                tableHtml += `<td class="text-center fw-bold">${rows[i].overallGrade ?? ''}</td>`;
                                                 // Add the next subject (if any)
                                                 if (rows[i + 1]) {
                                                     tableHtml += `<td>${rows[i + 1].subject}</td>`;
                                                     // Check if the next subject has data for the current exam
                                                     let examInfo2 = rows[i + 1]['exam-info'].find(info => info.exam_id === parseInt(Object.keys(examGroupedGradeById)[0]));
                                                     if (examInfo2) {
-                                                        tableHtml += `<td class="text-center">${examInfo2.grade}</td><td class="text-center">${examInfo2.grade}</td>`;
+                                                        tableHtml += `<td class="text-center">${examInfo2.grade}</td>`;
                                                     }
+                                                    tableHtml += `<td class="text-center fw-bold">${rows[i + 1].overallGrade ?? ''}</td>`;
                                                 } else {
-                                                    tableHtml += `<td class="text-center"></td><td class="text-center"></td><td>`;
+                                                    tableHtml += `<td class="text-center"></td><td>`;
                                                 }
                                             }
                                             tableHtml += `</tr>`;
@@ -507,14 +508,15 @@
                                                 tableHtml += `<tr class="align-middle"><td class="fw-bold">${exam.subject}</td>`;
                                                 // For each exam (e.g., Unit Test, Half Yearly) associated with the subject
                                                 examIdOrder.forEach(examId => {
-                                                        let examInfo = exam['exam-info'].find(info => info.exam_id === parseInt(examId));
-                                                        if (examInfo) {
-                                                            tableHtml += `<td class="text-center">${examInfo.grade}</td><td class="text-center">${examInfo.grade}</td>`;
-                                                        } else {
-                                                            // If the subject does not have this exam's data, insert empty td
-                                                            tableHtml += `<td class="text-center">Abs</td><td class="text-center">Abs</td>`;
-                                                        }
-                                                    });
+                                                    let examInfo = exam['exam-info'].find(info => info.exam_id === parseInt(examId));
+                                                    if (examInfo) {
+                                                        tableHtml += `<td class="text-center">${examInfo.grade}</td>`;
+                                                    } else {
+                                                        // If the subject does not have this exam's data, insert empty td
+                                                        tableHtml += `<td class="text-center">Abs</td>`;
+                                                    }
+                                                });
+                                                tableHtml += `<td class="text-center fw-bold">${exam.overallGrade ?? ''}</td>`;
                                                 tableHtml += `</tr>`;
                                             }
                                         });
@@ -543,7 +545,7 @@
                                       </tr>
                                       <tr class="marksheet_row attendence_details"><td class="p-0 border-0">
                                     <!-- Attendance Record -->
-                                    <div class="align-items-stretch">
+                                <!-- <div class="align-items-stretch">
                                         <div class="col-12 px-0">
                                             <table class="table m-0">
                                                 <thead class="t_head_sv">
@@ -573,10 +575,10 @@
                                             </tbody>
                                             </table>
                                         </div>
-                                    </div>
+                                    </div> -->
                                     </td></tr><tr><td class="border-0">
                                     <!-- Signatures -->
-                                    <div class="row mt-0">
+                                    <div class="row mt-2">
                                         <div class="col-4 text-center align-content-end my-2">
                                             <p class="mb-0">Sign of Class Teacher</p>
                                         </div>
@@ -631,8 +633,9 @@
                                          /* Adjust the zoom level as needed */
                                             margin: 8mm; !important;
                                             padding: auto !important;
-                                            size: A4;
+                                            size: A4 landscape;
                                             box-sizing: border-box;
+                                            zoom:0.98;
                                         }
                                         .marksheet-container {
                                             page-break-after: always; /* Ensure page break after each marksheet */
